@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OBS Overlay</title>
+  <style>
+    :root { --bg: #181818; --text: #fff; }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      width: 350px;
+      height: 550px;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Arial Rounded MT Bold', Arial, sans-serif;
+    }
+
+    #obs-root {
+      display: flex;
+      flex-direction: row;
+      width: 350px;
+      height: 550px;
+    }
+
+    /* ── Left column: moon rows ───── */
+    #obs-moon-list {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 2px;
+      padding: 6px 4px 6px 8px;
+      flex-shrink: 0;
+    }
+
+    .obs-moon-row {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+    }
+
+    .obs-moon-row img.obs-lock,
+    .obs-moon-row img.obs-peace {
+      width: 16px;
+      height: 16px;
+      object-fit: contain;
+    }
+
+    .obs-moon-row img.obs-kingdom {
+      height: 28px;
+      width: 28px;
+      object-fit: contain;
+      transition: filter 0.2s;
+    }
+    .obs-moon-row img.obs-kingdom.icon-white {
+      filter: brightness(0) invert(1);
+    }
+
+    .obs-count {
+      font-size: 0.82rem;
+      font-weight: bold;
+      white-space: nowrap;
+      min-width: 55px;
+      text-align: center;
+    }
+
+    /* ── Right column ─────────────── */
+    #obs-right {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 8px 8px 8px 6px;
+      gap: 2px;
+      flex: 1;
+    }
+
+    .obs-section-header {
+      font-size: 0.85rem;
+      font-weight: bold;
+      text-align: center;
+      padding: 6px 0 3px;
+      width: 100%;
+    }
+
+    .obs-icon-row {
+      display: flex;
+      flex-direction: row;
+      gap: 4px;
+      justify-content: center;
+    }
+
+    .obs-icon-row img {
+      height: 38px;
+      width: 38px;
+      object-fit: contain;
+    }
+
+    #obs-bowser {
+      display: flex;
+      justify-content: center;
+      padding: 6px 0;
+    }
+    #obs-bowser img {
+      height: 42px;
+      width: 42px;
+      object-fit: contain;
+    }
+
+    #obs-total {
+      font-size: 1.1rem;
+      font-weight: bold;
+      text-align: center;
+      padding: 6px 0 2px;
+    }
+
+    /* ── BG toggle button (corner) ── */
+    #obs-bg-btn {
+      position: fixed;
+      bottom: 6px;
+      right: 6px;
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.2);
+      color: #fff;
+      font-size: 0.7rem;
+      padding: 3px 7px;
+      border-radius: 4px;
+      cursor: pointer;
+      z-index: 10;
+      font-family: Arial, sans-serif;
+      transition: background 0.15s;
+    }
+    #obs-bg-btn:hover { background: rgba(255,255,255,0.22); }
+
+    /* Sections that may be hidden via settings */
+    #obs-capture-section.hidden,
+    #obs-ability-section.hidden,
+    #obs-total.hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div id="obs-root">
+    <div id="obs-moon-list"></div>
+    <div id="obs-right">
+      <div id="obs-capture-section">
+        <div class="obs-section-header">Moon Cave</div>
+        <div class="obs-icon-row" id="obs-capture-icons"></div>
+      </div>
+      <div id="obs-ability-section">
+        <div class="obs-section-header">Cave Skip</div>
+        <div class="obs-icon-row" id="obs-ability-icons"></div>
+      </div>
+      <div id="obs-bowser"><img id="obs-bowser-img" src="assets/Bowser_Capture_Locked.png" alt="Bowser"></div>
+      <div id="obs-total">0 / 124</div>
+    </div>
+  </div>
+  <button id="obs-bg-btn" title="Toggle chroma key background">BG</button>
+
+  <script>
+    'use strict';
+
+    const STATE_KEY = 'tracker_state';
+    const KINGDOMS = [
+      { name:'Cascade Kingdom',  img:'assets/Cascade.png'  },
+      { name:'Sand Kingdom',     img:'assets/Sand.png'     },
+      { name:'Lake Kingdom',     img:'assets/Lake.png'     },
+      { name:'Wooded Kingdom',   img:'assets/Wooded.png'   },
+      { name:'Lost Kingdom',     img:'assets/Lost.png'     },
+      { name:'Metro Kingdom',    img:'assets/Metro.png'    },
+      { name:'Snow Kingdom',     img:'assets/Snow.png'     },
+      { name:'Seaside Kingdom',  img:'assets/Seaside.png'  },
+      { name:'Luncheon Kingdom', img:'assets/Luncheon.png' },
+      { name:'Ruined Kingdom',   img:'assets/Ruin.png'     },
+      { name:'Bowser Kingdom',   img:'assets/Bowser.png'   },
+    ];
+
+    const CAPTURE_ICONS = [
+      { key:'parabones', locked:'assets/Parabones_Capture_Locked.png',    unlocked:'assets/Parabones_Capture.png'      },
+      { key:'banzai',    locked:'assets/Banzai_Bill_Capture_Locked.png',  unlocked:'assets/Banzai_Bill_Capture.png'    },
+      { key:'wire',      locked:'assets/Spark_pylon_Capture_Locked.png',  unlocked:'assets/Spark_pylon_Capture.png'    },
+    ];
+
+    const ABILITY_ICONS = [
+      { key:'jump', locked:'assets/Long_Jump_Locked.png', unlocked:'assets/Long_Jump.png' },
+      { key:'cap',  locked:'assets/Cappy_Locked.png',     unlocked:'assets/Cappy.png'     },
+      { key:'wall', locked:'assets/Wall_Jump_Locked.png', unlocked:'assets/Wall_Jump.png' },
+    ];
+
+    let bgMode = 'dark';
+    let currentState = null;
+
+    // ── Load state from localStorage ──────────────────────────────
+    function loadTrackerState() {
+      try {
+        const raw = localStorage.getItem(STATE_KEY);
+        return raw ? JSON.parse(raw) : null;
+      } catch (e) { return null; }
+    }
+
+    // ── Build DOM ─────────────────────────────────────────────────
+    function buildOBSLayout() {
+      // Moon rows
+      const moonList = document.getElementById('obs-moon-list');
+      moonList.innerHTML = '';
+      KINGDOMS.forEach((k, i) => {
+        const row = document.createElement('div');
+        row.className = 'obs-moon-row';
+        row.dataset.i = i;
+
+        const lockImg   = document.createElement('img');
+        lockImg.className = 'obs-lock';
+        lockImg.src = 'assets/lock.png';
+        lockImg.alt = 'lock';
+
+        const peaceImg  = document.createElement('img');
+        peaceImg.className = 'obs-peace';
+        peaceImg.src = 'assets/peace.png';
+        peaceImg.alt = 'peace';
+
+        const kingImg   = document.createElement('img');
+        kingImg.className = 'obs-kingdom';
+        kingImg.src = k.img;
+        kingImg.alt = k.name;
+
+        const countSpan = document.createElement('span');
+        countSpan.className = 'obs-count';
+        countSpan.textContent = '0 / ?';
+
+        row.appendChild(lockImg);
+        row.appendChild(peaceImg);
+        row.appendChild(kingImg);
+        row.appendChild(countSpan);
+        moonList.appendChild(row);
+      });
+
+      // Capture icons (parabones, banzai, wire — bowser is separate)
+      const captureRow = document.getElementById('obs-capture-icons');
+      captureRow.innerHTML = '';
+      CAPTURE_ICONS.forEach(ic => {
+        const img = document.createElement('img');
+        img.dataset.key = ic.key;
+        img.src = ic.locked;
+        img.alt = ic.key;
+        captureRow.appendChild(img);
+      });
+
+      // Ability icons
+      const abilityRow = document.getElementById('obs-ability-icons');
+      abilityRow.innerHTML = '';
+      ABILITY_ICONS.forEach(ic => {
+        const img = document.createElement('img');
+        img.dataset.key = ic.key;
+        img.src = ic.locked;
+        img.alt = ic.key;
+        abilityRow.appendChild(img);
+      });
+    }
+
+    // ── Update all DOM elements from current state ────────────────
+    function updateOBS() {
+      const s = loadTrackerState();
+      if (!s) return;
+      currentState = s;
+      const settings = s.settings || {};
+
+      // Moon rows
+      KINGDOMS.forEach((_, i) => {
+        const row = document.querySelector(`.obs-moon-row[data-i="${i}"]`);
+        if (!row) return;
+        const m = (s.moons && s.moons[i]) || {};
+
+        row.querySelector('.obs-lock').src =
+          m.lock  ? 'assets/unlock.png'       : 'assets/lock.png';
+        row.querySelector('.obs-peace').src =
+          m.peace ? 'assets/peace_unlock.png' : 'assets/peace.png';
+
+        const kImg = row.querySelector('.obs-kingdom');
+        kImg.classList.toggle('icon-white', settings.show_icon_colors === false);
+
+        const maxDisplay = (m.max !== null && m.max !== undefined) ? m.max : '?';
+        row.querySelector('.obs-count').textContent =
+          `${m.count || 0} / ${maxDisplay}`;
+      });
+
+      // Capture icons
+      CAPTURE_ICONS.forEach(ic => {
+        const img = document.querySelector(`#obs-capture-icons img[data-key="${ic.key}"]`);
+        if (img && s.captures) {
+          img.src = s.captures[ic.key] ? ic.unlocked : ic.locked;
+        }
+      });
+
+      // Ability icons
+      ABILITY_ICONS.forEach(ic => {
+        const img = document.querySelector(`#obs-ability-icons img[data-key="${ic.key}"]`);
+        if (img && s.abilities) {
+          img.src = s.abilities[ic.key] ? ic.unlocked : ic.locked;
+        }
+      });
+
+      // Bowser (from captures)
+      const bowserImg = document.getElementById('obs-bowser-img');
+      if (bowserImg && s.captures) {
+        bowserImg.src = s.captures.bowser
+          ? 'assets/Bowser_Capture.png'
+          : 'assets/Bowser_Capture_Locked.png';
+      }
+
+      // Total label
+      const totalEl = document.getElementById('obs-total');
+      const total   = (s.moons || []).reduce((sum, m) => sum + (m.count || 0), 0);
+      const req     = settings.moon_requirement || 124;
+      totalEl.textContent = `${total} / ${req}`;
+      totalEl.classList.toggle('hidden', settings.show_moon_total === false);
+
+      // Section visibility
+      document.getElementById('obs-capture-section')
+        .classList.toggle('hidden', settings.show_captures === false);
+      document.getElementById('obs-ability-section')
+        .classList.toggle('hidden', settings.show_ability_lock === false);
+
+      // If OBS is in green mode, use the latest saved custom color
+      if (bgMode === 'green') {
+        document.body.style.background = settings.obs_bg_color || '#00FF00';
+      }
+    }
+
+    // ── Background toggle ────────────────────────────────────────
+    function toggleBg() {
+      const s = (currentState && currentState.settings) || {};
+      if (bgMode === 'dark') {
+        bgMode = 'green';
+        document.body.style.background = s.obs_bg_color || '#00FF00';
+      } else {
+        bgMode = 'dark';
+        document.body.style.background = '#181818';
+      }
+    }
+
+    // ── Listen for changes pushed by the main tracker ────────────
+    window.addEventListener('storage', (e) => {
+      if (e.key === STATE_KEY)       updateOBS();
+      if (e.key === 'obs_bg_toggle') toggleBg();
+    });
+
+    // ── BG button inside OBS window itself ───────────────────────
+    document.getElementById('obs-bg-btn').addEventListener('click', toggleBg);
+
+    // ── Init ────────────────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', () => {
+      buildOBSLayout();
+      updateOBS();
+      // Polling fallback — catches updates in same browser tab (edge case)
+      setInterval(updateOBS, 250);
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>Moon Tracker</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <h1>🌙 Moon Tracker</h1>
+
+    <!-- Moon Rows -->
+    <div id="moon-rows"></div>
+
+    <!-- Controls -->
+    <div id="controls">
+      <div id="capture-section">
+        <div id="capture-row"></div>
+      </div>
+
+      <div id="button-section">
+        <button class="ctrl-btn" id="btn-obs">Open OBS Overlay</button>
+        <button class="ctrl-btn" id="btn-toggle-obs-bg">Toggle OBS BG</button>
+        <button class="ctrl-btn danger-btn" id="btn-clear">Clear</button>
+        <button class="ctrl-btn gear-btn" id="btn-settings">⚙</button>
+      </div>
+
+      <div id="ability-section">
+        <div id="ability-row"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Settings Modal ─────────────────────────────────────────── -->
+  <div id="settings-modal" class="modal-backdrop hidden" role="dialog" aria-label="Settings">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2>⚙ Settings</h2>
+        <button class="modal-close" id="settings-close" aria-label="Close">✕</button>
+      </div>
+      <div class="modal-body settings-body">
+
+        <div class="settings-row">
+          <span>Toggle Total Moon Count</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="toggle-moon-total">
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+
+        <div class="settings-row">
+          <span>Toggle Icon Colors</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="toggle-icon-colors">
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+
+        <div class="settings-row">
+          <span>Toggle Ability Lock</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="toggle-ability-lock">
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+
+        <div class="settings-row">
+          <span>Toggle Captures</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="toggle-captures">
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+
+        <div class="settings-row">
+          <span>Toggle Save Buttons</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="toggle-save-buttons">
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+
+        <div class="settings-row">
+          <span>Total Moon Requirement</span>
+          <div class="input-save-pair">
+            <input type="number" id="input-moon-req" placeholder="124" min="1" max="9999">
+            <button class="save-inline-btn" id="save-moon-req">Save</button>
+          </div>
+        </div>
+
+        <div class="settings-row">
+          <span>OBS BG Color</span>
+          <div class="input-save-pair">
+            <input type="text" id="input-obs-color" placeholder="#00FF00" maxlength="7" spellcheck="false">
+            <button class="save-inline-btn" id="save-obs-color">Save</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Loading Zones Modal ───────────────────────────────────── -->
+  <div id="lz-modal" class="modal-backdrop hidden" role="dialog" aria-label="Loading Zone Notes">
+    <div class="modal-box lz-modal-box">
+      <div class="modal-header">
+        <h2>Loading Zone Notes</h2>
+        <button class="modal-close" id="lz-close" aria-label="Close">✕</button>
+      </div>
+      <div class="lz-scroll-wrap">
+        <div id="lz-content"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Icon Picker (appended to body by JS) ──────────────────── -->
+
+  <script src="app.js"></script>
+</body>
+</html>
