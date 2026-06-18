@@ -56,21 +56,20 @@ function cloneDefaultSettings() {
   return JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
 }
 
-// Matches Python tracker_withoutSaves loading_zones dict exactly
 const LOADING_ZONES_TEMPLATE = {
   'Cap':        { color:'#fff500', icon:'Cap.png',      zones:{ 'Orange':{num:2},'Paragoomba':{num:2},'Frog':{num:2},'Rolling On':{num:2} }},
   'Cascade':    { color:'#ff9900', icon:'Cascade.png',  zones:{ 'Dino':{num:2},'2D':{num:2},'Chain Chomp':{num:2},'Swings':{num:2},'Windy':{num:2} }},
-  'Sand':       { color:'#8bf12c', icon:'Sand.png',     zones:{ 'Icy Cave':{num:1},'Moe-eye':{num:2},'Shop':{num:1},'Employees':{num:1},'Slots':{num:1},'Rumble':{num:1},'Costume':{num:1},'Jaxi Ruins':{num:2},'Bullet Bill':{num:2},'Gushen':{num:2},'Sphynx':{num:1},'Poison':{num:2},'Rocket':{num:2},'Colossal Ruins':{num:2} }},
-  'Lake':       { color:'#e46cab', icon:'Lake.png',     zones:{ 'Frog':{num:2},'Zipper':{num:2},'Grab Climb':{num:2},'Shop':{num:1},'Puzzle':{num:1} }},
-  'Wooded':     { color:'#1e65e7', icon:'Wooded.png',   zones:{ 'Rocket':{num:2},'Sheep':{num:2},'Elevator':{num:2},'Poison':{num:2},'Clouds':{num:2},'Breakdown':{num:2},'Invisible':{num:2},'Costume':{num:2},'Flooded Pipes':{num:2},'Flower Road':{num:2} }},
+  'Sand':       { color:'#8bf12c', icon:'Sand.png',     zones:{ "Icy Cave":{num:1},"Moe-eye":{num:2},"Shop":{num:1},"Employees":{num:1},"Slots":{num:1},"Rumble":{num:1},"Outfit":{num:1},"Jaxi Ruins":{num:2},"Bullet Bill":{num:2},"Gushen":{num:2},"Sphynx":{num:1},"Moving Platform":{num:2},"Rocket":{num:2},"Colossal Ruins":{num:2}}},
+  'Lake':       { color:'#e46cab', icon:'Lake.png',     zones:{ "Poison Waves":{num:2},"Zipper":{num:2},"Grab Climb":{num:2},"Shop":{num:1},"Puzzle":{num:1}}},
+  'Wooded':     { color:'#1e65e7', icon:'Wooded.png',   zones:{ "DW Odyssey":{num:0},"DW Red Maze":{num:0},"DW Pond":{num:0},"DW Treasure":{num:1},"DW Outfit":{num:1},"Rocket":{num:2},"Sheep":{num:2},"Tank":{num:2},"Vine Clouds":{num:2},"Breakdown":{num:2},"Invisible":{num:2},"Flooded Pipes":{num:2},"Flower Road":{num:2},"Treasure Room":{num:1}}},
   'Lost':       { color:'#e71edd', icon:'Lost.png',     zones:{ 'Wiggler':{num:2},'Shop':{num:1},'Klepto':{num:2} }},
-  'Metro':      { color:'#de7d5e', icon:'Metro.png',    zones:{ 'Yellow Shop':{num:1},'Purple Shop':{num:1},'Dino':{num:2},'Bullet Billding':{num:2},'Shards':{num:2},'Notes':{num:1},'2D':{num:2},'Slots':{num:1},'People':{num:2},'Costume':{num:2},'Rocket':{num:2},'Dark':{num:2},'Scaffolding':{num:2},'Scooter':{num:2},'Rotating Maze':{num:2},'RC Car':{num:1} }},
-  'Snow':       { color:'#e7930a', icon:'Snow.png',     zones:{ 'Puzzle':{num:1},'Capless':{num:2},'Rocket Flower':{num:2},'Iceburn':{num:2},'Flower Road':{num:2},'Tracewalking':{num:1},'Clouds':{num:2},'Costume':{num:2},'Shop':{num:1} }},
-  'Seaside':    { color:'#b36fe9', icon:'Seaside.png',  zones:{ 'Well Enter':{num:1},'Well Exit':{num:1},'Rumble':{num:1},'Rocket':{num:2},'Costume':{num:1},'Gushen':{num:2},'Sphynx':{num:1},'Pokio':{num:2},'Lava Rising':{num:2},'Sandy Bottom':{num:1},'Spinning Maze':{num:2} }},
-  'Luncheon':   { color:'#3fddbb', icon:'Luncheon.png', zones:{ 'Magma Swamp':{num:2},'Forks':{num:2},'Cheese Rocks':{num:2},'Veggie Room':{num:1},'Slots':{num:1},'Shop':{num:1},'Costume':{num:1},'Spinning Athletics':{num:2},'Lava Islands':{num:2},'Volcano Cave':{num:2},'Gears':{num:2},'Magma Path':{num:2} }},
+  'Metro':      { color:'#de7d5e', icon:'Metro.png',    zones:{ "Yellow Shop":{num:1},"Purple Shop":{num:1},"Dino":{num:2},"Bullet Billding":{num:2},"Taxi":{num:2},"Notes":{num:1},"2D":{num:2},"Slots":{num:1},"People":{num:2},"Outfit":{num:2},"Rocket":{num:2},"Dark":{num:2},"Scaffolding":{num:2},"Scooter":{num:2},"Rotating Maze":{num:2},"RC Car":{num:2}}},
+  'Snow':       { color:'#e7930a', icon:'Snow.png',     zones:{ "Puzzle":{num:1},"Capless":{num:2},"Rocket Flower":{num:2},"Iceburn":{num:2},"Flower Road":{num:2},"Tracewalking":{num:1},"Clouds":{num:2},"Outfit":{num:2},"Shop":{num:1}}},
+  'Seaside':    { color:'#b36fe9', icon:'Seaside.png',  zones:{ "Well Enter":{num:1},"Well Exit":{num:1},"Rumble":{num:1},"Rocket":{num:2},"Outfit":{num:1},"Gushen":{num:2},"Sphynx":{num:1},"Pokio":{num:2},"Lava Rising":{num:2},"Sandy Bottom":{num:1},"Spinning Maze":{num:2}}},
+  'Luncheon':   { color:'#3fddbb', icon:'Luncheon.png', zones:{ "Magma Swamp":{num:2},"Forks":{num:2},"Cheese Rocks":{num:2},"Veggie Room":{num:1},"Slots":{num:1},"Shop":{num:1},"Outfit":{num:2},"Spinning Athletics":{num:2},"Lava Islands":{num:2},"Volcano Cave":{num:2},"Gears":{num:2},"Magma Path":{num:2}}},
   'Ruined':     { color:'#ffd7e2', icon:'Ruin.png',     zones:{ "Chargin' Chuck":{num:2},'Rocket':{num:2} }},
-  "Bowser's":   { color:'#d3304c', icon:'Bowser.png',   zones:{ 'Jizo':{num:2},'Shop':{num:1},'Costume':{num:2},'Treasure Room':{num:1},'Spinning Tower':{num:2},'Clouds':{num:2},'Hexagon Tower':{num:2},'Wooden Tower':{num:2} }},
-  'Mushroom':   { color:'#fff672', icon:'Star.png',     zones:{ 'Costume':{num:2},'Castle':{num:2},'Cloud Sea':{num:2},'Well':{num:2},'Knucklotec':{num:1},'Torkdrift':{num:1},'Mechawiggler':{num:1},'Octopus':{num:1},'Cookatiel':{num:1},'Dragon':{num:1},'Rocket':{num:2} }},
+  "Bowser's":   { color:'#d3304c', icon:'Bowser.png',   zones:{ "Jizo":{num:2},"Shop":{num:1},"Outfit":{num:2},"Treasure Room":{num:1},"Spinning Tower":{num:2},"Vine Clouds":{num:2},"Hexagon Tower":{num:2},"Wooden Tower":{num:2}}},
+  'Mushroom':   { color:'#fff672', icon:'Star.png',     zones:{ "Shop":{num:1},"Castle Door":{num:2},"Outfit":{num:2},"Cloud Sea":{num:2},"Well":{num:2},"Knucklotec":{num:1},"Torkdrift":{num:1},"Mechawiggler":{num:1},"Octopus":{num:1},"Cookatiel":{num:1},"Dragon":{num:1},"Rocket":{num:2}}},
   'Darkside':   { color:'#fff2c6', icon:'Dark.png',     zones:{ 'Breakdown':{num:2},'Invisible':{num:2},'Vanishing':{num:2},'Yoshi Siege':{num:2},'Lava Rising':{num:2},'Magma Swamp':{num:2} }},
   'Darkerside': { color:'#fff2c6', icon:'Dark.png',     zones:{ 'End':{num:1} }},
 };
