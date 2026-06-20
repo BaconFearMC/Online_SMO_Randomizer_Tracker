@@ -351,15 +351,15 @@
         document.body.style.background = '#181818';
         document.documentElement.style.background = '#181818';
 
-        function loadTrackerState() {
-        try {
-          const raw = localStorage.getItem(STATE_KEY);
-          return raw ? JSON.parse(raw) : null;
-        } catch (e) { return null; }}
+        // function loadTrackerState() {
+        // try {
+        //   const raw = localStorage.getItem(STATE_KEY);
+        //   return raw ? JSON.parse(raw) : null;
+        // } catch (e) { return null; }}
 
-        window.addEventListener('storage', (e) => {
-          if (e.key === STATE_KEY)       updateOBS();
-        });
+        // window.addEventListener('storage', (e) => {
+        //   if (e.key === STATE_KEY)       updateOBS();
+        // });
       }
 
       applyScale();
