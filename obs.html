@@ -273,11 +273,11 @@
     // ── Update all DOM elements from current state ────────────────
     function updateOBS(s) {
       currentState = s || currentState;
-      if (params.get('popup')) {
-        currentState = loadTrackerState();
-        if (!s) return;
-          currentState = s;
-      }
+      // if (params.get('popup')) {
+      //   currentState = loadTrackerState();
+      //   if (!s) return;
+      //     currentState = s;
+      // }
       if (!currentState) return;
       applyScale();
       const settings = currentState.settings || {};
