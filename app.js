@@ -366,8 +366,12 @@ function updateCountColor(i) {
   const row = getMoonRow(i);
   if (!row) return;
   const m = state.moons[i];
+  const kingdom = KINGDOMS[i];
   const label = row.querySelector('.count-label');
-  const isComplete = state.settings.show_complete_color && m.max !== null && m.count >= m.max;
+  const isComplete = state.settings.show_complete_color && (
+    (m.max !== null && m.count >= m.max) ||
+    (m.count >= kingdom.max)
+  );
   label.classList.toggle('count-complete', isComplete);
   row.classList.toggle('row-complete', isComplete);
 }

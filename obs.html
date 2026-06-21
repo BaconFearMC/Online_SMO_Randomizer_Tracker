@@ -192,17 +192,17 @@
     let serverMode = false;
 
     const KINGDOMS = [
-      { name:'Cascade Kingdom',  img:'assets/Cascade.png'  },
-      { name:'Sand Kingdom',     img:'assets/Sand.png'     },
-      { name:'Lake Kingdom',     img:'assets/Lake.png'     },
-      { name:'Wooded Kingdom',   img:'assets/Wooded.png'   },
-      { name:'Lost Kingdom',     img:'assets/Lost.png'     },
-      { name:'Metro Kingdom',    img:'assets/Metro.png'    },
-      { name:'Snow Kingdom',     img:'assets/Snow.png'     },
-      { name:'Seaside Kingdom',  img:'assets/Seaside.png'  },
-      { name:'Luncheon Kingdom', img:'assets/Luncheon.png' },
-      { name:'Ruined Kingdom',   img:'assets/Ruin.png'     },
-      { name:'Bowser Kingdom',   img:'assets/Bowser.png'   },
+      { name:'Cascade Kingdom',  img:'assets/Cascade.png',  max: 10 },
+      { name:'Sand Kingdom',     img:'assets/Sand.png',     max: 21 },
+      { name:'Lake Kingdom',     img:'assets/Lake.png',     max: 13 },
+      { name:'Wooded Kingdom',   img:'assets/Wooded.png',   max: 21 },
+      { name:'Lost Kingdom',     img:'assets/Lost.png',     max: 15 },
+      { name:'Metro Kingdom',    img:'assets/Metro.png',    max: 25 },
+      { name:'Snow Kingdom',     img:'assets/Snow.png',     max: 15 },
+      { name:'Seaside Kingdom',  img:'assets/Seaside.png',  max: 15 },
+      { name:'Luncheon Kingdom', img:'assets/Luncheon.png', max: 23 },
+      { name:'Ruined Kingdom',   img:'assets/Ruin.png',     max: 8  },
+      { name:'Bowser Kingdom',   img:'assets/Bowser.png',   max: 13 },
     ];
 
     const CAPTURE_ICONS = [
@@ -349,9 +349,12 @@
         row.querySelector('.obs-count').textContent =
           `${m.count || 0} / ${maxDisplay}`;
 
-        // Green-when-complete — mirrors the main tracker's behavior
-        const isComplete = settings.show_complete_color &&
-          m.max !== null && m.max !== undefined && (m.count || 0) >= m.max;
+        // Green-when-complete — mirrors the main tracker's behavior, including
+        // the hardcoded kingdom reference max as an additional trigger
+        const isComplete = settings.show_complete_color && (
+          (m.max !== null && m.max !== undefined && (m.count || 0) >= m.max) ||
+          ((m.count || 0) >= KINGDOMS[i].max)
+        );
         row.querySelector('.obs-count').classList.toggle('count-complete', isComplete);
         // Maybe as a setting later in a OBS tab 
         // row.classList.toggle('row-complete', isComplete);
