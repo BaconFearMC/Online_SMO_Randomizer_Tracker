@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SMO Connection Map</title>
+<link rel="icon" href="assets/SMO-ColoredGlobe.png">
+<style>
+  :root {
+    --bg:          #181818;
+    --bg-card:     #242424;
+    --bg-card2:    #2e2e2e;
+    --bg-hover:    #383838;
+    --text:        #ffffff;
+    --text-dim:    #aaaaaa;
+    --accent:      #5865f2;
+    --accent-h:    #4752c4;
+    --green:       #4ade80;
+    --red:         #f87171;
+    --border:      #3a3a3a;
+    --radius:      10px;
+    --radius-sm:   6px;
+    --btn-bg:      #333333;
+    --btn-hover:   #444444;
+    --font:        'Arial Rounded MT Bold', 'Arial', sans-serif;
+  }
+  * , *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    overflow: hidden;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  #app {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+  }
+
+  /* ── Top bar ─────────────────────────────────────────────────── */
+  #topbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  #topbar h1 {
+    font-size: 1.05rem;
+    margin-right: auto;
+  }
+  .map-btn {
+    background: var(--btn-bg);
+    border: none;
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 0.85rem;
+    height: 34px;
+    padding: 0 14px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .map-btn:hover { background: var(--btn-hover); }
+  .map-btn.active { background: var(--accent); }
+  .map-btn.active:hover { background: var(--accent-h); }
+  .map-btn.danger { color: var(--red); }
+  .map-btn.danger:hover { background: #3a2020; }
+
+  /* ── Controls legend (toggleable) ───────────────────────────── */
+  #controls-panel {
+    background: var(--bg-card2);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 16px;
+    font-size: 0.82rem;
+    line-height: 1.6;
+    color: var(--text-dim);
+    flex-shrink: 0;
+  }
+  #controls-panel.hidden { display: none; }
+  #controls-panel ul { padding-left: 18px; }
+  #controls-panel strong { color: var(--text); }
+
+  /* ── Read-only "Display" panel (all chains, top, non-editable) ── */
+  #display-panel {
+    background: var(--bg-card2);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 16px;
+    max-height: 160px;
+    overflow-y: auto;
+    flex-shrink: 0;
+    font-size: 0.85rem;
+  }
+  #display-panel.hidden { display: none; }
+  #display-panel .empty-note {
+    color: var(--text-dim);
+    font-style: italic;
+  }
+  .chain-row {
+    padding: 3px 0;
+    line-height: 1.5;
+  }
+  .chain-row .arrow {
+    color: var(--text-dim);
+    margin: 0 4px;
+  }
+  .chain-row .loop-tag {
+    color: var(--text-dim);
+    font-size: 0.78rem;
+    margin-left: 6px;
+  }
+
+  /* ── Canvas viewport ─────────────────────────────────────────── */
+  #viewport {
+    position: relative;
+    flex: 1;
+    overflow: hidden;
+    cursor: grab;
+    background-image: radial-gradient(circle, #2a2a2a 1px, transparent 1px);
+    background-size: 22px 22px;
+  }
+  #viewport.panning { cursor: grabbing; }
+
+  #canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    transform-origin: 0 0;
+  }
+
+  svg#lines-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    overflow: visible;
+    pointer-events: none;
+  }
+
+  /* ── Cluster background panels ──────────────────────────────── */
+  .cluster-bg {
+    position: absolute;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+
+  /* ── Nodes ───────────────────────────────────────────────────── */
+  .map-node {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: var(--bg-card);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 0.78rem;
+    padding: 0 8px;
+    cursor: pointer;
+    user-select: none;
+    transition: border-color 0.15s, background 0.15s, transform 0.1s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .map-node:hover {
+    border-color: var(--accent);
+    transform: scale(1.04);
+    z-index: 5;
+  }
+  .map-node.drag-target {
+    border-color: var(--green);
+    background: rgba(74, 222, 128, 0.15);
+  }
+
+  .map-node.kingdom-node {
+    font-weight: bold;
+    font-size: 0.85rem;
+    background: var(--bg-card2);
+    border-width: 2px;
+  }
+  .map-node.kingdom-node img {
+    height: 18px;
+    width: 18px;
+    object-fit: contain;
+    flex-shrink: 0;
+  }
+
+  .map-node.mark-green {
+    border-color: var(--green);
+    background: rgba(74, 222, 128, 0.18);
+  }
+  .map-node.mark-red {
+    border-color: var(--red);
+    background: rgba(248, 113, 113, 0.18);
+  }
+
+  .map-node .node-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* ── Zoom indicator ──────────────────────────────────────────── */
+  #zoom-readout {
+    position: absolute;
+    bottom: 10px;
+    right: 14px;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    background: rgba(36,36,36,0.85);
+    padding: 4px 9px;
+    border-radius: var(--radius-sm);
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div id="topbar">
+    <h1>SMO Connection Map</h1>
+    <button class="map-btn" id="btn-controls">Show Controls</button>
+    <button class="map-btn active" id="btn-display">Hide Display</button>
+    <button class="map-btn danger" id="btn-clear">Clear</button>
+  </div>
+
+  <div id="controls-panel" class="hidden">
+    <ul>
+      <li><strong>Left Mouse Button</strong> hold &amp; drag to connect stages.</li>
+      <li><strong>Double Left Mouse Button</strong> to disconnect a path. This disconnects the stage connected to the one clicked. e.g. with Cascade→Sand→Lake→Wooded→Lost, double-clicking Lake gives you two paths: Wooded→Lost and Cascade→Sand→Lake.</li>
+      <li><strong>Middle Mouse Button</strong> to mark/unmark a stage green. <strong>Right Mouse Button</strong> to mark/unmark a stage red.</li>
+      <li>Scroll to zoom, drag empty space to pan.</li>
+    </ul>
+  </div>
+
+  <div id="display-panel"></div>
+
+  <div id="viewport">
+    <div id="canvas">
+      <svg id="lines-layer"></svg>
+    </div>
+    <div id="zoom-readout">100%</div>
+  </div>
+
+</div>
+
+<script>
+'use strict';
+
+// ─────────────────────────────────────────────────────────────────
+// Data (mirrors app.js's LOADING_ZONES_TEMPLATE)
+// ─────────────────────────────────────────────────────────────────
+const LOADING_ZONES_TEMPLATE = {
+  'Cap': { color: '#fff500', icon: 'Cap.png', zones: { 'Orange': {}, 'Paragoomba': {}, 'Frog': {}, 'Rolling On': {} } },
+  'Cascade': { color: '#ff9900', icon: 'Cascade.png', zones: { 'Dino': {}, '2D': {}, 'Chain Chomp': {}, 'Swings': {}, 'Windy': {} } },
+  'Sand': { color: '#8bf12c', icon: 'Sand.png', zones: { "Icy Cave": {}, "Moe-eye": {}, "Shop": {}, "Employees": {}, "Slots": {}, "Rumble": {}, "Outfit": {}, "Jaxi Ruins": {}, "Bullet Bill": {}, "Gushen": {}, "Sphynx": {}, "Moving Platform": {}, "Rocket": {}, "Colossal Ruins": {} } },
+  'Lake': { color: '#e46cab', icon: 'Lake.png', zones: { "Poison Waves": {}, "Zipper": {}, "Grab Climb": {}, "Shop": {}, "Puzzle": {} } },
+  'Wooded': { color: '#1e65e7', icon: 'Wooded.png', zones: { "DW Odyssey": {}, "DW Red Maze": {}, "DW Pond": {}, "DW Treasure": {}, "DW Outfit": {}, "Rocket": {}, "Sheep": {}, "Tank": {}, "Vine Clouds": {}, "Breakdown": {}, "Invisible": {}, "Flooded Pipes": {}, "Flower Road": {}, "Treasure Room": {} } },
+  'Lost': { color: '#e71edd', icon: 'Lost.png', zones: { 'Wiggler': {}, 'Shop': {}, 'Klepto': {} } },
+  'Metro': { color: '#de7d5e', icon: 'Metro.png', zones: { "Yellow Shop": {}, "Purple Shop": {}, "Dino": {}, "Bullet Billding": {}, "Taxi": {}, "Notes": {}, "2D": {}, "Slots": {}, "People": {}, "Outfit": {}, "Rocket": {}, "Dark": {}, "Scaffolding": {}, "Scooter": {}, "Rotating Maze": {}, "RC Car": {} } },
+  'Snow': { color: '#e7930a', icon: 'Snow.png', zones: { "Puzzle": {}, "Capless": {}, "Rocket Flower": {}, "Iceburn": {}, "Flower Road": {}, "Tracewalking": {}, "Clouds": {}, "Outfit": {}, "Shop": {} } },
+  'Seaside': { color: '#b36fe9', icon: 'Seaside.png', zones: { "Well Enter": {}, "Well Exit": {}, "Rumble": {}, "Rocket": {}, "Outfit": {}, "Gushen": {}, "Sphynx": {}, "Pokio": {}, "Lava Rising": {}, "Sandy Bottom": {}, "Spinning Maze": {} } },
+  'Luncheon': { color: '#3fddbb', icon: 'Luncheon.png', zones: { "Magma Swamp": {}, "Forks": {}, "Cheese Rocks": {}, "Veggie Room": {}, "Slots": {}, "Shop": {}, "Outfit": {}, "Spinning Athletics": {}, "Lava Islands": {}, "Volcano Cave": {}, "Gears": {}, "Magma Path": {} } },
+  'Ruined': { color: '#ffd7e2', icon: 'Ruin.png', zones: { "Chargin' Chuck": {}, 'Rocket': {} } },
+  "Bowser's": { color: '#d3304c', icon: 'Bowser.png', zones: { "Jizo": {}, "Shop": {}, "Outfit": {}, "Treasure Room": {}, "Spinning Tower": {}, "Vine Clouds": {}, "Hexagon Tower": {}, "Wooden Tower": {} } },
+  'Mushroom': { color: '#fff672', icon: 'Star.png', zones: { "Shop": {}, "Castle Door": {}, "Outfit": {}, "Cloud Sea": {}, "Well": {}, "Knucklotec": {}, "Torkdrift": {}, "Mechawiggler": {}, "Octopus": {}, "Cookatiel": {}, "Dragon": {}, "Rocket": {} } },
+  'Darkside': { color: '#fff2c6', icon: 'Dark.png', zones: { 'Breakdown': {}, 'Invisible': {}, 'Vanishing': {}, 'Yoshi Siege': {}, 'Lava Rising': {}, 'Magma Swamp': {} } },
+  'Darkerside': { color: '#fff2c6', icon: 'Dark.png', zones: { 'End': {} } },
+};
+
+const STORAGE_KEY = 'smo_map_state';
+
+// ─────────────────────────────────────────────────────────────────
+// Layout
+// ─────────────────────────────────────────────────────────────────
+const CLUSTER_COLS = 4;
+const ZONE_COLS = 3;
+const NODE_W = 124, NODE_H = 30;
+const ZONE_GAP_X = 8, ZONE_GAP_Y = 7;
+const CLUSTER_PAD = 14;
+const CLUSTER_GAP_X = 46, CLUSTER_GAP_Y = 46;
+const KINGDOM_NODE_W = 150, KINGDOM_NODE_H = 36;
+
+let nodes = {};       // id -> {id,label,kingdomKey,type,x,y,w,h,color,icon}
+let canvasW = 2000, canvasH = 1400;
+let clusterBoxes = []; // {x,y,w,h}
+
+function buildLayout() {
+  nodes = {};
+  clusterBoxes = [];
+
+  const kingdomKeys = Object.keys(LOADING_ZONES_TEMPLATE);
+  let x = 0, y = 0, rowMaxH = 0, col = 0, maxRight = 0, maxBottom = 0;
+
+  kingdomKeys.forEach((key) => {
+    const data = LOADING_ZONES_TEMPLATE[key];
+    const zoneNames = Object.keys(data.zones);
+    const rows = Math.ceil(zoneNames.length / ZONE_COLS);
+    const clusterW = ZONE_COLS * NODE_W + (ZONE_COLS - 1) * ZONE_GAP_X + CLUSTER_PAD * 2;
+    const clusterH = KINGDOM_NODE_H + 10 + rows * NODE_H + Math.max(0, rows - 1) * ZONE_GAP_Y + CLUSTER_PAD * 2;
+
+    clusterBoxes.push({ x, y, w: clusterW, h: clusterH });
+    maxRight = Math.max(maxRight, x + clusterW);
+    maxBottom = Math.max(maxBottom, y + clusterH);
+
+    const kingdomId = `kingdom:${key}`;
+    nodes[kingdomId] = {
+      id: kingdomId, label: key, kingdomKey: key, type: 'kingdom',
+      x: x + CLUSTER_PAD + (clusterW - CLUSTER_PAD * 2) / 2 - KINGDOM_NODE_W / 2,
+      y: y + CLUSTER_PAD, w: KINGDOM_NODE_W, h: KINGDOM_NODE_H,
+      color: data.color, icon: data.icon,
+    };
+
+    zoneNames.forEach((zone, i) => {
+      const r = Math.floor(i / ZONE_COLS);
+      const c = i % ZONE_COLS;
+      const zoneId = `zone:${key}:${zone}`;
+      nodes[zoneId] = {
+        id: zoneId, label: zone, kingdomKey: key, type: 'zone',
+        x: x + CLUSTER_PAD + c * (NODE_W + ZONE_GAP_X),
+        y: y + CLUSTER_PAD + KINGDOM_NODE_H + 10 + r * (NODE_H + ZONE_GAP_Y),
+        w: NODE_W, h: NODE_H, color: data.color,
+      };
+    });
+
+    rowMaxH = Math.max(rowMaxH, clusterH);
+    x += clusterW + CLUSTER_GAP_X;
+    col++;
+    if (col >= CLUSTER_COLS) {
+      col = 0; x = 0; y += rowMaxH + CLUSTER_GAP_Y; rowMaxH = 0;
+    }
+  });
+
+  canvasW = maxRight + 60;
+  canvasH = maxBottom + 60;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Connection / mark state
+// ─────────────────────────────────────────────────────────────────
+let outgoing = {}; // sourceId -> targetId
+let incoming = {}; // targetId -> sourceId
+let marks = {};    // nodeId -> 'green' | 'red'
+
+function loadMapState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const data = JSON.parse(raw);
+    outgoing = data.outgoing || {};
+    marks = data.marks || {};
+    incoming = {};
+    for (const [src, tgt] of Object.entries(outgoing)) incoming[tgt] = src;
+  } catch (e) {
+    console.error('Failed to load map state:', e);
+  }
+}
+
+function saveMapState() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ outgoing, marks }));
+  } catch (e) {
+    console.error('Failed to save map state:', e);
+  }
+}
+
+function connect(sourceId, targetId) {
+  if (sourceId === targetId) return;
+  if (!nodes[sourceId] || !nodes[targetId]) return;
+  disconnectOutgoing(sourceId);
+  disconnectIncoming(targetId);
+  outgoing[sourceId] = targetId;
+  incoming[targetId] = sourceId;
+  saveMapState();
+  renderConnections();
+  renderDisplayPanel();
+}
+
+function disconnectOutgoing(nodeId) {
+  const target = outgoing[nodeId];
+  if (target) {
+    delete outgoing[nodeId];
+    delete incoming[target];
+  }
+}
+
+function disconnectIncoming(nodeId) {
+  const source = incoming[nodeId];
+  if (source) {
+    delete outgoing[source];
+    delete incoming[nodeId];
+  }
+}
+
+function toggleMark(nodeId, color) {
+  marks[nodeId] = (marks[nodeId] === color) ? null : color;
+  if (!marks[nodeId]) delete marks[nodeId];
+  saveMapState();
+  applyMarkClass(nodeId);
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Rendering
+// ─────────────────────────────────────────────────────────────────
+const viewport = document.getElementById('viewport');
+const canvas = document.getElementById('canvas');
+const linesLayer = document.getElementById('lines-layer');
+
+function renderClusterBackgrounds() {
+  clusterBoxes.forEach(b => {
+    const div = document.createElement('div');
+    div.className = 'cluster-bg';
+    div.style.left = b.x + 'px';
+    div.style.top = b.y + 'px';
+    div.style.width = b.w + 'px';
+    div.style.height = b.h + 'px';
+    canvas.appendChild(div);
+  });
+}
+
+function renderNodes() {
+  Object.values(nodes).forEach(n => {
+    const el = document.createElement('div');
+    el.className = 'map-node' + (n.type === 'kingdom' ? ' kingdom-node' : '');
+    el.dataset.id = n.id;
+    el.style.left = n.x + 'px';
+    el.style.top = n.y + 'px';
+    el.style.width = n.w + 'px';
+    el.style.height = n.h + 'px';
+    el.style.borderColor = n.type === 'zone' ? hexWithAlpha(n.color, 0.5) : n.color;
+
+    if (n.type === 'kingdom' && n.icon) {
+      const img = document.createElement('img');
+      img.src = `assets/${n.icon}`;
+      img.alt = '';
+      el.appendChild(img);
+    }
+
+    const label = document.createElement('span');
+    label.className = 'node-label';
+    label.textContent = n.label;
+    label.style.color = n.type === 'zone' ? n.color : 'var(--text)';
+    el.appendChild(label);
+
+    canvas.appendChild(el);
+    wireNodeEvents(el, n.id);
+    applyMarkClass(n.id);
+  });
+}
+
+function hexWithAlpha(hex, alpha) {
+  const h = hex.replace('#', '');
+  const r = parseInt(h.substring(0, 2), 16);
+  const g = parseInt(h.substring(2, 4), 16);
+  const b = parseInt(h.substring(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+function applyMarkClass(nodeId) {
+  const el = canvas.querySelector(`.map-node[data-id="${cssEscape(nodeId)}"]`);
+  if (!el) return;
+  el.classList.remove('mark-green', 'mark-red');
+  if (marks[nodeId] === 'green') el.classList.add('mark-green');
+  if (marks[nodeId] === 'red') el.classList.add('mark-red');
+}
+
+function cssEscape(s) {
+  return s.replace(/[:.]/g, '\\$&');
+}
+
+function nodeCenter(id) {
+  const n = nodes[id];
+  return { x: n.x + n.w / 2, y: n.y + n.h / 2 };
+}
+
+let previewLine = null;
+
+function renderConnections() {
+  linesLayer.setAttribute('width', canvasW);
+  linesLayer.setAttribute('height', canvasH);
+  linesLayer.innerHTML = '';
+  ensureArrowMarker();
+
+  Object.entries(outgoing).forEach(([src, tgt]) => {
+    if (!nodes[src] || !nodes[tgt]) return;
+    drawLine(nodeCenter(src), nodeCenter(tgt), 'var(--accent)', true);
+  });
+
+  if (previewLine) linesLayer.appendChild(previewLine);
+}
+
+function ensureArrowMarker() {
+  const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+  defs.innerHTML = `
+    <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="#7c87f5"></path>
+    </marker>`;
+  linesLayer.appendChild(defs);
+}
+
+function drawLine(p1, p2, color, withArrow) {
+  const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  line.setAttribute('x1', p1.x);
+  line.setAttribute('y1', p1.y);
+  line.setAttribute('x2', p2.x);
+  line.setAttribute('y2', p2.y);
+  line.setAttribute('stroke', color === 'var(--accent)' ? '#7c87f5' : color);
+  line.setAttribute('stroke-width', 2.5);
+  line.setAttribute('stroke-linecap', 'round');
+  if (withArrow) line.setAttribute('marker-end', 'url(#arrowhead)');
+  linesLayer.appendChild(line);
+  return line;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Display panel (read-only chain summary)
+// ─────────────────────────────────────────────────────────────────
+function computeChains() {
+  const allIds = Object.keys(nodes);
+  const visited = new Set();
+  const chains = [];
+
+  allIds.forEach(id => {
+    if (incoming[id] || visited.has(id) || !outgoing[id]) return;
+    const chain = [id];
+    visited.add(id);
+    let cur = id;
+    while (outgoing[cur] && !visited.has(outgoing[cur])) {
+      cur = outgoing[cur];
+      chain.push(cur);
+      visited.add(cur);
+    }
+    chains.push({ ids: chain, looped: false });
+  });
+
+  allIds.forEach(id => {
+    if (visited.has(id) || !outgoing[id]) return;
+    const chain = [id];
+    visited.add(id);
+    let cur = id;
+    while (outgoing[cur] && outgoing[cur] !== id && !visited.has(outgoing[cur])) {
+      cur = outgoing[cur];
+      chain.push(cur);
+      visited.add(cur);
+    }
+    chains.push({ ids: chain, looped: true });
+  });
+
+  return chains;
+}
+
+function renderDisplayPanel() {
+  const panel = document.getElementById('display-panel');
+  const chains = computeChains();
+  panel.innerHTML = '';
+
+  if (chains.length === 0) {
+    const p = document.createElement('div');
+    p.className = 'empty-note';
+    p.textContent = 'No connections yet — drag between stages below to build a path.';
+    panel.appendChild(p);
+    return;
+  }
+
+  chains.forEach(chain => {
+    const row = document.createElement('div');
+    row.className = 'chain-row';
+    chain.ids.forEach((id, idx) => {
+      const span = document.createElement('span');
+      span.textContent = nodes[id].label;
+      span.style.color = nodes[id].type === 'zone' ? nodes[id].color : 'var(--text)';
+      span.style.fontWeight = nodes[id].type === 'kingdom' ? 'bold' : 'normal';
+      row.appendChild(span);
+      if (idx < chain.ids.length - 1) {
+        const arrow = document.createElement('span');
+        arrow.className = 'arrow';
+        arrow.textContent = '→';
+        row.appendChild(arrow);
+      }
+    });
+    if (chain.looped) {
+      const tag = document.createElement('span');
+      tag.className = 'loop-tag';
+      tag.textContent = '(loop)';
+      row.appendChild(tag);
+    }
+    panel.appendChild(row);
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Node interaction: drag-to-connect, double-click disconnect, marks
+// ─────────────────────────────────────────────────────────────────
+let connecting = null; // sourceId while dragging a new connection
+
+function wireNodeEvents(el, id) {
+  el.addEventListener('mousedown', (e) => {
+    if (e.button === 0) {
+      e.stopPropagation();
+      connecting = id;
+      previewLine = drawLine(nodeCenter(id), nodeCenter(id), '#7c87f5', false);
+      previewLine.setAttribute('stroke-dasharray', '5,4');
+    } else if (e.button === 1) {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleMark(id, 'green');
+    }
+  });
+
+  el.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    toggleMark(id, 'red');
+  });
+
+  el.addEventListener('dblclick', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    disconnectOutgoing(id);
+    saveMapState();
+    renderConnections();
+    renderDisplayPanel();
+  });
+
+  el.addEventListener('mouseenter', () => {
+    if (connecting && connecting !== id) el.classList.add('drag-target');
+  });
+  el.addEventListener('mouseleave', () => {
+    el.classList.remove('drag-target');
+  });
+
+  el.addEventListener('mouseup', (e) => {
+    if (e.button === 0 && connecting && connecting !== id) {
+      connect(connecting, id);
+    }
+  });
+}
+
+function canvasPointFromEvent(e) {
+  const rect = viewport.getBoundingClientRect();
+  return {
+    x: (e.clientX - rect.left - panX) / zoom,
+    y: (e.clientY - rect.top - panY) / zoom,
+  };
+}
+
+document.addEventListener('mousemove', (e) => {
+  if (connecting && previewLine) {
+    const p = canvasPointFromEvent(e);
+    previewLine.setAttribute('x2', p.x);
+    previewLine.setAttribute('y2', p.y);
+  }
+});
+
+document.addEventListener('mouseup', () => {
+  if (connecting) {
+    connecting = null;
+    if (previewLine) { previewLine.remove(); previewLine = null; }
+    document.querySelectorAll('.map-node.drag-target').forEach(n => n.classList.remove('drag-target'));
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────
+// Pan & zoom
+// ─────────────────────────────────────────────────────────────────
+let panX = 40, panY = 20, zoom = 0.6;
+let isPanning = false, panStart = { x: 0, y: 0 }, panOrigin = { x: 0, y: 0 };
+
+function applyTransform() {
+  canvas.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom})`;
+  document.getElementById('zoom-readout').textContent = `${Math.round(zoom * 100)}%`;
+}
+
+viewport.addEventListener('mousedown', (e) => {
+  if (e.target !== viewport && e.target !== canvas) return; // only pan on empty background
+  isPanning = true;
+  viewport.classList.add('panning');
+  panStart = { x: e.clientX, y: e.clientY };
+  panOrigin = { x: panX, y: panY };
+});
+
+document.addEventListener('mousemove', (e) => {
+  if (!isPanning) return;
+  panX = panOrigin.x + (e.clientX - panStart.x);
+  panY = panOrigin.y + (e.clientY - panStart.y);
+  applyTransform();
+});
+
+document.addEventListener('mouseup', () => {
+  isPanning = false;
+  viewport.classList.remove('panning');
+});
+
+viewport.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  const rect = viewport.getBoundingClientRect();
+  const mouseX = e.clientX - rect.left;
+  const mouseY = e.clientY - rect.top;
+
+  const prevZoom = zoom;
+  const delta = e.deltaY > 0 ? -0.1 : 0.1;
+  zoom = Math.min(2, Math.max(0.25, zoom + delta));
+
+  // Keep the point under the cursor stable while zooming
+  panX = mouseX - ((mouseX - panX) / prevZoom) * zoom;
+  panY = mouseY - ((mouseY - panY) / prevZoom) * zoom;
+
+  applyTransform();
+}, { passive: false });
+
+// ─────────────────────────────────────────────────────────────────
+// Top bar buttons
+// ─────────────────────────────────────────────────────────────────
+document.getElementById('btn-controls').addEventListener('click', (e) => {
+  const panel = document.getElementById('controls-panel');
+  const hidden = panel.classList.toggle('hidden');
+  e.target.classList.toggle('active', !hidden);
+  e.target.textContent = hidden ? 'Show Controls' : 'Hide Controls';
+});
+
+document.getElementById('btn-display').addEventListener('click', (e) => {
+  const panel = document.getElementById('display-panel');
+  const hidden = panel.classList.toggle('hidden');
+  e.target.classList.toggle('active', !hidden);
+  e.target.textContent = hidden ? 'Show Display' : 'Hide Display';
+});
+
+document.getElementById('btn-clear').addEventListener('click', () => {
+  if (!confirm('Clear all connections and marks on the map?')) return;
+  outgoing = {};
+  incoming = {};
+  marks = {};
+  saveMapState();
+  document.querySelectorAll('.map-node').forEach(el => el.classList.remove('mark-green', 'mark-red'));
+  renderConnections();
+  renderDisplayPanel();
+});
+
+// ─────────────────────────────────────────────────────────────────
+// Init
+// ─────────────────────────────────────────────────────────────────
+function init() {
+  buildLayout();
+  loadMapState();
+  canvas.style.width = canvasW + 'px';
+  canvas.style.height = canvasH + 'px';
+  renderClusterBackgrounds();
+  renderNodes();
+  renderConnections();
+  renderDisplayPanel();
+  applyTransform();
+}
+
+init();
+</script>
+</body>
+</html>
