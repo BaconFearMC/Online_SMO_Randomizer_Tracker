@@ -285,6 +285,20 @@
     border: none;
     cursor: pointer;
   }
+
+  #author-credit {
+    position: absolute;
+    bottom: 10px;
+    left: 14px;
+    background: rgba(36,36,36,0.90);
+    padding: 5px 10px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    user-select: none;
+    pointer-events: none;
+  }
 </style>
 </head>
 <body>
@@ -312,6 +326,7 @@
     <div id="canvas">
       <svg id="lines-layer"></svg>
     </div>
+    <div id="author-credit">Made by FireRisingRaging and gmo7</div>
     <div id="zoom-control">
       <input id="zoom-slider" type="range" min="60" max="120" value="80" step="1" title="Zoom">
       <span id="zoom-readout" title="Click to type a zoom value">80%</span>

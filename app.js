@@ -514,6 +514,11 @@ function buildAbilityRow() {
   notesBtn.textContent = 'Loading Zone Notes';
   notesBtn.addEventListener('click', openLoadingZones);
   notesSection.appendChild(notesBtn);
+  const mapBtn = document.createElement('button');
+  mapBtn.className = 'map-btn';
+  mapBtn.textContent = 'Connection Map';
+  mapBtn.addEventListener('click', openMap);
+  notesSection.appendChild(mapBtn);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -840,6 +845,11 @@ function setupSyncUI() {
 // Loading Zones Modal
 // ─────────────────────────────────────────────────────────────────────────────
 let notesWindow = null;
+
+function openMap() {
+  const features = 'resizable=yes,toolbar=no,menubar=no';
+  mapWindow = window.open('map.html', 'ConnectionMap', features);
+}
 
 function openLoadingZones() {
   // If the standalone Notes window is already open, just bring it forward
