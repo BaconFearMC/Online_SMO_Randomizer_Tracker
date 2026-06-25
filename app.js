@@ -11,17 +11,17 @@ const SPOILER_KEY = 'tracker_spoiler_log';
 let applyingRemote = false;
 
 const KINGDOMS = [
-  { name: 'Cascade Kingdom', img: 'assets/Cascade.png', multi: 'assets/Cascade_Multi.png', min: 1, max: 10, moontick: 'assets/moontickCascade.png' },
-  { name: 'Sand Kingdom', img: 'assets/Sand.png', multi: 'assets/Sand_Multi.png', min: 11, max: 21, moontick: 'assets/moontickSand.png' },
-  { name: 'Lake Kingdom', img: 'assets/Lake.png', multi: 'assets/Lake_Multi.png', min: 3, max: 13, moontick: 'assets/moontickLake.png' },
-  { name: 'Wooded Kingdom', img: 'assets/Wooded.png', multi: 'assets/Wooded_Multi.png', min: 11, max: 21, moontick: 'assets/moontickWooded.png' },
-  { name: 'Lost Kingdom', img: 'assets/Lost.png', multi: 'assets/Lost_Multi.png', min: 5, max: 15, moontick: 'assets/moontickLost.png' },
-  { name: 'Metro Kingdom', img: 'assets/Metro.png', multi: 'assets/Metro_Multi.png', min: 15, max: 25, moontick: 'assets/moontickMetro.png' },
-  { name: 'Snow Kingdom', img: 'assets/Snow.png', multi: 'assets/Snow_Multi.png', min: 5, max: 15, moontick: 'assets/moontickSnow.png' },
-  { name: 'Seaside Kingdom', img: 'assets/Seaside.png', multi: 'assets/Seaside_Multi.png', min: 5, max: 15, moontick: 'assets/moontickSeaside.png' },
-  { name: 'Luncheon Kingdom', img: 'assets/Luncheon.png', multi: 'assets/Luncheon_Multi.png', min: 13, max: 23, moontick: 'assets/moontickLuncheon.png' },
-  { name: 'Ruined Kingdom', img: 'assets/Ruin.png', multi: 'assets/Ruined_Multi.png', min: 1, max: 8, moontick: 'assets/moontickRuined.png' },
-  { name: 'Bowser Kingdom', img: 'assets/Bowser.png', multi: 'assets/Bowser_Multi.png', min: 3, max: 13, moontick: 'assets/moontickBowser.png' },
+  { name: 'Cascade Kingdom', img: 'assets/Cascade.png', multi: 'assets/Cascade_Multi.png', min: 1, max: 10, moontick: 'assets/moontickcascade.png' },
+  { name: 'Sand Kingdom', img: 'assets/Sand.png', multi: 'assets/Sand_Multi.png', min: 11, max: 21, moontick: 'assets/moonticksand.png' },
+  { name: 'Lake Kingdom', img: 'assets/Lake.png', multi: 'assets/Lake_Multi.png', min: 3, max: 13, moontick: 'assets/moonticklake.png' },
+  { name: 'Wooded Kingdom', img: 'assets/Wooded.png', multi: 'assets/Wooded_Multi.png', min: 11, max: 21, moontick: 'assets/moontickwooded.png' },
+  { name: 'Lost Kingdom', img: 'assets/Lost.png', multi: 'assets/Lost_Multi.png', min: 5, max: 15, moontick: 'assets/moonticklost.png' },
+  { name: 'Metro Kingdom', img: 'assets/Metro.png', multi: 'assets/Metro_Multi.png', min: 15, max: 25, moontick: 'assets/moontickmetro.png' },
+  { name: 'Snow Kingdom', img: 'assets/Snow.png', multi: 'assets/Snow_Multi.png', min: 5, max: 15, moontick: 'assets/moonticksnow.png' },
+  { name: 'Seaside Kingdom', img: 'assets/Seaside.png', multi: 'assets/Seaside_Multi.png', min: 5, max: 15, moontick: 'assets/moontickseaside.png' },
+  { name: 'Luncheon Kingdom', img: 'assets/Luncheon.png', multi: 'assets/Luncheon_Multi.png', min: 13, max: 23, moontick: 'assets/moontickluncheon.png' },
+  { name: 'Ruined Kingdom', img: 'assets/Ruin.png', multi: 'assets/Ruined_Multi.png', min: 1, max: 8, moontick: 'assets/moontickruined.png' },
+  { name: 'Bowser Kingdom', img: 'assets/Bowser.png', multi: 'assets/Bowser_Multi.png', min: 3, max: 13, moontick: 'assets/moontickbowser.png' },
 ];
 
 // Optional counters — NOT counted toward total moons
