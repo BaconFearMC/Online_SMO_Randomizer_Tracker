@@ -11,23 +11,23 @@ const SPOILER_KEY = 'tracker_spoiler_log';
 let applyingRemote = false;
 
 const KINGDOMS = [
-  { name: 'Cascade Kingdom', img: 'assets/Cascade.png', multi: 'assets/Cascade_Multi.png', min: 1, max: 10, moontick: 'assets/moontickcascade.png' },
-  { name: 'Sand Kingdom', img: 'assets/Sand.png', multi: 'assets/Sand_Multi.png', min: 11, max: 21, moontick: 'assets/moonticksand.png' },
-  { name: 'Lake Kingdom', img: 'assets/Lake.png', multi: 'assets/Lake_Multi.png', min: 3, max: 13, moontick: 'assets/moonticklake.png' },
-  { name: 'Wooded Kingdom', img: 'assets/Wooded.png', multi: 'assets/Wooded_Multi.png', min: 11, max: 21, moontick: 'assets/moontickwooded.png' },
-  { name: 'Lost Kingdom', img: 'assets/Lost.png', multi: 'assets/Lost_Multi.png', min: 5, max: 15, moontick: 'assets/moonticklost.png' },
-  { name: 'Metro Kingdom', img: 'assets/Metro.png', multi: 'assets/Metro_Multi.png', min: 15, max: 25, moontick: 'assets/moontickmetro.png' },
-  { name: 'Snow Kingdom', img: 'assets/Snow.png', multi: 'assets/Snow_Multi.png', min: 5, max: 15, moontick: 'assets/moonticksnow.png' },
-  { name: 'Seaside Kingdom', img: 'assets/Seaside.png', multi: 'assets/Seaside_Multi.png', min: 5, max: 15, moontick: 'assets/moontickseaside.png' },
-  { name: 'Luncheon Kingdom', img: 'assets/Luncheon.png', multi: 'assets/Luncheon_Multi.png', min: 13, max: 23, moontick: 'assets/moontickluncheon.png' },
-  { name: 'Ruined Kingdom', img: 'assets/Ruin.png', multi: 'assets/Ruined_Multi.png', min: 1, max: 8, moontick: 'assets/moontickruined.png' },
-  { name: 'Bowser Kingdom', img: 'assets/Bowser.png', multi: 'assets/Bowser_Multi.png', min: 3, max: 13, moontick: 'assets/moontickbowser.png' },
+  { name: 'Cascade Kingdom', img: 'assets/Cascade.png', multi: 'assets/Cascade_Multi.png', min: 1, max: 10, moontick: 'assets/moontickCascade.png' },
+  { name: 'Sand Kingdom', img: 'assets/Sand.png', multi: 'assets/Sand_Multi.png', min: 11, max: 21, moontick: 'assets/moontickSand.png' },
+  { name: 'Lake Kingdom', img: 'assets/Lake.png', multi: 'assets/Lake_Multi.png', min: 3, max: 13, moontick: 'assets/moontickLake.png' },
+  { name: 'Wooded Kingdom', img: 'assets/Wooded.png', multi: 'assets/Wooded_Multi.png', min: 11, max: 21, moontick: 'assets/moontickWooded.png' },
+  { name: 'Lost Kingdom', img: 'assets/Lost.png', multi: 'assets/Lost_Multi.png', min: 5, max: 15, moontick: 'assets/moontickLost.png' },
+  { name: 'Metro Kingdom', img: 'assets/Metro.png', multi: 'assets/Metro_Multi.png', min: 15, max: 25, moontick: 'assets/moontickMetro.png' },
+  { name: 'Snow Kingdom', img: 'assets/Snow.png', multi: 'assets/Snow_Multi.png', min: 5, max: 15, moontick: 'assets/moontickSnow.png' },
+  { name: 'Seaside Kingdom', img: 'assets/Seaside.png', multi: 'assets/Seaside_Multi.png', min: 5, max: 15, moontick: 'assets/moontickSeaside.png' },
+  { name: 'Luncheon Kingdom', img: 'assets/Luncheon.png', multi: 'assets/Luncheon_Multi.png', min: 13, max: 23, moontick: 'assets/moontickLuncheon.png' },
+  { name: 'Ruined Kingdom', img: 'assets/Ruin.png', multi: 'assets/Ruined_Multi.png', min: 1, max: 8, moontick: 'assets/moontickRuined.png' },
+  { name: 'Bowser Kingdom', img: 'assets/Bowser.png', multi: 'assets/Bowser_Multi.png', min: 3, max: 13, moontick: 'assets/moontickBowser.png' },
 ];
 
 // Optional counters — NOT counted toward total moons
 // Moon Kingdom appears in the main list below Bowser; Cap/Cloud/Star/Dark are right-column
 const OPTIONAL_COUNTERS = [
-  { key: 'moon_kingdom', label: 'Moon Kingdom', img: 'assets/Moon.png', moontick: 'assets/moontickMoon.png', inlineBelow: 'Bowser Kingdom' },
+  { key: 'moon_kingdom', label: 'Moon Kingdom', img: 'assets/Moon.png', moontick: 'assets/moontickMoon.png', inlineBelow: 'Bowser Kingdom', hasLockPeace: true },
   { key: 'cap_kingdom',   label: 'Cap Kingdom',   img: 'assets/Cap.png',  side: true, order: 1 },
   { key: 'cloud_kingdom', label: 'Cloud Kingdom', img: 'assets/Cloud.png', side: true, order: 2 },
   { key: 'star_counter',  label: 'Capture',       img: 'assets/Star.png', side: true, order: 3 },
@@ -164,7 +164,7 @@ function getDefaultState() {
   return {
     settings: cloneDefaultSettings(),
     moons: KINGDOMS.map(() => ({ count: 0, max: null, lock: false, peace: false, multi: false })),
-    optional_counters: Object.fromEntries(OPTIONAL_COUNTERS.map(c => [c.key, { count: 0, max: null }])),
+    optional_counters: Object.fromEntries(OPTIONAL_COUNTERS.map(c => [c.key, { count: 0, max: null, lock: false, peace: false }])),
     captures: { parabones: false, banzai: false, wire: false, bowser: false },
     abilities: { jump: false, cap: false, wall: false },
     loading_zones: buildDefaultLoadingZones(),
@@ -415,6 +415,37 @@ function buildMoonKingdomRow() {
   const left = document.createElement('div');
   left.className = 'moon-row-left';
 
+  // Lock/Peace stack (same as main rows)
+  const lockPeaceStack = document.createElement('div');
+  lockPeaceStack.className = 'lock-peace-stack';
+
+  const lockBtn = document.createElement('button');
+  lockBtn.className = 'icon-btn lock-btn';
+  lockBtn.title = 'Toggle lock';
+  const mkState = state.optional_counters['moon_kingdom'] || {};
+  lockBtn.innerHTML = `<img src="${mkState.lock ? 'assets/unlock.png' : 'assets/lock.png'}" alt="lock">`;
+  lockBtn.addEventListener('click', () => {
+    state.optional_counters['moon_kingdom'].lock = !state.optional_counters['moon_kingdom'].lock;
+    lockBtn.querySelector('img').src = state.optional_counters['moon_kingdom'].lock ? 'assets/unlock.png' : 'assets/lock.png';
+    saveState();
+  });
+
+  const peaceBtn = document.createElement('button');
+  peaceBtn.className = 'icon-btn peace-btn';
+  peaceBtn.title = 'Toggle peace';
+  peaceBtn.innerHTML = `<img src="${mkState.peace ? 'assets/peace_unlock.png' : 'assets/peace.png'}" alt="peace">`;
+  peaceBtn.addEventListener('click', () => {
+    state.optional_counters['moon_kingdom'].peace = !state.optional_counters['moon_kingdom'].peace;
+    peaceBtn.querySelector('img').src = state.optional_counters['moon_kingdom'].peace ? 'assets/peace_unlock.png' : 'assets/peace.png';
+    saveState();
+  });
+
+  lockBtn.classList.toggle('hidden', !state.settings.show_peace);
+  peaceBtn.classList.toggle('hidden', !state.settings.show_peace);
+
+  lockPeaceStack.appendChild(lockBtn);
+  lockPeaceStack.appendChild(peaceBtn);
+
   const img = document.createElement('img');
   img.src = 'assets/Moon.png';
   img.alt = 'Moon Kingdom';
@@ -424,6 +455,7 @@ function buildMoonKingdomRow() {
   moontick.src = 'assets/moontickMoon.png';
   moontick.alt = 'moontick';
   moontick.className = 'moontick-icon';
+  moontick.classList.toggle('hidden', !state.settings.show_moontick);
 
   const label = document.createElement('span');
   label.className = 'optional-label';
@@ -434,6 +466,7 @@ function buildMoonKingdomRow() {
   notCounted.textContent = '✗ total';
   notCounted.title = 'Does not count toward moon total';
 
+  left.appendChild(lockPeaceStack);
   left.appendChild(img);
   left.appendChild(moontick);
   left.appendChild(label);
@@ -595,8 +628,8 @@ function refreshMoonRow(i, rowEl) {
     moontickImg.classList.remove('icon-white'); // Never white
   }
 
-  // Lock/Peace visibility
-  row.querySelector('.lock-btn').classList.toggle('hidden', !state.settings.show_ability_lock);
+  // Lock/Peace visibility — both controlled by show_peace
+  row.querySelector('.lock-btn').classList.toggle('hidden', !state.settings.show_peace);
   row.querySelector('.peace-btn').classList.toggle('hidden', !state.settings.show_peace);
 
   const multiBtn = row.querySelector('.multi-moon-btn');
@@ -767,8 +800,8 @@ function applyAllSettings() {
   // Ability section visibility
   document.getElementById('ability-section').classList.toggle('abilities-hidden', !s.show_ability_lock);
 
-  // Lock/peace buttons
-  document.querySelectorAll('.lock-btn').forEach(btn => btn.classList.toggle('hidden', !s.show_ability_lock));
+  // Lock/peace buttons — both controlled by show_peace toggle
+  document.querySelectorAll('.lock-btn').forEach(btn => btn.classList.toggle('hidden', !s.show_peace));
   document.querySelectorAll('.peace-btn').forEach(btn => btn.classList.toggle('hidden', !s.show_peace));
 
   // Multi moon buttons

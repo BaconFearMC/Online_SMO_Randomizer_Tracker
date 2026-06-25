@@ -290,8 +290,8 @@
       countSpan.className = 'obs-count';
       countSpan.textContent = '0 / ?';
 
-      // Lock/peace only for main rows
-      if (!isOptional) {
+      // Lock/peace only for main rows and Moon Kingdom
+      if (!isOptional || idxOrKey === 'moon_kingdom') {
         row.appendChild(lockImg);
         row.appendChild(peaceImg);
       }
@@ -314,7 +314,6 @@
       const applyWhiteToKingdom = showWhite || !showColors;
       const obsHideOptional = !!settings.obs_hide_optional;
       const showMoontick = !!settings.show_moontick;
-      const showLock = settings.show_ability_lock !== false;
       const showPeace = settings.show_peace !== false;
 
       // Main kingdom rows
@@ -327,7 +326,7 @@
         const peaceEl = row.querySelector('.obs-peace');
         if (lockEl) {
           lockEl.src = m.lock ? 'assets/unlock.png' : 'assets/lock.png';
-          lockEl.classList.toggle('hidden-icon', !showLock);
+          lockEl.classList.toggle('hidden-icon', !showPeace);
         }
         if (peaceEl) {
           // Peace above lock in OBS: swap order — lock on top, peace below
@@ -360,13 +359,23 @@
         const mkShown = !!settings.show_moon_kingdom;
         mkRow.classList.toggle('obs-hidden', !mkShown);
         if (mkShown) {
-          const mkData = optCounters['moon_kingdom'] || { count: 0, max: null };
+          const mkData = optCounters['moon_kingdom'] || { count: 0, max: null, lock: false, peace: false };
           const mkKImg = mkRow.querySelector('.obs-kingdom');
           mkKImg.classList.toggle('icon-white', applyWhiteToKingdom);
           const mkMoontick = mkRow.querySelector('.obs-moontick');
           if (mkMoontick) {
             mkMoontick.classList.toggle('hidden', !showMoontick);
             mkMoontick.classList.remove('icon-white');
+          }
+          const mkLock = mkRow.querySelector('.obs-lock');
+          const mkPeace = mkRow.querySelector('.obs-peace');
+          if (mkLock) {
+            mkLock.src = mkData.lock ? 'assets/unlock.png' : 'assets/lock.png';
+            mkLock.classList.toggle('hidden-icon', !showPeace);
+          }
+          if (mkPeace) {
+            mkPeace.src = mkData.peace ? 'assets/peace_unlock.png' : 'assets/peace.png';
+            mkPeace.classList.toggle('hidden-icon', !showPeace);
           }
           const mkMax = mkData.max !== null ? mkData.max : '?';
           mkRow.querySelector('.obs-count').textContent = `${mkData.count || 0} / ${mkMax}`;
