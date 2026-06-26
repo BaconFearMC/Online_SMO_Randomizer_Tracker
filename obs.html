@@ -52,10 +52,16 @@
     .obs-moon-row.obs-optional-row { opacity: 0.85; }
     .obs-moon-row.obs-hidden { display: none !important; }
 
-    .obs-moon-row img.obs-lock,
-    .obs-moon-row img.obs-peace {
+    .obs-lock-peace-stack {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1px;
+    }
+    .obs-lock-peace-stack img {
       width: 14px; height: 14px; object-fit: contain;
     }
+    .obs-lock-peace-stack img.hidden-icon { display: none !important; }
     .obs-moon-row img.obs-kingdom {
       height: 33px; width: 33px; object-fit: contain; transition: filter 0.2s;
     }
@@ -290,10 +296,13 @@
       countSpan.className = 'obs-count';
       countSpan.textContent = '0 / ?';
 
-      // Lock/peace only for main rows and Moon Kingdom
+      // Lock/peace stacked vertically (lock on top, peace below) — only for main rows and Moon Kingdom
       if (!isOptional || idxOrKey === 'moon_kingdom') {
-        row.appendChild(lockImg);
-        row.appendChild(peaceImg);
+        const stack = document.createElement('div');
+        stack.className = 'obs-lock-peace-stack';
+        stack.appendChild(lockImg);
+        stack.appendChild(peaceImg);
+        row.appendChild(stack);
       }
       row.appendChild(kingImg);
       row.appendChild(moontickImg);
@@ -400,10 +409,12 @@
         bowserImg.src = currentState.captures.bowser ? 'assets/Bowser_Capture.png' : 'assets/Bowser_Capture_Locked.png';
       }
 
-      // Total — only main kingdoms (not optional counters)
+      // Total — main kingdoms + Moon Kingdom if shown
       const totalEl = document.getElementById('obs-total');
       const totalWrap = document.getElementById('obs-total-wrap');
-      const total = (currentState.moons || []).reduce((sum, m) => sum + (m.count || 0), 0);
+      const mainTotal = (currentState.moons || []).reduce((sum, m) => sum + (m.count || 0), 0);
+      const mkCount = settings.show_moon_kingdom ? ((optCounters['moon_kingdom'] && optCounters['moon_kingdom'].count) || 0) : 0;
+      const total = mainTotal + mkCount;
       const req = settings.moon_requirement || 124;
       totalEl.textContent = `${total} / ${req}`;
       totalWrap.classList.toggle('hidden', settings.show_moon_total === false);

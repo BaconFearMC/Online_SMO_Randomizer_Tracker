@@ -77,6 +77,17 @@ const DEFAULT_SETTINGS = {
   obs_hide_optional: false,
   obs_bg_color: 'transparent',
   show_moontick: false,
+  button_visibility: {
+    'btn-toggle-visibility': 1,
+    'btn-generate-room': 1,
+    'btn-connect-room': 1,
+    'btn-copy-obs-url': 1,
+    'btn-obs': 1,
+    'btn-obs-info': 1,
+    'btn-clear': 1,
+    'btn-notes': 1,
+    'btn-map': 1,
+  },
 };
 
 function cloneDefaultSettings() {
@@ -180,7 +191,13 @@ function loadState() {
     state = getDefaultState();
     if (saved.settings) {
       for (const key of Object.keys(DEFAULT_SETTINGS)) {
-        if (key in saved.settings) state.settings[key] = saved.settings[key];
+        if (key === 'button_visibility') {
+          if (saved.settings.button_visibility && typeof saved.settings.button_visibility === 'object') {
+            state.settings.button_visibility = Object.assign({}, DEFAULT_SETTINGS.button_visibility, saved.settings.button_visibility);
+          }
+        } else if (key in saved.settings) {
+          state.settings[key] = saved.settings[key];
+        }
       }
     }
     if (Array.isArray(saved.moons)) {
@@ -232,8 +249,13 @@ function saveState() {
 // Total Moon Count
 // ─────────────────────────────────────────────────────────────────────────────
 function getTotalMoons() {
-  // Only sum main KINGDOMS, not optional counters
-  return state.moons.reduce((sum, m) => sum + (m.count || 0), 0);
+  // Sum main KINGDOMS plus Moon Kingdom (counted toward total)
+  const mainTotal = state.moons.reduce((sum, m) => sum + (m.count || 0), 0);
+  const mkCount = (state.optional_counters && state.optional_counters['moon_kingdom'])
+    ? (state.optional_counters['moon_kingdom'].count || 0)
+    : 0;
+  const mkShown = state.settings && state.settings.show_moon_kingdom;
+  return mainTotal + (mkShown ? mkCount : 0);
 }
 
 function refreshTotalMoonDisplay() {
@@ -462,9 +484,9 @@ function buildMoonKingdomRow() {
   label.textContent = 'Moon';
 
   const notCounted = document.createElement('span');
-  notCounted.className = 'not-counted-badge';
-  notCounted.textContent = '✗ total';
-  notCounted.title = 'Does not count toward moon total';
+  notCounted.className = 'not-counted-badge counted-badge';
+  notCounted.textContent = '✓ total';
+  notCounted.title = 'Counts toward moon total';
 
   left.appendChild(lockPeaceStack);
   left.appendChild(img);
@@ -542,11 +564,13 @@ function buildOptionalCounter(key) {
   decr.addEventListener('click', () => {
     state.optional_counters[key].count = Math.max(0, (state.optional_counters[key].count || 0) - 1);
     display.textContent = `${state.optional_counters[key].count} / ${state.optional_counters[key].max !== null ? state.optional_counters[key].max : '?'}`;
+    if (key === 'moon_kingdom') refreshTotalMoonDisplay();
     saveState();
   });
   incr.addEventListener('click', () => {
     state.optional_counters[key].count = (state.optional_counters[key].count || 0) + 1;
     display.textContent = `${state.optional_counters[key].count} / ${state.optional_counters[key].max !== null ? state.optional_counters[key].max : '?'}`;
+    if (key === 'moon_kingdom') refreshTotalMoonDisplay();
     saveState();
   });
   maxInput.addEventListener('input', () => {
@@ -732,11 +756,13 @@ function buildAbilityRow() {
   notesSection.innerHTML = '';
   const notesBtn = document.createElement('button');
   notesBtn.className = 'notes-btn';
+  notesBtn.id = 'btn-notes';
   notesBtn.textContent = 'Loading Zone Notes';
   notesBtn.addEventListener('click', openLoadingZones);
   notesSection.appendChild(notesBtn);
   const mapBtn = document.createElement('button');
   mapBtn.className = 'map-btn';
+  mapBtn.id = 'btn-map';
   mapBtn.textContent = 'Connection Map';
   mapBtn.addEventListener('click', openMap);
   notesSection.appendChild(mapBtn);
@@ -766,6 +792,13 @@ function openSettings() {
   document.getElementById('rebind-scroll-right').textContent = bindingLabel(state.settings.scroll_right_binding);
   const obsBgInput = document.getElementById('input-obs-bg-color');
   if (obsBgInput) obsBgInput.value = state.settings.obs_bg_color !== 'transparent' ? (state.settings.obs_bg_color || '#181818') : '#181818';
+  // Populate button visibility inputs
+  const bv = state.settings.button_visibility || {};
+  document.querySelectorAll('.bv-input').forEach(input => {
+    const bvId = input.dataset.bvId;
+    input.value = (bvId in bv) ? bv[bvId] : 1;
+  });
+  applyBVSectionHeaders();
   modal.classList.remove('hidden');
 }
 
@@ -831,6 +864,82 @@ function applyAllSettings() {
 
   // Green-when-complete recompute
   KINGDOMS.forEach((_, i) => updateCountColor(i));
+
+  // Button visibility
+  applyButtonVisibility();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Button Visibility
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Sections: each has a header element ID and the button IDs it contains
+const BUTTON_VISIBILITY_SECTIONS = [
+  {
+    headerId: 'bv-section-sync',
+    buttons: [
+      { id: 'btn-toggle-visibility', label: 'Show/Hide Room Code' },
+      { id: 'btn-generate-room',     label: 'Generate Room' },
+      { id: 'btn-connect-room',      label: 'Connect/Disconnect' },
+      { id: 'btn-copy-obs-url',      label: 'Copy OBS URL' },
+    ],
+  },
+  {
+    headerId: 'bv-section-obs',
+    buttons: [
+      { id: 'btn-obs',      label: 'Open OBS Popup' },
+      { id: 'btn-obs-info', label: 'OBS Info (ℹ️)' },
+    ],
+  },
+  {
+    headerId: 'bv-section-tracker',
+    buttons: [
+      { id: 'btn-clear', label: 'Clear Tracker' },
+      { id: 'btn-notes', label: 'Loading Zone Notes' },
+      { id: 'btn-map',   label: 'Connection Map' },
+    ],
+  },
+];
+
+function applyButtonVisibility() {
+  const bv = state.settings.button_visibility || {};
+  BUTTON_VISIBILITY_SECTIONS.forEach(section => {
+    let anyVisible = false;
+    section.buttons.forEach(b => {
+      const val = (b.id in bv) ? bv[b.id] : 1;
+      const el = document.getElementById(b.id);
+      if (el) el.classList.toggle('hidden', val === 0 || val === '0');
+      if (val !== 0 && val !== '0') anyVisible = true;
+    });
+    // If btn-obs and btn-obs-info are both hidden, hide the obs-btn-row wrapper too
+    if (section.headerId === 'bv-section-obs') {
+      const obsRow = document.getElementById('obs-btn-row');
+      if (obsRow) obsRow.classList.toggle('hidden', !anyVisible);
+    }
+  });
+  applyBVSectionHeaders();
+}
+
+function applyBVSectionHeaders() {
+  const bv = state.settings.button_visibility || {};
+  BUTTON_VISIBILITY_SECTIONS.forEach(section => {
+    const headerEl = document.getElementById(section.headerId);
+    if (!headerEl) return;
+    const allHidden = section.buttons.every(b => {
+      const val = (b.id in bv) ? bv[b.id] : 1;
+      return val === 0 || val === '0';
+    });
+    // Find the settings-rows that belong to this section: all rows between this header and the next
+    // We hide the subsection header if all its buttons are 0
+    headerEl.classList.toggle('hidden', allHidden);
+    // Also hide the settings-rows for those buttons
+    section.buttons.forEach(b => {
+      const val = (b.id in bv) ? bv[b.id] : 1;
+      const input = document.querySelector(`.bv-input[data-bv-id="${b.id}"]`);
+      // We don't hide the setting rows themselves (user needs to set them back to 1)
+      // Only the actual UI buttons are hidden
+    });
+  });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1601,8 +1710,24 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('input-obs-bg-color').disabled = e.target.checked;
   });
 
+  // Button visibility save handlers
+  document.querySelectorAll('.bv-save-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const bvId = btn.dataset.bvId;
+      const input = document.querySelector(`.bv-input[data-bv-id="${bvId}"]`);
+      if (!input) return;
+      const val = parseInt(input.value);
+      if (!state.settings.button_visibility) state.settings.button_visibility = {};
+      state.settings.button_visibility[bvId] = (val === 0) ? 0 : 1;
+      applyButtonVisibility();
+      applyBVSectionHeaders();
+      saveState();
+    });
+  });
+
   // Spoiler log
   document.getElementById('btn-load-spoiler').addEventListener('click', loadSpoilerLog);
+  document.getElementById('btn-open-spoiler').addEventListener('click', openSpoilerSearch);
   document.getElementById('btn-open-spoiler').addEventListener('click', openSpoilerSearch);
 
   document.getElementById('btn-revert-settings').addEventListener('click', () => {

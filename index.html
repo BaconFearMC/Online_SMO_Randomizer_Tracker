@@ -9,6 +9,32 @@
   <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
   <link rel="icon" href="assets/SMO-ColoredGlobe.png">
+  <style>
+    .counted-badge {
+      background: rgba(74, 222, 128, 0.18);
+      color: #4ade80;
+      border: 1px solid rgba(74, 222, 128, 0.4);
+      border-radius: 4px;
+      font-size: 0.65rem;
+      padding: 1px 4px;
+      margin-left: 4px;
+      white-space: nowrap;
+    }
+    .settings-subsection-header {
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #aaa;
+      padding: 8px 0 2px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      margin-bottom: 2px;
+    }
+    .bv-input {
+      width: 48px;
+      text-align: center;
+    }
+  </style>
 </head>
 <body>
   <div id="app">
@@ -252,6 +278,78 @@
         </div>
 
         <button class="ctrl-btn revert-btn" id="btn-revert-settings">Revert to Default Settings</button>
+
+        <!-- Section: Button Visibility -->
+        <div class="settings-section-header">Button Visibility <span class="settings-section-note">(set to 0 to hide)</span></div>
+
+        <div id="bv-section-sync" class="settings-subsection-header">Sync</div>
+        <div class="settings-row">
+          <span>Show/Hide Room Code</span>
+          <div class="input-save-pair">
+            <input type="number" class="bv-input" data-bv-id="btn-toggle-visibility" min="0" max="1" step="1" value="1">
+            <button class="save-inline-btn bv-save-btn" data-bv-id="btn-toggle-visibility">Save</button>
+          </div>
+        </div>
+        <div class="settings-row">
+          <span>Generate Room</span>
+          <div class="input-save-pair">
+            <input type="number" class="bv-input" data-bv-id="btn-generate-room" min="0" max="1" step="1" value="1">
+            <button class="save-inline-btn bv-save-btn" data-bv-id="btn-generate-room">Save</button>
+          </div>
+        </div>
+        <div class="settings-row">
+          <span>Connect/Disconnect</span>
+          <div class="input-save-pair">
+            <input type="number" class="bv-input" data-bv-id="btn-connect-room" min="0" max="1" step="1" value="1">
+            <button class="save-inline-btn bv-save-btn" data-bv-id="btn-connect-room">Save</button>
+          </div>
+        </div>
+        <div class="settings-row">
+          <span>Copy OBS URL</span>
+          <div class="input-save-pair">
+            <input type="number" class="bv-input" data-bv-id="btn-copy-obs-url" min="0" max="1" step="1" value="1">
+            <button class="save-inline-btn bv-save-btn" data-bv-id="btn-copy-obs-url">Save</button>
+          </div>
+        </div>
+
+        <div id="bv-section-obs" class="settings-subsection-header">OBS</div>
+        <div class="settings-row">
+          <span>Open OBS Popup</span>
+          <div class="input-save-pair">
+            <input type="number" class="bv-input" data-bv-id="btn-obs" min="0" max="1" step="1" value="1">
+            <button class="save-inline-btn bv-save-btn" data-bv-id="btn-obs">Save</button>
+          </div>
+        </div>
+        <div class="settings-row">
+          <span>OBS Info (ℹ️)</span>
+          <div class="input-save-pair">
+            <input type="number" class="bv-input" data-bv-id="btn-obs-info" min="0" max="1" step="1" value="1">
+            <button class="save-inline-btn bv-save-btn" data-bv-id="btn-obs-info">Save</button>
+          </div>
+        </div>
+
+        <div id="bv-section-tracker" class="settings-subsection-header">Tracker Controls</div>
+        <div class="settings-row">
+          <span>Clear Tracker</span>
+          <div class="input-save-pair">
+            <input type="number" class="bv-input" data-bv-id="btn-clear" min="0" max="1" step="1" value="1">
+            <button class="save-inline-btn bv-save-btn" data-bv-id="btn-clear">Save</button>
+          </div>
+        </div>
+        <div class="settings-row">
+          <span>Loading Zone Notes</span>
+          <div class="input-save-pair">
+            <input type="number" class="bv-input" data-bv-id="btn-notes" min="0" max="1" step="1" value="1">
+            <button class="save-inline-btn bv-save-btn" data-bv-id="btn-notes">Save</button>
+          </div>
+        </div>
+        <div class="settings-row">
+          <span>Connection Map</span>
+          <div class="input-save-pair">
+            <input type="number" class="bv-input" data-bv-id="btn-map" min="0" max="1" step="1" value="1">
+            <button class="save-inline-btn bv-save-btn" data-bv-id="btn-map">Save</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
