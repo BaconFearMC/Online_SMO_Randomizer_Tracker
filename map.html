@@ -713,7 +713,6 @@
   }
   .map-node .node-seg-in  { border-right: 1px solid; }
   .map-node .node-seg-out { border-left:  1px solid; }
-  .map-node.kingdom-node .node-seg { font-size: 0.66rem; font-weight: 600; }
 
   /* ── Decouple: per-node move handle ──────────────────────────── */
   .node-move-handle {
@@ -963,7 +962,7 @@
     <strong>Controls</strong>
     <ul>
       <li><strong>Left Mouse Button</strong> hold and drag a zone/kingdom to draw a connection arrow. A node can have any number of outgoing and incoming arrows.</li>
-      <li><strong>With Segmented Nodes on</strong>, the arrow attaches to whichever part you started on and whichever part you released on (entrance, name, or exit). Only the segment under the cursor lights up as you drag. Two nodes can hold several arrows as long as each uses a different pair of parts.</li>
+      <li><strong>With Segmented Nodes on</strong>, the arrow attaches to whichever part you started on and whichever part you released on (entrance, name, or exit). Only the segment under the cursor lights up as you drag. Kingdom nodes are never split, so arrows meet them anywhere along their border. Two nodes can hold several arrows as long as each uses a different pair of parts.</li>
       <li><strong>Single-click a node</strong> to highlight every chain going in and out of it, each chain in its own color. Click it again (or empty canvas) to clear.</li>
       <li><strong>Double Left Mouse Button</strong> on a node to remove ALL of its outgoing arrows at once.</li>
       <li><strong>Double-click an arrow</strong> to remove just that connection and split its chain (the part after the break becomes a new chain).</li>
@@ -983,7 +982,7 @@
       <strong>Controls</strong>
       <ul>
         <li><strong>Hold and drag</strong> any zone or kingdom to draw a connection arrow. A node can have any number of outgoing and incoming arrows.</li>
-        <li><strong>With Segmented Nodes on</strong>, the arrow attaches to the part you started on and the part you lifted off on (entrance, name, or exit).</li>
+        <li><strong>With Segmented Nodes on</strong>, the arrow attaches to the part you started on and the part you lifted off on (entrance, name, or exit). Kingdom nodes stay whole.</li>
         <li><strong>Double-tap</strong> a node to remove ALL of its outgoing arrows at once.</li>
         <li><strong>Tap a path</strong> in the Display panel to highlight it on the map; tap again to unhighlight.</li>
         <li><strong>Single tap</strong> a node to cycle its color: green → red → none.</li>
@@ -1083,7 +1082,7 @@
 
       <div class="settings-row">
         <div class="settings-row-label">Segmented Nodes</div>
-        <div class="settings-row-desc">Splits every zone and kingdom node into an entrance segment on the left and an exit segment on the right. </div>
+        <div class="settings-row-desc">Splits every zone node into an entrance segment on the left and an exit segment on the right. Kingdom nodes are left whole. </div>
         <div class="settings-row-control">
           <label class="toggle-wrap" for="toggle-segmented">
             <span class="toggle-switch">
@@ -1313,6 +1312,19 @@ function sectionTemplate(key) {
 /** True if a node id belongs to the Paintings section. */
 function isPaintingNode(id) {
   return typeof id === 'string' && (id === `kingdom:${PAINTINGS_KEY}` || id.startsWith(`zone:${PAINTINGS_KEY}:`));
+}
+
+/** True if a node id is a kingdom (main stage) node rather than a zone. */
+function isKingdomNode(id) {
+  return typeof id === 'string' && id.startsWith('kingdom:');
+}
+
+/**
+ * True if a node is eligible for in/out segments at all. Paintings and kingdom
+ * nodes are never split: arrows meet them anywhere along their border.
+ */
+function canSegment(id) {
+  return !isPaintingNode(id) && !isKingdomNode(id);
 }
 
 /** True if a chain id is a painting chain (any of its edges is a painting edge). */
@@ -2076,9 +2088,9 @@ function rebuildAdjacency() {
   edgeList.forEach(e => { addEdge(outgoing, e.src, e.tgt); addEdge(incoming, e.tgt, e.src); });
 }
 
-/** Paintings and unsegmented nodes have no segments, so they only use 'mid'. */
+/** Paintings, kingdoms and unsegmented nodes have no segments: only 'mid'. */
 function normalizePart(id, part) {
-  if (isPaintingNode(id)) return PART_MID;
+  if (!canSegment(id)) return PART_MID;
   if (part === PART_IN)  return PART_IN;
   if (part === PART_OUT) return DEAD_END_IDS.has(id) ? PART_MID : PART_OUT;
   return PART_MID;
@@ -2763,7 +2775,7 @@ function renderNodes() {
 
 /** True when this node should render (and anchor arrows at) in/out segments. */
 function nodeIsSegmented(id) {
-  return segmentedNodes && !isPaintingNode(id);
+  return segmentedNodes && canSegment(id);
 }
 
 function hexWithAlpha(hex, alpha) {
@@ -2813,15 +2825,19 @@ function edgePoint(node, fromX, fromY) {
  */
 function partAnchor(id, part) {
   const n = nodes[id];
-  if (!n) return null;
+  if (!n || !canSegment(id)) return null;
   if (part === PART_IN)  return { p: { x: n.x,        y: n.y + n.h / 2 }, dir: -1 };
   if (part === PART_OUT) return { p: { x: n.x + n.w,  y: n.y + n.h / 2 }, dir:  1 };
   return null;
 }
 
-/** True when this edge should be drawn with segment anchors at all. */
+/**
+ * True when this edge may use segment anchors. Each end is still checked
+ * separately by partAnchor, so a zone→kingdom arrow can leave a zone's exit
+ * box and still meet the kingdom's border wherever it arrives.
+ */
 function edgeUsesSegments(ed) {
-  return segmentedNodes && !isPaintingNode(ed.src) && !isPaintingNode(ed.tgt);
+  return segmentedNodes;
 }
 
 /**
@@ -2860,7 +2876,7 @@ function edgePathPoints(ed) {
 
 /** Where a drag from a given part of a node should start. */
 function dragOrigin(id, part) {
-  const a = (segmentedNodes && !isPaintingNode(id)) ? partAnchor(id, part) : null;
+  const a = (segmentedNodes && canSegment(id)) ? partAnchor(id, part) : null;
   return a ? a.p : nodeCenter(id);
 }
 
@@ -3541,7 +3557,7 @@ function wireNodeMove(handle, el, id) {
  */
 function partAtPoint(nodeEl, clientX) {
   const id = nodeEl.dataset.id;
-  if (!segmentedNodes || isPaintingNode(id)) return PART_MID;
+  if (!segmentedNodes || !canSegment(id)) return PART_MID;
   const segIn = nodeEl.querySelector('.node-seg-in');
   if (segIn) {
     const r = segIn.getBoundingClientRect();
@@ -3566,7 +3582,7 @@ function updateDropHighlight(clientX, clientY, srcId) {
   const under = document.elementFromPoint(clientX, clientY);
   const nodeEl = under && under.closest ? under.closest('.map-node') : null;
   if (!nodeEl || nodeEl.dataset.id === srcId) return;
-  if (!segmentedNodes || isPaintingNode(nodeEl.dataset.id)) {
+  if (!segmentedNodes || !canSegment(nodeEl.dataset.id)) {
     nodeEl.classList.add('drag-target');
     return;
   }
