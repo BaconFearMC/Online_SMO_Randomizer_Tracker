@@ -316,6 +316,11 @@
     box-shadow: 0 0 0 2px var(--highlight-color, #ffd60a);
     background: rgba(255,255,255,0.04);
   }
+  .chain-row .seg-tag {
+    color: var(--text-dim);
+    font-size: 0.88em;
+    margin-left: 3px;
+  }
   .chain-row .arrow { color: var(--text-dim); margin: 0 4px; }
   .chain-row .loop-tag { color: var(--text-dim); font-size: 0.78rem; margin-left: 6px; }
   /* Painting chains: white arrows, no letter, and a subtle indent so they read
@@ -636,6 +641,11 @@
     transform: scale(1.04);
     z-index: 5;
   }
+  /* Individual segment highlighted as a drop target while dragging an arrow */
+  .map-node .drop-target {
+    background: rgba(74,222,128,0.30);
+    box-shadow: inset 0 0 0 1.5px var(--green);
+  }
   .map-node.drag-target {
     border-color: var(--green);
     background: rgba(74,222,128,0.15);
@@ -953,6 +963,7 @@
     <strong>Controls</strong>
     <ul>
       <li><strong>Left Mouse Button</strong> hold and drag a zone/kingdom to draw a connection arrow. A node can have any number of outgoing and incoming arrows.</li>
+      <li><strong>With Segmented Nodes on</strong>, the arrow attaches to whichever part you started on and whichever part you released on (entrance, name, or exit). Only the segment under the cursor lights up as you drag. Two nodes can hold several arrows as long as each uses a different pair of parts.</li>
       <li><strong>Single-click a node</strong> to highlight every chain going in and out of it, each chain in its own color. Click it again (or empty canvas) to clear.</li>
       <li><strong>Double Left Mouse Button</strong> on a node to remove ALL of its outgoing arrows at once.</li>
       <li><strong>Double-click an arrow</strong> to remove just that connection and split its chain (the part after the break becomes a new chain).</li>
@@ -972,6 +983,7 @@
       <strong>Controls</strong>
       <ul>
         <li><strong>Hold and drag</strong> any zone or kingdom to draw a connection arrow. A node can have any number of outgoing and incoming arrows.</li>
+        <li><strong>With Segmented Nodes on</strong>, the arrow attaches to the part you started on and the part you lifted off on (entrance, name, or exit).</li>
         <li><strong>Double-tap</strong> a node to remove ALL of its outgoing arrows at once.</li>
         <li><strong>Tap a path</strong> in the Display panel to highlight it on the map; tap again to unhighlight.</li>
         <li><strong>Single tap</strong> a node to cycle its color: green → red → none.</li>
@@ -1114,7 +1126,7 @@
 
       <div class="settings-row">
         <div class="settings-row-label">Arrow Color</div>
-        <div class="settings-row-desc">Choose how connection arrows are colored on the map.</div>
+         <div class="settings-row-desc">Choose how connection arrows are colored on the map.</div>
 
         <div class="arrow-color-option">
           <label class="toggle-wrap" for="toggle-random-colors">
@@ -1611,6 +1623,13 @@ let nodes = {};
 let canvasW = 2000, canvasH = 1400;
 
 // Connection / mark state
+// edgeList is the source of truth for arrows. Each entry records not just which
+// nodes it joins but which PART of each node it attaches to ('in' = entrance
+// segment, 'out' = exit segment, 'mid' = the label in between). Two nodes may
+// therefore carry several arrows as long as each uses a different pair of parts.
+// outgoing/incoming are node-level views derived from it, used by the dead-end
+// rules, chain tracing and highlighting.
+let edgeList = [];   // [{ src, sPart, tgt, tPart }]
 let outgoing = {}, incoming = {}, marks = {};
 
 // Per-cluster overrides (keyed by kingdomKey)
@@ -1890,7 +1909,19 @@ function loadAll() {
       const d = JSON.parse(raw);
       outgoing = normalizeEdgeMap(d.outgoing);
       marks = d.marks || {};
-      rebuildIncoming();
+      if (Array.isArray(d.edgeList) && d.edgeList.length) {
+        edgeList = d.edgeList
+          .filter(e => e && e.src && e.tgt)
+          .map(e => ({ src: e.src, tgt: e.tgt,
+                       sPart: e.sPart || PART_OUT, tPart: e.tPart || PART_IN }));
+      } else {
+        // Migrate: every arrow saved before segments existed was exit → entrance.
+        edgeList = [];
+        for (const [src, tgts] of Object.entries(outgoing)) {
+          tgts.forEach(tgt => edgeList.push({ src, sPart: PART_OUT, tgt, tPart: PART_IN }));
+        }
+      }
+      rebuildAdjacency();
     }
   } catch (e) { console.error('State load failed:', e); }
 
@@ -1951,6 +1982,13 @@ function loadAll() {
   try {
     const raw = localStorage.getItem(STORAGE_EDGE_CHAINS);
     if (raw) edgeChains = JSON.parse(raw);
+    // Rewrite legacy node-pair keys into port-qualified ones.
+    const migrated = {};
+    for (const [k, cid] of Object.entries(edgeChains)) {
+      const pk = parseEkey(k);
+      migrated[pk ? ekey(pk.src, pk.sPart, pk.tgt, pk.tPart) : k] = cid;
+    }
+    edgeChains = migrated;
   } catch (e) {}
 
   try {
@@ -1974,7 +2012,7 @@ function loadAll() {
   } catch (e) {}
 }
 
-function saveState()    { localStorage.setItem(STORAGE_KEY, JSON.stringify({ outgoing, marks })); }
+function saveState()    { localStorage.setItem(STORAGE_KEY, JSON.stringify({ outgoing, marks, edgeList })); }
 function savePositions(){ localStorage.setItem(STORAGE_POSITIONS, JSON.stringify(clusterPositions)); }
 function saveSizes()    { localStorage.setItem(STORAGE_SIZES, JSON.stringify(clusterSizes)); }
 function saveGrid()     { localStorage.setItem(STORAGE_GRID, JSON.stringify({ rows: gridRows, cols: gridCols })); }
@@ -2007,6 +2045,45 @@ function saveNotes() { localStorage.setItem(STORAGE_NOTES, JSON.stringify(mapNot
 // ─────────────────────────────────────────────────────────────────
 // Connection helpers
 // ─────────────────────────────────────────────────────────────────
+const PART_IN = 'in', PART_MID = 'mid', PART_OUT = 'out';
+
+/** Stable string id for an arrow, including the parts it attaches to. */
+function ekey(src, sPart, tgt, tPart) { return `${src}@${sPart}→${tgt}@${tPart}`; }
+function edgeKeyOf(e) { return ekey(e.src, e.sPart, e.tgt, e.tPart); }
+
+/** Parses an edge key. Legacy keys ("src→tgt") are read as exit → entrance. */
+function parseEkey(k) {
+  const p = k.indexOf('→');
+  if (p === -1) return null;
+  const L = k.slice(0, p), R = k.slice(p + 1);
+  const li = L.lastIndexOf('@'), ri = R.lastIndexOf('@');
+  return {
+    src:   li === -1 ? L : L.slice(0, li),
+    sPart: li === -1 ? PART_OUT : L.slice(li + 1),
+    tgt:   ri === -1 ? R : R.slice(0, ri),
+    tPart: ri === -1 ? PART_IN  : R.slice(ri + 1),
+  };
+}
+
+function findEdge(src, sPart, tgt, tPart) {
+  return edgeList.find(e => e.src === src && e.sPart === sPart &&
+                            e.tgt === tgt && e.tPart === tPart);
+}
+
+/** Rebuilds the node-level outgoing/incoming views from edgeList. */
+function rebuildAdjacency() {
+  outgoing = {}; incoming = {};
+  edgeList.forEach(e => { addEdge(outgoing, e.src, e.tgt); addEdge(incoming, e.tgt, e.src); });
+}
+
+/** Paintings and unsegmented nodes have no segments, so they only use 'mid'. */
+function normalizePart(id, part) {
+  if (isPaintingNode(id)) return PART_MID;
+  if (part === PART_IN)  return PART_IN;
+  if (part === PART_OUT) return DEAD_END_IDS.has(id) ? PART_MID : PART_OUT;
+  return PART_MID;
+}
+
 function addEdge(map, key, val) {
   if (!map[key]) map[key] = [];
   if (!map[key].includes(val)) map[key].push(val);
@@ -2017,27 +2094,31 @@ function removeEdge(map, key, val) {
   if (map[key].length === 0) delete map[key];
 }
 
-/** True if connecting src→tgt is allowed under the dead-end rule. */
-function canConnect(src, tgt) {
+/** True if an arrow from src's sPart to tgt's tPart is allowed. */
+function canConnect(src, sPart, tgt, tPart) {
   if (src === tgt || !nodes[src] || !nodes[tgt]) return false;
-  if ((outgoing[src] || []).includes(tgt)) return false; // already connected
+  // Only that exact pair of parts is taken \u2014 other part pairings are free.
+  if (findEdge(src, sPart, tgt, tPart)) return false;
   // Paintings only connect to paintings (and vice-versa). Painting nodes are
   // never dead-ends, so a painting may fan out to / in from multiple paintings.
   if (isPaintingNode(src) !== isPaintingNode(tgt)) return false;
-  // A dead-end node cannot RECEIVE new incoming arrows once it already has one.
-  // It can always send outgoing arrows regardless of whether it has incoming ones.
-  if (DEAD_END_IDS.has(tgt) && (incoming[tgt] || []).length > 0) return false;
+  // A dead-end node cannot RECEIVE more than one arrow, on any part.
+  // It can always send arrows regardless of whether it has incoming ones.
+  if (DEAD_END_IDS.has(tgt) && edgeList.some(e => e.tgt === tgt)) return false;
   return true;
 }
 
-function connect(src, tgt) {
-  if (!canConnect(src, tgt)) {
+function connect(src, sPart, tgt, tPart) {
+  sPart = normalizePart(src, sPart);
+  tPart = normalizePart(tgt, tPart);
+  if (!canConnect(src, sPart, tgt, tPart)) {
     flashRejected(src);
     return;
   }
-  addEdge(outgoing, src, tgt);
-  addEdge(incoming, tgt, src);
-  autoAssignChain(src, tgt);
+  const ed = { src, sPart, tgt, tPart };
+  edgeList.push(ed);
+  rebuildAdjacency();
+  autoAssignChain(ed);
   saveState();
   saveEdgeChains();
   renderConnections();
@@ -2046,12 +2127,9 @@ function connect(src, tgt) {
 
 /** Removes ALL outgoing arrows from a node (used by double-click). */
 function disconnectOutgoing(id) {
-  const tgts = outgoing[id] || [];
-  tgts.forEach(t => {
-    removeEdge(incoming, t, id);
-    delete edgeChains[`${id}→${t}`];
-  });
-  delete outgoing[id];
+  edgeList.filter(e => e.src === id).forEach(e => { delete edgeChains[edgeKeyOf(e)]; });
+  edgeList = edgeList.filter(e => e.src !== id);
+  rebuildAdjacency();
   // Clear stale highlights
   hoverHighlightChainId  = null;
   pinnedHighlightChainId = null;
@@ -2060,12 +2138,9 @@ function disconnectOutgoing(id) {
 }
 /** Removes ALL incoming arrows into a node. */
 function disconnectIncoming(id) {
-  const srcs = incoming[id] || [];
-  srcs.forEach(s => {
-    removeEdge(outgoing, s, id);
-    delete edgeChains[`${s}→${id}`];
-  });
-  delete incoming[id];
+  edgeList.filter(e => e.tgt === id).forEach(e => { delete edgeChains[edgeKeyOf(e)]; });
+  edgeList = edgeList.filter(e => e.tgt !== id);
+  rebuildAdjacency();
   hoverHighlightChainId  = null;
   pinnedHighlightChainId = null;
   pinnedHighlightNodeId  = null;
@@ -2079,8 +2154,8 @@ function recomputeChainLabels() {
   // Which chains are painting chains (drawn white, never lettered)?
   const paintingChainIds = new Set();
   for (const [key, cid] of Object.entries(edgeChains)) {
-    const arrowPos = key.indexOf('→');
-    if (arrowPos !== -1 && isPaintingNode(key.substring(0, arrowPos))) paintingChainIds.add(cid);
+    const pk = parseEkey(key);
+    if (pk && isPaintingNode(pk.src)) paintingChainIds.add(cid);
   }
   const sortedIds = [...new Set(Object.values(edgeChains))]
     .filter(id => !paintingChainIds.has(id))
@@ -2111,26 +2186,26 @@ function createNewChain() {
   return id;
 }
 
-function assignChain(src, tgt, chainId) {
-  edgeChains[`${src}→${tgt}`] = chainId;
+function assignChain(ed, chainId) {
+  edgeChains[edgeKeyOf(ed)] = chainId;
   recomputeChainLabels();
 }
 
-function assignNewChain(src, tgt) {
+function assignNewChain(ed) {
   const id = createNewChain();
-  edgeChains[`${src}→${tgt}`] = id;
+  edgeChains[edgeKeyOf(ed)] = id;
   recomputeChainLabels();
   return id;
 }
 
-function getEdgeChainId(src, tgt) {
-  return edgeChains[`${src}→${tgt}`];
+function getEdgeChainId(ed) {
+  return edgeChains[edgeKeyOf(ed)];
 }
 
 function getIncomingChainIds(nodeId) {
   const ids = [], seen = new Set();
-  (incoming[nodeId] || []).forEach(src => {
-    const cid = edgeChains[`${src}→${nodeId}`];
+  edgeList.filter(e => e.tgt === nodeId).forEach(e => {
+    const cid = edgeChains[edgeKeyOf(e)];
     if (cid !== undefined && !seen.has(cid)) { seen.add(cid); ids.push(cid); }
   });
   return ids;
@@ -2144,25 +2219,20 @@ function canOpenChainPicker(src) {
 }
 
 /** Auto-assign a chain to a newly created edge. */
-function autoAssignChain(src, tgt) {
-  if ((incoming[src] || []).length === 0 || DEAD_END_IDS.has(src)) {
-    assignNewChain(src, tgt);
+function autoAssignChain(ed) {
+  if ((incoming[ed.src] || []).length === 0 || DEAD_END_IDS.has(ed.src)) {
+    assignNewChain(ed);
   } else {
-    const inChains = getIncomingChainIds(src);
-    if (inChains.length > 0) assignChain(src, tgt, inChains[0]);
-    else assignNewChain(src, tgt);
+    const inChains = getIncomingChainIds(ed.src);
+    if (inChains.length > 0) assignChain(ed, inChains[0]);
+    else assignNewChain(ed);
   }
 }
 
 /** Migrate old state that has edges but no chain assignments. */
 function migrateOldEdgeChains() {
-  let needsMigration = false;
-  outer: for (const [src, tgts] of Object.entries(outgoing)) {
-    for (const tgt of tgts) {
-      if (edgeChains[`${src}→${tgt}`] === undefined) { needsMigration = true; break outer; }
-    }
-  }
-  if (!needsMigration) return;
+  const missing = edgeList.filter(e => edgeChains[edgeKeyOf(e)] === undefined);
+  if (missing.length === 0) return;
 
   // Use existing computeChains() to seed assignments
   const chains = computeChains();
@@ -2170,21 +2240,23 @@ function migrateOldEdgeChains() {
     const cid = nextChainId++;
     chainColors[cid] = pickChainColor();
     for (let i = 0; i < chain.ids.length - 1; i++) {
-      const key = `${chain.ids[i]}→${chain.ids[i+1]}`;
-      if (edgeChains[key] === undefined) edgeChains[key] = cid;
+      edgeList
+        .filter(e => e.src === chain.ids[i] && e.tgt === chain.ids[i + 1])
+        .forEach(e => {
+          const k = edgeKeyOf(e);
+          if (edgeChains[k] === undefined) edgeChains[k] = cid;
+        });
     }
   });
   // Catch any remaining unassigned edges
-  for (const [src, tgts] of Object.entries(outgoing)) {
-    for (const tgt of tgts) {
-      const key = `${src}→${tgt}`;
-      if (edgeChains[key] === undefined) {
-        const cid = nextChainId++;
-        chainColors[cid] = pickChainColor();
-        edgeChains[key] = cid;
-      }
+  edgeList.forEach(e => {
+    const k = edgeKeyOf(e);
+    if (edgeChains[k] === undefined) {
+      const cid = nextChainId++;
+      chainColors[cid] = pickChainColor();
+      edgeChains[k] = cid;
     }
-  }
+  });
   recomputeChainLabels();
   saveEdgeChains();
 }
@@ -2194,13 +2266,14 @@ function migrateOldEdgeChains() {
  * at that point: the upstream side keeps the original chain, and the downstream
  * side (after the break) becomes a brand-new chain. The rest stays intact.
  */
-function breakChainAtEdge(src, tgt) {
-  const key = `${src}→${tgt}`;
+function breakChainAtEdge(ed) {
+  const key = edgeKeyOf(ed);
+  const src = ed.src;
   const cid = edgeChains[key];
 
   // Remove only this edge
-  removeEdge(outgoing, src, tgt);
-  removeEdge(incoming, tgt, src);
+  edgeList = edgeList.filter(e => edgeKeyOf(e) !== key);
+  rebuildAdjacency();
   delete edgeChains[key];
 
   if (cid !== undefined) {
@@ -2208,9 +2281,9 @@ function breakChainAtEdge(src, tgt) {
     const edges = [];
     for (const [k, c] of Object.entries(edgeChains)) {
       if (c !== cid) continue;
-      const p = k.indexOf('→');
-      if (p === -1) continue;
-      edges.push({ key: k, a: k.slice(0, p), b: k.slice(p + 1) });
+      const pk = parseEkey(k);
+      if (!pk) continue;
+      edges.push({ key: k, a: pk.src, b: pk.tgt });
     }
 
     // Union-find the weakly-connected pieces of what's left of the chain.
@@ -2730,34 +2803,65 @@ function edgePoint(node, fromX, fromY) {
   return {x:cx-dx*t, y:cy-dy*t};
 }
 
-/** Exit anchor: middle of a node's right edge (where the 'out' segment sits). */
-function outAnchor(id) {
+/**
+ * Anchor for one end of an arrow.
+ *   'in'  → middle of the left edge,  shaft sticks out to the LEFT
+ *   'out' → middle of the right edge, shaft sticks out to the RIGHT
+ *   'mid' → no fixed anchor; the arrow meets the node's border wherever it
+ *           happens to arrive, with no horizontal shaft.
+ * The shaft always points outward from the node, whichever end it is.
+ */
+function partAnchor(id, part) {
   const n = nodes[id];
-  return { x: n.x + n.w, y: n.y + n.h / 2 };
-}
-/** Entrance anchor: middle of a node's left edge (where the 'in' segment sits). */
-function inAnchor(id) {
-  const n = nodes[id];
-  return { x: n.x, y: n.y + n.h / 2 };
+  if (!n) return null;
+  if (part === PART_IN)  return { p: { x: n.x,        y: n.y + n.h / 2 }, dir: -1 };
+  if (part === PART_OUT) return { p: { x: n.x + n.w,  y: n.y + n.h / 2 }, dir:  1 };
+  return null;
 }
 
-/** True if this particular edge should use the segmented routing. */
-function edgeUsesSegments(src, tgt) {
-  return segmentedNodes && !isPaintingNode(src) && !isPaintingNode(tgt);
+/** True when this edge should be drawn with segment anchors at all. */
+function edgeUsesSegments(ed) {
+  return segmentedNodes && !isPaintingNode(ed.src) && !isPaintingNode(ed.tgt);
 }
 
 /**
- * Stepped path for a segmented edge: a short horizontal shaft out of the exit
- * segment, a diagonal across, then a short horizontal shaft into the entrance
- * segment, so both ends meet their node square-on. When the target sits to the
- * left of the source the stubs are lengthened so the doubling-back reads clearly.
+ * Builds the point list for an arrow. Ends attached to an 'in' or 'out' segment
+ * get a short horizontal shaft; a 'mid' end just meets the border directly, so
+ * the arrow can land anywhere along the node's edge.
  */
-function segmentedPath(src, tgt) {
-  const a = outAnchor(src);
-  const b = inAnchor(tgt);
-  const tight = (b.x - a.x) < (SEG_STUB * 2 + 12);
-  const stub  = tight ? SEG_STUB_BACK : SEG_STUB;
-  return [a, { x: a.x + stub, y: a.y }, { x: b.x - stub, y: b.y }, b];
+function edgePathPoints(ed) {
+  const useSeg = edgeUsesSegments(ed);
+  const sA = useSeg ? partAnchor(ed.src, ed.sPart) : null;
+  const tA = useSeg ? partAnchor(ed.tgt, ed.tPart) : null;
+
+  if (!sA && !tA) {
+    const p1 = nodeCenter(ed.src);
+    return [p1, edgePoint(nodes[ed.tgt], p1.x, p1.y)];
+  }
+
+  // Doubling-back arrows (exit on the right heading to an entrance further
+  // left) get longer shafts so the turn reads clearly instead of overlapping.
+  let stub = SEG_STUB;
+  if (sA && tA && sA.dir > 0 && tA.dir < 0 && (tA.p.x - sA.p.x) < SEG_STUB * 2 + 12) {
+    stub = SEG_STUB_BACK;
+  }
+
+  const pts = [];
+  const tRef = tA ? { x: tA.p.x + tA.dir * stub, y: tA.p.y } : nodeCenter(ed.tgt);
+  if (sA) pts.push(sA.p, { x: sA.p.x + sA.dir * stub, y: sA.p.y });
+  else    pts.push(edgePoint(nodes[ed.src], tRef.x, tRef.y));
+
+  const last = pts[pts.length - 1];
+  if (tA) pts.push(tRef, tA.p);
+  else    pts.push(edgePoint(nodes[ed.tgt], last.x, last.y));
+
+  return pts;
+}
+
+/** Where a drag from a given part of a node should start. */
+function dragOrigin(id, part) {
+  const a = (segmentedNodes && !isPaintingNode(id)) ? partAnchor(id, part) : null;
+  return a ? a.p : nodeCenter(id);
 }
 
 function pointsAttr(pts) {
@@ -2817,8 +2921,8 @@ function ensureHighlightColorMarker(defs, color) {
   return id;
 }
 
-function ensureGradient(defs, srcColor, tgtColor, p1, p2, src, tgt) {
-  const gradId = 'grad_' + `${src}→${tgt}`.replace(/[^a-zA-Z0-9]/g, '_');
+function ensureGradient(defs, srcColor, tgtColor, p1, p2, edgeKey) {
+  const gradId = 'grad_' + String(edgeKey).replace(/[^a-zA-Z0-9]/g, '_');
   let grad = defs.querySelector(`#${gradId}`);
   if (!grad) {
     grad = document.createElementNS(SVG_NS, 'linearGradient');
@@ -2859,11 +2963,11 @@ function closeActiveChainPicker() {
   activePickerEl = null; activePickerEdge = null;
 }
 
-function openChainPicker(event, src, tgt) {
+function openChainPicker(event, ed) {
   closeActiveChainPicker();
-  const edgeKey = `${src}→${tgt}`;
-  const currentChainId = getEdgeChainId(src, tgt);
-  const inChains = getIncomingChainIds(src);
+  const edgeKey = edgeKeyOf(ed);
+  const currentChainId = getEdgeChainId(ed);
+  const inChains = getIncomingChainIds(ed.src);
 
   const picker = document.createElement('div');
   picker.className = 'chain-picker-popup';
@@ -2887,7 +2991,7 @@ function openChainPicker(event, src, tgt) {
     badge.title = `Chain ${lbl}`;
     badge.addEventListener('click', (e) => {
       e.stopPropagation();
-      assignChain(src, tgt, cid);
+      assignChain(ed, cid);
       saveEdgeChains();
       closeActiveChainPicker();
       renderConnections(); renderDisplayPanel();
@@ -2900,7 +3004,7 @@ function openChainPicker(event, src, tgt) {
   newBtn.textContent = '+'; newBtn.title = 'Start a new chain';
   newBtn.addEventListener('click', (e) => {
     e.stopPropagation();
-    assignNewChain(src, tgt);
+    assignNewChain(ed);
     saveEdgeChains();
     closeActiveChainPicker();
     renderConnections(); renderDisplayPanel();
@@ -2937,13 +3041,15 @@ function renderConnections() {
   linesLayer.appendChild(defs);
   ensureBaseMarkers(defs);
 
-  Object.entries(outgoing).forEach(([src, tgts]) => {
-    (tgts || []).forEach(tgt => {
+  edgeList.forEach(ed => {
+    {
+      const src = ed.src, tgt = ed.tgt;
       if (!nodes[src] || !nodes[tgt]) return;
-      const chainId = getEdgeChainId(src, tgt);
-      const segPts = edgeUsesSegments(src, tgt) ? segmentedPath(src, tgt) : null;
-      const p1 = segPts ? segPts[0] : nodeCenter(src);
-      const p2 = segPts ? segPts[segPts.length - 1] : edgePoint(nodes[tgt], p1.x, p1.y);
+      const key = edgeKeyOf(ed);
+      const chainId = edgeChains[key];
+      const pathPts = edgePathPoints(ed);
+      const segPts = pathPts.length > 2 ? pathPts : null;
+      const p1 = pathPts[0], p2 = pathPts[pathPts.length - 1];
 
       let strokeVal, markerId;
       if (isPaintingNode(src)) {
@@ -2955,7 +3061,7 @@ function renderConnections() {
         const tgtKingdom = nodes[tgt].kingdomKey;
         const srcColor = LOADING_ZONES_TEMPLATE[srcKingdom]?.color || '#888';
         const tgtColor = LOADING_ZONES_TEMPLATE[tgtKingdom]?.color || '#888';
-        const gradId = ensureGradient(defs, srcColor, tgtColor, p1, p2, src, tgt);
+        const gradId = ensureGradient(defs, srcColor, tgtColor, p1, p2, key);
         strokeVal = `url(#${gradId})`;
         markerId  = ensureKingdomMarker(defs, tgtKingdom, tgtColor);
       } else if (arrowColorMode === 'one') {
@@ -2980,7 +3086,7 @@ function renderConnections() {
       line.setAttribute('stroke-width', 2.5);
       line.setAttribute('stroke-linecap', 'round');
       line.setAttribute('marker-end', `url(#${markerId})`);
-      line.dataset.src = src; line.dataset.tgt = tgt;
+      line.dataset.ekey = key;
       line.dataset.normalStroke = strokeVal;
       line.dataset.normalMarker = `url(#${markerId})`;
       line.classList.add('conn-line');
@@ -3000,7 +3106,7 @@ function renderConnections() {
       hit.setAttribute('stroke-linecap', 'round');
       hit.style.pointerEvents = 'stroke';
       hit.style.cursor = 'pointer';
-      hit.dataset.src = src; hit.dataset.tgt = tgt;
+      hit.dataset.ekey = key;
       linesLayer.appendChild(hit);
 
       hit.addEventListener('mouseenter', (e) => {
@@ -3028,9 +3134,8 @@ function renderConnections() {
           pinnedHighlightChainId = (pinnedHighlightChainId === cid) ? null : cid;
           applyHighlightClasses();
           if (canOpenChainPicker(src)) {
-            const key = `${src}→${tgt}`;
             if (activePickerEdge === key) closeActiveChainPicker();
-            else openChainPicker({ clientX: ex, clientY: ey }, src, tgt);
+            else openChainPicker({ clientX: ex, clientY: ey }, ed);
           }
         }, 220);
       });
@@ -3040,9 +3145,9 @@ function renderConnections() {
         clearTimeout(hit._clickTimer); hit._clickTimer = null;
         hideArrowTooltip();
         closeActiveChainPicker();
-        breakChainAtEdge(src, tgt);
+        breakChainAtEdge(ed);
       });
-    });
+    }
   });
 
   if (previewLine) linesLayer.appendChild(previewLine);
@@ -3071,8 +3176,8 @@ function singleChainHighlightState(cid) {
   for (const [key, c] of Object.entries(edgeChains)) {
     if (c !== cid) continue;
     edgeColors.set(key, highlightColor);
-    const p = key.indexOf('→');
-    if (p !== -1) { nodeIds.add(key.slice(0, p)); nodeIds.add(key.slice(p + 1)); }
+    const pk = parseEkey(key);
+    if (pk) { nodeIds.add(pk.src); nodeIds.add(pk.tgt); }
   }
   return { edgeColors, nodeIds, chainIds };
 }
@@ -3088,15 +3193,18 @@ function computeHighlightState() {
   if (pinnedHighlightNodeId != null && nodes[pinnedHighlightNodeId]) {
     const nid = pinnedHighlightNodeId;
     const cids = new Set();
-    (outgoing[nid] || []).forEach(t => { const c = edgeChains[`${nid}→${t}`]; if (c !== undefined) cids.add(c); });
-    (incoming[nid] || []).forEach(s => { const c = edgeChains[`${s}→${nid}`]; if (c !== undefined) cids.add(c); });
+    edgeList.forEach(e => {
+      if (e.src !== nid && e.tgt !== nid) return;
+      const c = edgeChains[edgeKeyOf(e)];
+      if (c !== undefined) cids.add(c);
+    });
 
     const edgeColors = new Map(), nodeIds = new Set([nid]), chainIds = new Set();
     for (const [key, cid] of Object.entries(edgeChains)) {
       if (!cids.has(cid)) continue;
       edgeColors.set(key, chainColors[cid] || highlightColor);
-      const p = key.indexOf('→');
-      if (p !== -1) { nodeIds.add(key.slice(0, p)); nodeIds.add(key.slice(p + 1)); }
+      const pk = parseEkey(key);
+      if (pk) { nodeIds.add(pk.src); nodeIds.add(pk.tgt); }
       chainIds.add(cid);
     }
     return { edgeColors, nodeIds, chainIds };
@@ -3124,8 +3232,7 @@ function applyHighlightClasses() {
 
   // Lines
   linesLayer.querySelectorAll('.conn-line').forEach(el => {
-    const edgeKey = el.dataset.src + '→' + el.dataset.tgt;
-    const color = edgeColors.get(edgeKey);
+    const color = edgeColors.get(el.dataset.ekey);
     const isActive = color !== undefined;
     el.classList.toggle('chain-highlight-line', isActive);
     if (isActive) {
@@ -3345,7 +3452,7 @@ function toggleNodeHighlight(id) {
 }
 
 // ── Decouple: drag a single node by its bottom-right triangle ─────
-// The handle only moves the node, it never resizes it. Dragging anywhere else
+// The handle only moves the node it never resizes it. Dragging anywhere else
 // on the node still draws a connection arrow as usual.
 let nodeMoveActive = false;
 
@@ -3428,15 +3535,58 @@ function wireNodeMove(handle, el, id) {
   );
 }
 
+/**
+ * Which part of a node a pointer is over. Uses the segments' own rectangles so
+ * it stays correct even where the decouple move handle overlaps the exit box.
+ */
+function partAtPoint(nodeEl, clientX) {
+  const id = nodeEl.dataset.id;
+  if (!segmentedNodes || isPaintingNode(id)) return PART_MID;
+  const segIn = nodeEl.querySelector('.node-seg-in');
+  if (segIn) {
+    const r = segIn.getBoundingClientRect();
+    if (clientX >= r.left && clientX <= r.right) return PART_IN;
+  }
+  const segOut = nodeEl.querySelector('.node-seg-out');
+  if (segOut) {
+    const r = segOut.getBoundingClientRect();
+    if (clientX >= r.left && clientX <= r.right) return PART_OUT;
+  }
+  return PART_MID;
+}
+
+function clearDropHighlight() {
+  canvasEl.querySelectorAll('.drop-target').forEach(el => el.classList.remove('drop-target'));
+  canvasEl.querySelectorAll('.drag-target').forEach(el => el.classList.remove('drag-target'));
+}
+
+/** While dragging, highlight only the individual segment under the cursor. */
+function updateDropHighlight(clientX, clientY, srcId) {
+  clearDropHighlight();
+  const under = document.elementFromPoint(clientX, clientY);
+  const nodeEl = under && under.closest ? under.closest('.map-node') : null;
+  if (!nodeEl || nodeEl.dataset.id === srcId) return;
+  if (!segmentedNodes || isPaintingNode(nodeEl.dataset.id)) {
+    nodeEl.classList.add('drag-target');
+    return;
+  }
+  const part = partAtPoint(nodeEl, clientX);
+  const target = part === PART_IN  ? nodeEl.querySelector('.node-seg-in')
+               : part === PART_OUT ? nodeEl.querySelector('.node-seg-out')
+               :                     nodeEl.querySelector('.node-label');
+  (target || nodeEl).classList.add('drop-target');
+}
+
 function wireNodeEvents(el, id) {
   el.addEventListener('mousedown', (e) => {
     if (e.button === 0) {
       e.stopPropagation();
       mouseDownTime = Date.now();
       mouseDownPos = { x: e.clientX, y: e.clientY };
-      connecting = id;
+      const startPart = normalizePart(id, partAtPoint(el, e.clientX));
+      connecting = { id, part: startPart };
       nodePressFired = false;
-      const origin = nodeIsSegmented(id) ? outAnchor(id) : nodeCenter(id);
+      const origin = dragOrigin(id, startPart);
       previewLine = drawLine(origin, origin, arrowColor, false);
       previewLine.setAttribute('stroke-dasharray','5,4');
       // Hold for 1s (without moving) opens the stage preview, as on mobile.
@@ -3484,20 +3634,13 @@ function wireNodeEvents(el, id) {
       Math.abs(e.clientY - mouseDownPos.y) > CLICK_THRESHOLD
     );
 
-    if (connecting && connecting !== id && moved) {
-      // Completed a drag to make connections
-      connect(connecting, id);
+    if (connecting && connecting.id !== id && moved) {
+      // Completed a drag: connect the part it started on to the part it ended on
+      connect(connecting.id, connecting.part, id, partAtPoint(el, e.clientX));
     } else if (!moved) {
       // Plain click → toggle this node's chain highlight
       toggleNodeHighlight(id);
     }
-  });
-
-  el.addEventListener('mouseenter', () => {
-    if (connecting && connecting !== id) el.classList.add('drag-target');
-  });
-  el.addEventListener('mouseleave', () => {
-    el.classList.remove('drag-target');
   });
 
   // Touch
@@ -3524,6 +3667,7 @@ document.addEventListener('mousemove', (e) => {
     const p = canvasPointFromEvent(e);
     previewLine.setAttribute('x2', p.x);
     previewLine.setAttribute('y2', p.y);
+    updateDropHighlight(e.clientX, e.clientY, connecting.id);
   }
 });
 
@@ -3532,7 +3676,7 @@ document.addEventListener('mouseup', () => {
   if (connecting) {
     connecting = null;
     if (previewLine) { previewLine.remove(); previewLine = null; }
-    canvasEl.querySelectorAll('.map-node.drag-target').forEach(n => n.classList.remove('drag-target'));
+    clearDropHighlight();
   }
 });
 
@@ -3550,15 +3694,16 @@ function cycleMarkMobile(id) {
 }
 
 function updateTouchDragHover(cx, cy, src) {
-  canvasEl.querySelectorAll('.map-node.drag-target').forEach(n => n.classList.remove('drag-target'));
-  const el = document.elementFromPoint(cx, cy);
-  const nodeEl = el && el.closest('.map-node');
-  if (nodeEl && nodeEl.dataset.id !== src) nodeEl.classList.add('drag-target');
+  updateDropHighlight(cx, cy, src);
 }
 
 function handleNodeTouchStart(e, id) {
   e.preventDefault(); e.stopPropagation();
   const startX = e.touches[0].clientX, startY = e.touches[0].clientY;
+  const nodeEl = e.currentTarget && e.currentTarget.classList
+    ? e.currentTarget
+    : canvasEl.querySelector(`.map-node[data-id="${cssEscape(id)}"]`);
+  const startPart = normalizePart(id, nodeEl ? partAtPoint(nodeEl, startX) : PART_MID);
   let moved = false, dragStarted = false;
 
   // ── Long-press → open stage preview (1 s, only when Stage Previews is on) ──
@@ -3586,8 +3731,8 @@ function handleNodeTouchStart(e, id) {
       moved = true; dragStarted = true;
       // User is dragging, cancel the long-press immediately
       if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
-      connecting = id;
-      const tOrigin = nodeIsSegmented(id) ? outAnchor(id) : nodeCenter(id);
+      connecting = { id, part: startPart };
+      const tOrigin = dragOrigin(id, startPart);
       previewLine = drawLine(tOrigin, tOrigin, arrowColor, false);
       previewLine.setAttribute('stroke-dasharray','5,4');
     }
@@ -3611,8 +3756,10 @@ function handleNodeTouchStart(e, id) {
       const targetNodeEl = targetEl && targetEl.closest('.map-node');
       connecting = null;
       if (previewLine) { previewLine.remove(); previewLine = null; }
-      canvasEl.querySelectorAll('.map-node.drag-target').forEach(n => n.classList.remove('drag-target'));
-      if (targetNodeEl && targetNodeEl.dataset.id !== id) connect(id, targetNodeEl.dataset.id);
+      clearDropHighlight();
+      if (targetNodeEl && targetNodeEl.dataset.id !== id) {
+        connect(id, startPart, targetNodeEl.dataset.id, partAtPoint(targetNodeEl, ct.clientX));
+      }
       return;
     }
 
@@ -3638,7 +3785,7 @@ function handleNodeTouchStart(e, id) {
     document.removeEventListener('touchcancel', onCancel);
     connecting = null;
     if (previewLine) { previewLine.remove(); previewLine = null; }
-    canvasEl.querySelectorAll('.map-node.drag-target').forEach(n => n.classList.remove('drag-target'));
+    clearDropHighlight();
   }
 
   document.addEventListener('touchmove', onMove, { passive: false });
@@ -3731,48 +3878,51 @@ function getStraightPath(src, tgt) {
 // ─────────────────────────────────────────────────────────────────
 function computeChainsFromEdgeAssignments() {
   const byChain = {};
-  for (const [key, cid] of Object.entries(edgeChains)) {
-    const arrowPos = key.indexOf('→');
-    if (arrowPos === -1) continue;
-    const src = key.substring(0, arrowPos), tgt = key.substring(arrowPos + 1);
-    if (!nodes[src] || !nodes[tgt]) continue;
+  edgeList.forEach(ed => {
+    const cid = edgeChains[edgeKeyOf(ed)];
+    if (cid === undefined) return;
+    if (!nodes[ed.src] || !nodes[ed.tgt]) return;
     if (!byChain[cid]) byChain[cid] = [];
-    byChain[cid].push({ src, tgt });
-  }
+    byChain[cid].push(ed);
+  });
 
   const result = [];
   Object.keys(byChain).map(Number).sort((a, b) => a - b).forEach(cid => {
-    const edges = byChain[cid];
+    const eds = byChain[cid];
     const outMap = {}, inChain = new Set(), allNodes = new Set();
-    edges.forEach(({ src, tgt }) => {
-      if (!outMap[src]) outMap[src] = [];
-      outMap[src].push(tgt);
-      inChain.add(tgt);
-      allNodes.add(src); allNodes.add(tgt);
+    eds.forEach(ed => {
+      if (!outMap[ed.src]) outMap[ed.src] = [];
+      outMap[ed.src].push(ed);
+      inChain.add(ed.tgt);
+      allNodes.add(ed.src); allNodes.add(ed.tgt);
     });
     const roots = [...allNodes].filter(n => !inChain.has(n));
 
-    function dfs(node, path, visited) {
+    // Paths carry their edges alongside their node ids, so the display panel can
+    // say which segment each arrow left from and arrived at.
+    function dfs(node, path, edges, visited) {
       const nexts = outMap[node] || [];
       if (nexts.length === 0) {
-        if (path.length > 1) result.push({ chainId: cid, ids: path.slice(), looped: false });
+        if (path.length > 1) {
+          result.push({ chainId: cid, ids: path.slice(), edges: edges.slice(), looped: false });
+        }
         return;
       }
-      for (const next of nexts) {
-        if (visited.has(next)) {
-          result.push({ chainId: cid, ids: [...path, next], looped: true });
+      for (const ed of nexts) {
+        if (visited.has(ed.tgt)) {
+          result.push({ chainId: cid, ids: [...path, ed.tgt], edges: [...edges, ed], looped: true });
         } else {
-          const v2 = new Set(visited); v2.add(next);
-          dfs(next, [...path, next], v2);
+          const v2 = new Set(visited); v2.add(ed.tgt);
+          dfs(ed.tgt, [...path, ed.tgt], [...edges, ed], v2);
         }
       }
     }
 
     if (roots.length === 0 && allNodes.size > 0) {
       const start = [...allNodes][0];
-      dfs(start, [start], new Set([start]));
+      dfs(start, [start], [], new Set([start]));
     } else {
-      roots.forEach(r => dfs(r, [r], new Set([r])));
+      roots.forEach(r => dfs(r, [r], [], new Set([r])));
     }
   });
 
@@ -3895,6 +4045,24 @@ function renderDisplayPanel() {
       span.style.color = n.type === 'zone' ? n.color : 'var(--text)';
       span.style.fontWeight = n.type === 'kingdom' ? 'bold' : 'normal';
       row.appendChild(span);
+
+      // With segments on, tag each node with the part(s) its arrows touch:
+      // the one the incoming arrow lands on, then the one the outgoing arrow
+      // leaves from. Middle-part ends add nothing.
+      if (segmentedNodes && !isPainting) {
+        const words = SEGMENT_LABELS[segmentStyle] || SEGMENT_LABELS.inout;
+        const eds = chain.edges || [];
+        const arrivedOn = idx > 0 ? eds[idx - 1] && eds[idx - 1].tPart : null;
+        const leftFrom  = idx < chain.ids.length - 1 ? eds[idx] && eds[idx].sPart : null;
+        [arrivedOn, leftFrom].forEach(part => {
+          if (part !== PART_IN && part !== PART_OUT) return;
+          const tag = document.createElement('span');
+          tag.className = 'seg-tag';
+          tag.textContent = `(${part === PART_IN ? words.in : words.out})`;
+          row.appendChild(tag);
+        });
+      }
+
       if (idx < chain.ids.length - 1) {
         const arrow = document.createElement('span');
         arrow.className = 'arrow'; arrow.textContent = '→';
@@ -4092,7 +4260,7 @@ document.getElementById('btn-display').addEventListener('click', (e) => {
 
 document.getElementById('btn-clear').addEventListener('click', () => {
   if (!confirm('Clear all connections, marks, and notes on the map?')) return;
-  outgoing={}; incoming={}; marks={};
+  edgeList=[]; outgoing={}; incoming={}; marks={};
   edgeChains={}; chainColors={}; nextChainId=0;
   hoverHighlightChainId = null; pinnedHighlightChainId = null; pinnedHighlightNodeId = null;
   closeActiveChainPicker();

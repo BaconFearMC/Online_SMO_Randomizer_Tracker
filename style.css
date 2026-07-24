@@ -1476,3 +1476,206 @@ h1 {
   padding: 7px 9px;
 }
 .zn-input:focus { outline: none; border-color: var(--accent); }
+/* ══ System tab: Hotkeys button (gray body, green outline) ════════════ */
+.settings-panel .sys-btn-outline-green { background: var(--btn-bg); border-color: var(--green); color: var(--text); }
+.sys-btn-outline-green:hover { background: #4ade8022; }
+
+/* ══ Side Panel mode (4 segmented buttons) ════════════════════════════ */
+/* Off / Notes / Map / Abilities & Captures doesn't fit on one line in the
+   Settings modal, so this row stacks its label above the buttons and lets the
+   buttons wrap instead of overflowing. */
+.settings-row.settings-row-stack {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 7px;
+}
+.settings-row.settings-row-stack > span { flex: none; }
+.segmented.segmented-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  width: 100%;
+}
+.segmented-wrap .seg-btn { flex: 1 1 auto; padding: 0 10px; }
+
+/* ══ Hotkeys modal ════════════════════════════════════════════════════ */
+.hotkeys-modal-box { width: min(520px, 94vw); max-height: 88vh; display: flex; flex-direction: column; }
+.hotkeys-body { display: flex; flex-direction: column; }
+
+.hotkeys-hint {
+  font-size: 0.82rem;
+  color: var(--text-dim);
+  line-height: 1.5;
+  margin: 8px 0 0;
+}
+.hotkeys-hint strong { color: var(--text); }
+.hotkeys-hint-dim { margin-bottom: 4px; }
+
+#hotkeys-list {
+  margin-top: 10px;
+  border-top: 1px solid var(--border);
+  padding-top: 4px;
+  transition: opacity 0.15s;
+}
+/* Bindings stay editable while the master toggle is off, just visibly inert. */
+#hotkeys-list.hotkeys-off { opacity: 0.5; }
+
+.hotkey-row { padding: 4px 0; }
+.hotkey-btn { min-width: 120px; text-align: center; }
+
+/* ══ Abilities & Captures panel (apc.html) ════════════════════════════ */
+body.apc-body {
+  padding: 10px;
+  gap: 0;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ── Top bar ── */
+.apc-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 9px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.apc-toolbar .seg-btn { height: 28px; padding: 0 10px; font-size: 0.78rem; }
+
+.apc-search {
+  background: var(--bg-card2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 0.82rem;
+  height: 28px;
+  padding: 0 10px;
+  flex: 1 1 130px;
+  min-width: 110px;
+}
+.apc-search:focus { outline: none; border-color: var(--accent); }
+.apc-search::placeholder { color: var(--text-dim); }
+
+.apc-toolbar-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  cursor: pointer;
+  white-space: nowrap;
+}
+/* Smaller than the Settings toggles so it sits comfortably in the bar. */
+.apc-toolbar-toggle .toggle-switch { width: 36px; height: 20px; }
+.apc-toolbar-toggle .toggle-track { border-radius: 10px; }
+.apc-toolbar-toggle .toggle-track::after { width: 14px; height: 14px; top: 3px; left: 3px; }
+.apc-toolbar-toggle input:checked + .toggle-track::after { transform: translateX(16px); }
+
+.apc-reset-btn {
+  background: var(--btn-bg);
+  border: 1px solid var(--red);
+  border-radius: var(--radius-sm);
+  color: var(--red);
+  font-family: var(--font);
+  font-size: 0.78rem;
+  height: 28px;
+  padding: 0 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+.apc-reset-btn:hover { background: #3a2020; }
+
+/* ── Sections ── */
+.apc-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding-top: 10px;
+}
+.apc-section + .apc-section { margin-top: 18px; }
+
+.apc-section-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  padding: 2px 0 5px;
+  z-index: 2;
+}
+.apc-section-header h2 { font-size: 0.95rem; }
+.apc-counter {
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.apc-empty { font-size: 0.82rem; color: var(--text-dim); padding: 6px 2px; }
+.apc-empty.hidden { display: none; }
+
+/* ── Grid: fit as many per row as the panel width allows ── */
+.apc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--apc-cell), 1fr));
+  gap: 6px 8px;
+  align-items: start;
+}
+body.apc-size-small  { --apc-cell: 96px;  --apc-icon: 26px; --apc-font: 0.68rem; }
+body.apc-size-medium { --apc-cell: 124px; --apc-icon: 34px; --apc-font: 0.76rem; }
+body.apc-size-large  { --apc-cell: 160px; --apc-icon: 46px; --apc-font: 0.85rem; }
+
+.apc-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.apc-icon-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  padding: 3px;
+  cursor: pointer;
+  flex-shrink: 0;
+  line-height: 0;
+  transition: background 0.15s, border-color 0.15s;
+}
+.apc-icon-btn:hover { background: var(--bg-hover); border-color: var(--border); }
+.apc-icon-btn img {
+  width: var(--apc-icon);
+  height: var(--apc-icon);
+  object-fit: contain;
+  display: block;
+  transition: filter 0.15s;
+}
+
+/* Locked = flat #868686 silhouette. brightness(0) knocks every pixel to black
+   while keeping the alpha channel, then invert(52.55%) lifts black to exactly
+   rgb(134,134,134). No second set of grayed-out image files needed. */
+.apc-item.locked .apc-icon-btn img { filter: brightness(0) invert(52.55%); }
+.apc-item.unlocked .apc-icon-btn img { filter: none; }
+
+.apc-label {
+  font-size: var(--apc-font);
+  color: var(--text-dim);
+  cursor: pointer;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+  transition: color 0.15s;
+}
+.apc-item.unlocked .apc-label { color: var(--green); }
+.apc-label:hover { color: var(--text); }
+.apc-item.unlocked .apc-label:hover { color: var(--green); filter: brightness(1.2); }
+
+/* Image file missing from assets/capture or assets/ability - keep the row
+   usable instead of showing a broken-image icon. */
+.apc-item.apc-missing .apc-icon-btn img { visibility: hidden; }
+.apc-item.apc-missing .apc-icon-btn {
+  border: 1px dashed var(--border);
+  background: var(--bg-card2);
+}

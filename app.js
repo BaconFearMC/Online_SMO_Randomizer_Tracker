@@ -80,6 +80,26 @@ const DEFAULT_SETTINGS = {
                                 // Mutually exclusive with show_notes_panel (see applySidePanel).
   panel_location: 'horizontal', // 'horizontal' | 'vertical' - beside vs below the tracker
 
+  // Which side panel is showing. Only one at a time, so it's a single value
+  // rather than one boolean per panel: 'none' | 'notes' | 'map' | 'apc'.
+  // show_notes_panel / show_map_panel above are kept in sync with this purely
+  // so older saves (and anything else reading them) still work - panel_mode is
+  // the one that decides. See applySidePanel().
+  panel_mode: 'none',
+
+  // ── Abilities & Captures panel (apc.html) view options ──────────
+  apc_sort: 'locked',          // 'locked' | 'unlocked' | 'game' | 'az'
+  apc_size: 'medium',          // icon size: 'small' | 'medium' | 'large'
+  apc_hide_unlocked: false,    // hide entries you've already got
+
+  // ── Kingdom hotkeys ─────────────────────────────────────────────
+  // Off by default. Key = add a moon, Shift + key = remove one, Ctrl + key =
+  // multi moon (+3). Values are KeyboardEvent.code strings, keyed by the
+  // KINGDOMS entry name. Using .code means Shift + "Equal" is still "Equal",
+  // so the Moon Kingdom binding doesn't fight the remove-a-moon modifier.
+  hotkeys_enabled: false,
+  hotkeys: null,               // null = use HOTKEY_DEFAULTS
+
   // Loading Zone Notes layout (shared by the modal and the popped-out notes.html)
   notes_layout: 'horizontal',  // 'horizontal' = column-wrap masonry (horizontal scroll)
                                // 'vertical'   = multi-column pack (vertical scroll)
@@ -117,6 +137,38 @@ const LOADING_ZONES_TEMPLATE = {
 const ZONE_SPLIT_THRESHOLD = 10;
 
 const MOBILE_BREAKPOINT = 540;
+
+// ── Kingdom hotkeys ───────────────────────────────────────────────
+// Keyed by KINGDOMS[].name, valued with a KeyboardEvent.code. "Minus" and
+// "Equal" are the physical -/_ and =/+ keys, which is why Moon Kingdom's
+// default reads as "+": you press Shift for it in normal typing, but .code
+// ignores Shift so the modifier stays free for remove-a-moon.
+const HOTKEY_DEFAULTS = {
+  'Cascade Kingdom':  'Digit1',
+  'Sand Kingdom':     'Digit2',
+  'Lake Kingdom':     'Digit3',
+  'Wooded Kingdom':   'Digit4',
+  'Lost Kingdom':     'Digit5',
+  'Metro Kingdom':    'Digit6',
+  'Snow Kingdom':     'Digit7',
+  'Seaside Kingdom':  'Digit8',
+  'Luncheon Kingdom': 'Digit9',
+  'Ruined Kingdom':   'Digit0',
+  'Bowser Kingdom':   'Minus',
+  'Moon Kingdom':     'Equal',
+};
+
+// Returns the live binding map, filling in any kingdom the user hasn't rebound.
+function getHotkeys() {
+  const saved = state.settings.hotkeys || {};
+  const out = {};
+  for (const k of Object.keys(HOTKEY_DEFAULTS)) {
+    // An empty string is a real value here: it means the binding was taken
+    // over by another kingdom, so this one is deliberately unset.
+    out[k] = (typeof saved[k] === 'string') ? saved[k] : HOTKEY_DEFAULTS[k];
+  }
+  return out;
+}
 
 // Horizontal needs room beside the tracker, so it's unavailable below the
 // mobile breakpoint. Vertical stacks below instead and stays available at
@@ -187,6 +239,28 @@ function bindingLabel(binding) {
   return 'Unknown';
 }
 
+// Same idea as bindingLabel, but for the bare KeyboardEvent.code strings the
+// kingdom hotkeys use (no {type, code} wrapper).
+function keyCodeLabel(code) {
+  if (!code) return 'Not Set';
+  const map = {
+    Minus: '-', Equal: '+', Backquote: '`', Backslash: '\\',
+    BracketLeft: '[', BracketRight: ']', Semicolon: ';', Quote: "'",
+    Comma: ',', Period: '.', Slash: '/',
+    Space: 'Space', Enter: 'Enter', Tab: 'Tab', Backspace: 'Backspace',
+    ArrowLeft: 'Left Arrow', ArrowRight: 'Right Arrow',
+    ArrowUp: 'Up Arrow', ArrowDown: 'Down Arrow',
+    NumpadAdd: 'Numpad +', NumpadSubtract: 'Numpad -',
+    NumpadMultiply: 'Numpad *', NumpadDivide: 'Numpad /',
+    NumpadDecimal: 'Numpad .', NumpadEnter: 'Numpad Enter',
+  };
+  if (map[code]) return map[code];
+  if (code.startsWith('Numpad')) return `Numpad ${code.slice(6)}`;
+  if (code.startsWith('Digit')) return code.slice(5);
+  if (code.startsWith('Key')) return code.slice(3);
+  return code;
+}
+
 // Settings toggle definitions for data-driven wiring
 const TOGGLE_SETTINGS = [
   { id: 'toggle-moon-total', key: 'show_moon_total' },
@@ -206,8 +280,6 @@ const TOGGLE_SETTINGS = [
   { id: 'toggle-kingdom-moon', key: 'show_kingdom_moon' },
   { id: 'toggle-moon-obs', key: 'show_moon_obs' },
   { id: 'toggle-moon-updater', key: 'show_moon_updater' },
-  { id: 'toggle-notes-panel', key: 'show_notes_panel' },
-  { id: 'toggle-map-panel', key: 'show_map_panel' },
   { id: 'toggle-painting-notes', key: 'show_painting_notes' },
 ];
 
@@ -249,6 +321,10 @@ function getDefaultState() {
     moons: KINGDOMS.map(() => ({ count: 0, max: null, lock: false, peace: false, rock:false, multi: false })),
     captures: { parabones: false, banzai: false, wire: false, bowser: false },
     abilities: { jump: false, cap: false, wall: false },
+    // Full Abilities & Captures panel (apc.html). The seven entries that also
+    // appear on the main tracker are mirrored here but owned by the two objects
+    // above - see apc-data.js.
+    apc: { captures: {}, abilities: {} },
     loading_zones: buildDefaultLoadingZones(),
     // Painting tracker notes (one free-text box per kingdom, no moons)
     painting_notes: Object.fromEntries(PAINTING_NOTE_KINGDOMS.map(k => [k, ''])),
@@ -280,6 +356,20 @@ function loadState() {
     // Captures / abilities
     if (saved.captures) Object.assign(state.captures, saved.captures);
     if (saved.abilities) Object.assign(state.abilities, saved.abilities);
+    if (saved.apc) {
+      if (saved.apc.captures) Object.assign(state.apc.captures, saved.apc.captures);
+      if (saved.apc.abilities) Object.assign(state.apc.abilities, saved.apc.abilities);
+    }
+
+    // Saves made before the side panel became a single mode still carry the two
+    // old booleans. Fold them into panel_mode once, then let panel_mode lead.
+    if (!(saved.settings && 'panel_mode' in saved.settings)) {
+      const old = saved.settings || {};
+      state.settings.panel_mode = old.show_notes_panel ? 'notes'
+                                : old.show_map_panel ? 'map'
+                                : 'none';
+    }
+    syncLegacyPanelFlags();
 
     // Loading zones merge saved per-zone data, keep template structure for new zones
     if (saved.loading_zones) {
@@ -311,7 +401,49 @@ function loadState() {
   }
 }
 
+// Set while the tracker is deliberately overwriting the panel's data (Clear
+// All, loading a save file, a remote sync payload). Outside those cases the
+// panel owns its entries and adoptPanelOwnedState() protects them.
+let authoritativeWrite = false;
+
+// The panel is the only thing that ever changes an unlinked capture/ability or
+// the panel's own view options. If the tracker's in-memory copy has fallen
+// behind - it can, if a cross-window message got dropped - writing it out would
+// wipe whatever the panel just recorded. So re-read those specific fields
+// straight from localStorage immediately before every write and keep them.
+function adoptPanelOwnedState() {
+  if (authoritativeWrite || !window.APC) return;
+  let saved;
+  try {
+    const raw = localStorage.getItem(STATE_KEY);
+    if (!raw) return;
+    saved = JSON.parse(raw);
+  } catch (e) {
+    return;
+  }
+  APC.ensure(state);
+
+  ['captures', 'abilities'].forEach(kind => {
+    const stored = saved.apc && saved.apc[kind];
+    if (!stored) return;
+    for (const [key, value] of Object.entries(stored)) {
+      // Linked entries are owned by the tracker's own icon row, so the value
+      // in memory here is the newer one - leave those alone.
+      if (APC.linkedTrackerKey(kind, key)) continue;
+      state.apc[kind][key] = value;
+    }
+  });
+
+  if (saved.settings) {
+    ['apc_sort', 'apc_size', 'apc_hide_unlocked'].forEach(k => {
+      if (k in saved.settings) state.settings[k] = saved.settings[k];
+    });
+  }
+}
+
 function saveState() {
+  adoptPanelOwnedState();
+  mirrorLinkedToApc();
   try {
     localStorage.setItem(STATE_KEY, JSON.stringify(state));
   } catch (e) {
@@ -320,6 +452,78 @@ function saveState() {
   if (!applyingRemote && window.SMOSync && window.SMOSync.getRoom()) {
     window.SMOSync.broadcast(state);
   }
+  notifyApcIfChanged();
+}
+
+// ── Abilities & Captures link ─────────────────────────────────────
+// The 4 captures and 3 abilities on the main tracker are the same things as 4
+// and 3 of the entries in the Abilities & Captures panel. state.captures /
+// state.abilities stay the owners (that's what OBS reads); this copies them
+// into state.apc so the panel, and a downloaded save, always agree.
+function mirrorLinkedToApc() {
+  if (!window.APC) return;
+  APC.ensure(state);
+  for (const [trackerKey, panelKey] of Object.entries(APC.CAPTURE_LINKS)) {
+    state.apc.captures[panelKey] = !!state.captures[trackerKey];
+  }
+  for (const [trackerKey, panelKey] of Object.entries(APC.ABILITY_LINKS)) {
+    state.apc.abilities[panelKey] = !!state.abilities[trackerKey];
+  }
+}
+
+// Cross-window channel to apc.html (side-panel iframe or popped-out window).
+let apcChannel = null;
+let apcLastSignature = null;
+let applyingApc = false;
+
+function apcSignature() {
+  if (!window.APC) return '';
+  return JSON.stringify([state.captures, state.abilities, state.apc]);
+}
+
+// Only ping the panel when something it actually displays has changed, so
+// hammering the moon hotkeys doesn't force it to redraw on every keypress.
+function notifyApcIfChanged() {
+  const sig = apcSignature();
+  if (sig === apcLastSignature) return;
+  apcLastSignature = sig;
+  if (apcChannel && !applyingApc) apcChannel.post({ type: 'apc-changed' });
+}
+
+// A toggle in the panel writes straight to localStorage, so pull those slices
+// back in, redraw the tracker's icon rows, and push the result out to OBS.
+function onApcChanged() {
+  try {
+    const raw = localStorage.getItem(STATE_KEY);
+    if (!raw) return;
+    const saved = JSON.parse(raw);
+    if (saved.captures) Object.assign(state.captures, saved.captures);
+    if (saved.abilities) Object.assign(state.abilities, saved.abilities);
+    APC.ensure(state);
+    if (saved.apc) {
+      if (saved.apc.captures) Object.assign(state.apc.captures, saved.apc.captures);
+      if (saved.apc.abilities) Object.assign(state.apc.abilities, saved.apc.abilities);
+    }
+    // The panel also owns its own view options (sort / size / hide unlocked).
+    if (saved.settings) {
+      ['apc_sort', 'apc_size', 'apc_hide_unlocked'].forEach(k => {
+        if (k in saved.settings) state.settings[k] = saved.settings[k];
+      });
+    }
+  } catch (e) {
+    console.error('Failed to read Abilities & Captures update:', e);
+    return;
+  }
+
+  buildCaptureRow();
+  buildAbilityRow();
+  applyAllSettings();
+
+  // applyingApc stops saveState from echoing this same change back at the
+  // panel; the sync-server broadcast still needs to happen so OBS follows.
+  applyingApc = true;
+  saveState();
+  applyingApc = false;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -859,6 +1063,12 @@ function openSettings() {
   const countSel = document.getElementById('select-updater-count');
   if (countSel) countSel.value = String(Math.min(5, Math.max(1, state.settings.updater_count || 3)));
 
+  // Side Panel mode (segmented) - Off / Notes / Map / Abilities & Captures
+  const panelMode = getPanelMode();
+  document.querySelectorAll('#seg-panel-mode .seg-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.value === panelMode);
+  });
+
   // Side Panel location (segmented)
   const panelLoc = state.settings.panel_location === 'vertical' ? 'vertical' : 'horizontal';
   document.querySelectorAll('#seg-panel-location .seg-btn').forEach(b => {
@@ -893,13 +1103,14 @@ function updateSettingsEnablement() {
   const moonObsRow = document.getElementById('row-moon-obs');
   if (moonObsRow) moonObsRow.classList.toggle('row-gone', !s.show_kingdom_moon);
 
-  const panelOn = !!(s.show_notes_panel || s.show_map_panel);
+  const panelOn = getPanelMode() !== 'none';
   const panelLocRow = document.getElementById('seg-panel-location')?.closest('.settings-row');
   if (panelLocRow) panelLocRow.classList.toggle('row-disabled', !panelOn);
 }
 
 function applyAllSettings() {
   const s = state.settings;
+  syncLegacyPanelFlags();
 
   // Icon colors
   document.querySelectorAll('.kingdom-icon').forEach(img => {
@@ -1018,16 +1229,20 @@ function applySidePanel() {
   const location = s.panel_location === 'vertical' ? 'vertical' : 'horizontal';
   const locationAvailable = isPanelLocationAvailable();
 
-  const wantNotes = !!s.show_notes_panel && locationAvailable;
-  const wantMap = !!s.show_map_panel && locationAvailable;
+  const mode = locationAvailable ? getPanelMode() : 'none';
 
   let src = null;
-  if (wantNotes) {
+  if (mode === 'notes') {
     title.textContent = 'Loading Zone Notes';
     src = 'notes.html';
-  } else if (wantMap) {
+  } else if (mode === 'map') {
     title.textContent = 'Connection Map';
     src = 'map.html';
+  } else if (mode === 'apc') {
+    title.textContent = 'Abilities & Captures';
+    // Version tag so a browser can't keep serving an older cached copy of the
+    // panel. Bump it here and in index.html's script tags together.
+    src = 'apc.html?v=2';
   }
 
   layoutRow.classList.toggle('location-horizontal', location === 'horizontal');
@@ -1055,26 +1270,44 @@ function applySidePanel() {
   }
 }
 
-// Turns the given panel ('notes' or 'map') on/off, enforcing mutual
-// exclusivity with the other, and keeps the Settings modal checkboxes (if
-// open) in sync. Used by the repurposed Loading Zone Notes / Connection Map
-// buttons.
-function toggleSidePanel(which) {
-  const s = state.settings;
-  if (which === 'notes') {
-    s.show_notes_panel = !s.show_notes_panel;
-    if (s.show_notes_panel) s.show_map_panel = false;
-  } else if (which === 'map') {
-    s.show_map_panel = !s.show_map_panel;
-    if (s.show_map_panel) s.show_notes_panel = false;
-  }
+const PANEL_MODES = ['none', 'notes', 'map', 'apc'];
+
+function getPanelMode() {
+  const m = state.settings.panel_mode;
+  return PANEL_MODES.includes(m) ? m : 'none';
+}
+
+// panel_mode is the real setting; these two older booleans are kept aligned
+// with it so any code (or saved file) that still reads them stays correct.
+function syncLegacyPanelFlags() {
+  const m = getPanelMode();
+  state.settings.show_notes_panel = (m === 'notes');
+  state.settings.show_map_panel = (m === 'map');
+}
+
+// Switches the side panel to `which`, or back off if it's already showing.
+// Used by the Settings segmented control and by the repurposed Loading Zone
+// Notes / Connection Map buttons.
+function setPanelMode(mode) {
+  state.settings.panel_mode = PANEL_MODES.includes(mode) ? mode : 'none';
+  syncLegacyPanelFlags();
   saveState();
   applyAllSettings();
+  refreshPanelModeButtons();
+}
 
-  const notesCb = document.getElementById('toggle-notes-panel');
-  const mapCb = document.getElementById('toggle-map-panel');
-  if (notesCb) notesCb.checked = s.show_notes_panel;
-  if (mapCb) mapCb.checked = s.show_map_panel;
+function toggleSidePanel(which) {
+  setPanelMode(getPanelMode() === which ? 'none' : which);
+}
+
+// Keeps the Settings segmented control in step when the mode changes from
+// somewhere else (the panel's ✕, the Notes/Map buttons, a remote sync).
+function refreshPanelModeButtons() {
+  const mode = getPanelMode();
+  document.querySelectorAll('#seg-panel-mode .seg-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.value === mode);
+  });
+  updateSettingsEnablement();
 }
 
 // Rewrite each visible row's min/max hint from the current scaled ranges.
@@ -1099,7 +1332,11 @@ function resetAll() {
   savedSettings.kingdom_order = null; // restore the original kingdom order
   state = getDefaultState();
   state.settings = savedSettings;
+  // Clearing progress is meant to wipe the panel too, so this write wins over
+  // whatever is currently in storage.
+  authoritativeWrite = true;
   saveState();
+  authoritativeWrite = false;
   buildAllMoonRows();
   buildCaptureRow();
   buildAbilityRow();
@@ -1244,9 +1481,14 @@ function applyRemoteState(remote) {
     });
   }
 
-  // Merge captures / abilities
+  // Merge captures / abilities (main tracker icons + the full panel list)
   if (remote.captures) Object.assign(state.captures, remote.captures);
   if (remote.abilities) Object.assign(state.abilities, remote.abilities);
+  if (remote.apc) {
+    APC.ensure(state);
+    if (remote.apc.captures) Object.assign(state.apc.captures, remote.apc.captures);
+    if (remote.apc.abilities) Object.assign(state.apc.abilities, remote.apc.abilities);
+  }
 
   // Merge loading zones
   if (remote.loading_zones) {
@@ -1268,7 +1510,10 @@ function applyRemoteState(remote) {
     }
   }
 
+  // A payload from another client is the newer truth, panel entries included.
+  authoritativeWrite = true;
   saveState();
+  authoritativeWrite = false;
   refreshAll();
   applyingRemote = false;
 }
@@ -2259,6 +2504,132 @@ function startRebind(settingKey, btnEl) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Kingdom Hotkeys
+// ─────────────────────────────────────────────────────────────────────────────
+// Off by default. With them on:
+//   Key          -> add a moon to that kingdom
+//   Shift + Key  -> remove one (never below 0)
+//   Ctrl + Key   -> multi moon, i.e. +3, same as the multi-moon button
+//
+// Bindings are KeyboardEvent.code values, which ignore modifiers - so the
+// Bowser/Moon defaults ("-" and "+") keep working even though "+" is normally
+// typed with Shift.
+//
+// Note this only works while the tracker tab is focused. Browsers have no way
+// to read the keyboard while another window is in front; that needs a real
+// desktop app or an AutoHotkey-style script feeding the sync server.
+
+// True while the user is typing somewhere, in which case hotkeys must stay out
+// of the way - most importantly the Total Moon Requirement box, but the same
+// goes for every note, zone name, room code and scale field.
+function isTypingTarget(el) {
+  if (!el) return false;
+  if (el.isContentEditable) return true;
+  const tag = el.tagName;
+  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+}
+
+function handleHotkey(e) {
+  if (!state.settings.hotkeys_enabled) return;
+  if (e.altKey || e.metaKey || e.repeat) return;
+  if (isTypingTarget(document.activeElement) || isTypingTarget(e.target)) return;
+
+  // Don't fire underneath an open modal - Settings, Hotkeys, Zone Names, etc.
+  const modalOpen = Array.from(document.querySelectorAll('.modal-backdrop'))
+    .some(m => !m.classList.contains('hidden'));
+  if (modalOpen) return;
+
+  const binds = getHotkeys();
+  const idx = KINGDOMS.findIndex(k => binds[k.name] === e.code);
+  if (idx === -1) return;
+
+  // A kingdom that's switched off in Settings has no row to update.
+  const kingdom = KINGDOMS[idx];
+  if (kingdom.settingKey && !state.settings[kingdom.settingKey]) return;
+
+  e.preventDefault();
+  if (e.ctrlKey) addMulti(idx);
+  else if (e.shiftKey) decrement(idx);
+  else increment(idx);
+  saveState();
+}
+
+// ── Hotkeys modal ─────────────────────────────────────────────────
+function buildHotkeysList() {
+  const list = document.getElementById('hotkeys-list');
+  if (!list) return;
+  list.innerHTML = '';
+
+  const binds = getHotkeys();
+  KINGDOMS.forEach(k => {
+    const row = document.createElement('div');
+    row.className = 'settings-row hotkey-row';
+
+    const label = document.createElement('span');
+    label.textContent = k.name;
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'rebind-btn hotkey-btn';
+    btn.textContent = keyCodeLabel(binds[k.name]);
+    btn.addEventListener('click', () => startHotkeyRebind(k.name, btn));
+
+    row.appendChild(label);
+    row.appendChild(btn);
+    list.appendChild(row);
+  });
+
+  updateHotkeysEnablement();
+}
+
+// Grey out the bindings while the master toggle is off, so it's obvious they
+// aren't doing anything yet (they're still editable).
+function updateHotkeysEnablement() {
+  const on = !!state.settings.hotkeys_enabled;
+  const list = document.getElementById('hotkeys-list');
+  if (list) list.classList.toggle('hotkeys-off', !on);
+}
+
+function startHotkeyRebind(kingdomName, btnEl) {
+  btnEl.textContent = 'Press a key…';
+  btnEl.classList.add('listening');
+
+  function onKeyDown(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.code === 'Escape') { finish(null); return; }
+    finish(e.code);
+  }
+  function finish(code) {
+    window.removeEventListener('keydown', onKeyDown, true);
+    btnEl.classList.remove('listening');
+    if (code) {
+      const before = getHotkeys();
+      if (!state.settings.hotkeys) state.settings.hotkeys = {};
+      // A code can only drive one kingdom, so clear it off any other first.
+      for (const name of Object.keys(before)) {
+        if (name !== kingdomName && before[name] === code) {
+          state.settings.hotkeys[name] = '';
+        }
+      }
+      state.settings.hotkeys[kingdomName] = code;
+      saveState();
+      buildHotkeysList();   // redraw so a stolen binding shows as Not Set
+    } else {
+      btnEl.textContent = keyCodeLabel(getHotkeys()[kingdomName]);
+    }
+  }
+
+  window.addEventListener('keydown', onKeyDown, true);
+}
+
+function openHotkeys() {
+  document.getElementById('toggle-hotkeys').checked = !!state.settings.hotkeys_enabled;
+  buildHotkeysList();
+  document.getElementById('hotkeys-modal').classList.remove('hidden');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Icon Picker
 // ─────────────────────────────────────────────────────────────────────────────
 function openIconPicker(event, onSelect) {
@@ -2305,6 +2676,10 @@ function openIconPicker(event, onSelect) {
 // Init wire up all static event listeners once
 // ─────────────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
+  // Version stamp. If this doesn't appear in the console, or the number is
+  // lower than the one apc-data.js prints, the browser is serving a cached
+  // copy of a file - hard-refresh with Ctrl+F5.
+  console.log('SMO tracker app.js v2');
   loadState();
   buildAllMoonRows();
   buildCaptureRow();
@@ -2312,6 +2687,51 @@ document.addEventListener('DOMContentLoaded', () => {
   applyAllSettings();
   setupNotesScroll();
   setupRebindButtons();
+
+  // ── Abilities & Captures panel link ────────────
+  // apc.html writes to the same localStorage state, then pings this channel so
+  // the tracker's icon row (and, through saveState, OBS) follows along.
+  if (window.APC) {
+    apcLastSignature = apcSignature();
+    // apc-data.js delivers over three routes at once (BroadcastChannel,
+    // postMessage, storage event) since not every one of them works on every
+    // setup, which means a single panel toggle can arrive here as two or
+    // three messages back to back. Each one triggers a full rebuild of the
+    // capture/ability icon rows, and stacking several of those right after
+    // each other (right when the panel is right next to this window) can eat
+    // a click the user makes on this side. Coalesce into one rebuild per
+    // frame instead.
+    let apcRebuildPending = false;
+    apcChannel = APC.makeChannel(() => {
+      if (apcRebuildPending) return;
+      apcRebuildPending = true;
+      requestAnimationFrame(() => {
+        apcRebuildPending = false;
+        onApcChanged();
+      });
+    });
+  }
+
+  // ── Kingdom hotkeys ────────────────────────────
+  // Not in capture phase: an input's own handlers should win, and
+  // isTypingTarget() bails out for text fields anyway.
+  window.addEventListener('keydown', handleHotkey);
+
+  document.getElementById('btn-hotkeys').addEventListener('click', openHotkeys);
+  document.getElementById('hotkeys-close').addEventListener('click', () => {
+    document.getElementById('hotkeys-modal').classList.add('hidden');
+  });
+  document.getElementById('toggle-hotkeys').addEventListener('change', (e) => {
+    state.settings.hotkeys_enabled = e.target.checked;
+    saveState();
+    updateHotkeysEnablement();
+  });
+  document.getElementById('hotkeys-reset').addEventListener('click', () => {
+    if (!confirm('Reset every kingdom hotkey back to its default key?')) return;
+    state.settings.hotkeys = null;
+    saveState();
+    buildHotkeysList();
+  });
 
   // ── Main buttons ───────────────────────────────
   document.getElementById('btn-obs').addEventListener('click', openOBS);
@@ -2351,19 +2771,6 @@ document.addEventListener('DOMContentLoaded', () => {
   TOGGLE_SETTINGS.forEach(({ id, key }) => {
     document.getElementById(id).addEventListener('change', (e) => {
       state.settings[key] = e.target.checked;
-
-      // Notes/Map side panels are mutually exclusive: turning one on turns
-      // the other off, both in state and in the (currently open) checkbox.
-      if (key === 'show_notes_panel' && e.target.checked) {
-        state.settings.show_map_panel = false;
-        const mapCb = document.getElementById('toggle-map-panel');
-        if (mapCb) mapCb.checked = false;
-      }
-      if (key === 'show_map_panel' && e.target.checked) {
-        state.settings.show_notes_panel = false;
-        const notesCb = document.getElementById('toggle-notes-panel');
-        if (notesCb) notesCb.checked = false;
-      }
 
       applyAllSettings();
       saveState();
@@ -2414,6 +2821,12 @@ document.addEventListener('DOMContentLoaded', () => {
       state.settings.updater_location = btn.dataset.value;
       saveState();
     });
+  });
+
+  // ── Side Panel mode (segmented) ────────────────
+  // Off / Notes / Map / Abilities & Captures - only one panel at a time.
+  document.querySelectorAll('#seg-panel-mode .seg-btn').forEach(btn => {
+    btn.addEventListener('click', () => setPanelMode(btn.dataset.value));
   });
 
   // ── Side Panel location (segmented) ────────────
@@ -2522,16 +2935,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ── Side panel ──────────────────────────────────
   const sidePanelClose = document.getElementById('side-panel-close');
   if (sidePanelClose) {
-    sidePanelClose.addEventListener('click', () => {
-      state.settings.show_notes_panel = false;
-      state.settings.show_map_panel = false;
-      saveState();
-      applyAllSettings();
-      const notesCb = document.getElementById('toggle-notes-panel');
-      const mapCb = document.getElementById('toggle-map-panel');
-      if (notesCb) notesCb.checked = false;
-      if (mapCb) mapCb.checked = false;
-    });
+    sidePanelClose.addEventListener('click', () => setPanelMode('none'));
   }
 
   // Re-evaluate the panel on resize (debounced) so crossing the mobile

@@ -241,19 +241,18 @@
                any width, including mobile. -->
           <div class="settings-subsection" id="subsection-panel">
             <div class="subsection-title">Side Panel</div>
-            <div class="settings-row">
-              <span>Show Notes Panel</span>
-              <label class="toggle-switch">
-                <input type="checkbox" id="toggle-notes-panel">
-                <span class="toggle-track"></span>
-              </label>
-            </div>
-            <div class="settings-row">
-              <span>Show Map Panel</span>
-              <label class="toggle-switch">
-                <input type="checkbox" id="toggle-map-panel">
-                <span class="toggle-track"></span>
-              </label>
+            <!-- Only one panel can be open at a time, so these are segmented
+                 buttons (same control style as Location below) rather than
+                 separate toggles. Off = no panel. Values map to
+                 settings.panel_mode - see applySidePanel() in app.js. -->
+            <div class="settings-row settings-row-stack">
+              <span>Panel</span>
+              <div class="segmented segmented-wrap" id="seg-panel-mode">
+                <button type="button" class="seg-btn" data-value="none">Off</button>
+                <button type="button" class="seg-btn" data-value="notes">Notes</button>
+                <button type="button" class="seg-btn" data-value="map">Map</button>
+                <button type="button" class="seg-btn" data-value="apc">Abilities &amp; Captures</button>
+              </div>
             </div>
             <div class="settings-row settings-subrow">
               <span>Location</span>
@@ -416,6 +415,8 @@
 
           <button class="sys-btn sys-btn-outline-orange" id="btn-zone-names">Zone Names</button>
 
+          <button class="sys-btn sys-btn-outline-green" id="btn-hotkeys">Hotkeys</button>
+
           <button class="sys-btn sys-btn-blue" id="btn-download-save">Download Save State</button>
 
           <button class="sys-btn sys-btn-outline-blue" id="btn-load-save">Load Save State</button>
@@ -459,12 +460,57 @@
     </div>
   </div>
 
+  <!-- ── Hotkeys Modal ─────────────────────────────────────────── -->
+  <!-- One binding per kingdom. The bound key alone adds a moon, Shift + it
+       removes one (clamped at 0), Ctrl + it adds a multi moon (+3) - same as
+       clicking the multi-moon button. Bindings are stored as KeyboardEvent
+       .code values, so Shift/Ctrl combos never collide with the base key
+       (e.g. Moon Kingdom is bound to the physical "=/+" key: "Equal"). The
+       whole thing is inert while the toggle is off, and while a text field is
+       focused, so typing in Total Moon Requirement never fires a hotkey. -->
+  <div id="hotkeys-modal" class="modal-backdrop hidden" role="dialog" aria-label="Hotkeys">
+    <div class="modal-box hotkeys-modal-box">
+      <div class="modal-header">
+        <h2>⌨ Hotkeys</h2>
+        <button class="modal-close" id="hotkeys-close" aria-label="Close">✕</button>
+      </div>
+
+      <div class="modal-body hotkeys-body">
+        <div class="settings-row">
+          <span>Enable Hotkeys</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="toggle-hotkeys">
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+
+        <p class="hotkeys-hint">
+          <strong>Key</strong> adds a moon &nbsp;·&nbsp;
+          <strong>Shift + Key</strong> removes one &nbsp;·&nbsp;
+          <strong>Ctrl + Key</strong> adds a multi moon (+3)
+        </p>
+        <p class="hotkeys-hint hotkeys-hint-dim">
+          Hotkeys only work while this tab is focused - a web page can't read the
+          keyboard in the background. They're also ignored while you're typing in
+          any text box.
+        </p>
+
+        <div id="hotkeys-list"></div>
+      </div>
+
+      <div class="settings-footer">
+        <button class="ctrl-btn revert-btn" id="hotkeys-reset">Reset to Default Hotkeys</button>
+      </div>
+    </div>
+  </div>
+
   <div id="author-credit">Made by FireRisingRaging, Just Bag, gmo7, and JohnnyCyan</div>
 
   <!-- ── Icon Picker (appended to body by JS) ──────────────────── -->
 
   <script src="sync.js"></script>
-  <script src="app.js"></script>
+  <script src="apc-data.js?v=2"></script>
+  <script src="app.js?v=2"></script>
 </body>
 
 </html>
