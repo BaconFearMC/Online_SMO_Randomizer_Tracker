@@ -645,7 +645,7 @@ h1 {
 }
 .ctrl-btn:hover { background: var(--btn-hover); }
 
-.danger-btn { color: var(--red); }
+.danger-btn { color: var(--red); border: 1px solid var(--red); }
 .danger-btn:hover { background: #3a2020; }
 
 /* ⓘ info button square, same height as OBS button */
