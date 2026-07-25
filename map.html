@@ -319,7 +319,7 @@
   .chain-row .seg-tag {
     color: var(--text-dim);
     font-size: 0.88em;
-    margin-left: 3px;
+    margin: 0 3px;
   }
   .chain-row .arrow { color: var(--text-dim); margin: 0 4px; }
   .chain-row .loop-tag { color: var(--text-dim); font-size: 0.78rem; margin-left: 6px; }
@@ -695,6 +695,10 @@
   .map-node.segmented { padding: 0; gap: 0; }
   .map-node.segmented .node-label {
     flex: 1 1 auto;
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     text-align: center;
     padding: 0 6px;
     min-width: 0;
@@ -1676,6 +1680,7 @@ const SEGMENT_LABELS = {
 };
 const SEG_STUB = 16;      // horizontal shaft length at each end
 const SEG_STUB_BACK = 28; // longer stub when the target sits left of the source
+const SELF_LOOP_DROP = 40; // how far a mid-to-in self-loop dips below its node
 
 // ── Decouple ──────────────────────────────────────────────────────
 // When on, kingdom panels are hidden and every node can be dragged freely by the
@@ -2108,7 +2113,15 @@ function removeEdge(map, key, val) {
 
 /** True if an arrow from src's sPart to tgt's tPart is allowed. */
 function canConnect(src, sPart, tgt, tPart) {
-  if (src === tgt || !nodes[src] || !nodes[tgt]) return false;
+  if (!nodes[src] || !nodes[tgt]) return false;
+  if (src === tgt) {
+    // Self-loops are only allowed from the mid (name) segment back into the
+    // node's own entrance -- e.g. "Rolling On" looping back into itself. The
+    // exit segment never needs this, and unsegmented nodes have no 'in'/'mid'
+    // distinction to loop between.
+    if (!segmentedNodes || !canSegment(src)) return false;
+    if (sPart !== PART_MID || tPart !== PART_IN) return false;
+  }
   // Only that exact pair of parts is taken \u2014 other part pairings are free.
   if (findEdge(src, sPart, tgt, tPart)) return false;
   // Paintings only connect to paintings (and vice-versa). Painting nodes are
@@ -2847,6 +2860,25 @@ function edgeUsesSegments(ed) {
  */
 function edgePathPoints(ed) {
   const useSeg = edgeUsesSegments(ed);
+
+  // Self-loop: leaves the bottom of the mid segment, dips below the node,
+  // then comes back up into the 'in' segment's usual stub + anchor.
+  if (ed.src === ed.tgt) {
+    const n = nodes[ed.src];
+    const tA = partAnchor(ed.tgt, PART_IN);
+    if (n && tA) {
+      const dropX = n.x + n.w * 0.55;
+      const stubP = { x: tA.p.x + tA.dir * SEG_STUB, y: tA.p.y };
+      return [
+        { x: dropX, y: n.y + n.h },
+        { x: dropX, y: n.y + n.h + SELF_LOOP_DROP },
+        stubP,
+        tA.p
+      ];
+    }
+    return [nodeCenter(ed.src), nodeCenter(ed.src)];
+  }
+
   const sA = useSeg ? partAnchor(ed.src, ed.sPart) : null;
   const tA = useSeg ? partAnchor(ed.tgt, ed.tPart) : null;
 
@@ -3581,12 +3613,18 @@ function updateDropHighlight(clientX, clientY, srcId) {
   clearDropHighlight();
   const under = document.elementFromPoint(clientX, clientY);
   const nodeEl = under && under.closest ? under.closest('.map-node') : null;
-  if (!nodeEl || nodeEl.dataset.id === srcId) return;
+  if (!nodeEl) return;
+  const isSelf = nodeEl.dataset.id === srcId;
+  // Hovering back over your own node only counts as a drop target when
+  // dragging a self-loop out of the mid segment -- and only its 'in' segment
+  // is a valid landing spot.
+  if (isSelf && !(connecting && connecting.part === PART_MID)) return;
   if (!segmentedNodes || !canSegment(nodeEl.dataset.id)) {
-    nodeEl.classList.add('drag-target');
+    if (!isSelf) nodeEl.classList.add('drag-target');
     return;
   }
   const part = partAtPoint(nodeEl, clientX);
+  if (isSelf && part !== PART_IN) return;
   const target = part === PART_IN  ? nodeEl.querySelector('.node-seg-in')
                : part === PART_OUT ? nodeEl.querySelector('.node-seg-out')
                :                     nodeEl.querySelector('.node-label');
@@ -3650,8 +3688,10 @@ function wireNodeEvents(el, id) {
       Math.abs(e.clientY - mouseDownPos.y) > CLICK_THRESHOLD
     );
 
-    if (connecting && connecting.id !== id && moved) {
-      // Completed a drag: connect the part it started on to the part it ended on
+    if (connecting && moved && (connecting.id !== id || connecting.part === PART_MID)) {
+      // Completed a drag: connect the part it started on to the part it ended on.
+      // (Same-node drops are only meaningful from the mid segment, and only
+      // land as a valid connection if canConnect() accepts it -- see there.)
       connect(connecting.id, connecting.part, id, partAtPoint(el, e.clientX));
     } else if (!moved) {
       // Plain click → toggle this node's chain highlight
@@ -3773,7 +3813,7 @@ function handleNodeTouchStart(e, id) {
       connecting = null;
       if (previewLine) { previewLine.remove(); previewLine = null; }
       clearDropHighlight();
-      if (targetNodeEl && targetNodeEl.dataset.id !== id) {
+      if (targetNodeEl && (targetNodeEl.dataset.id !== id || startPart === PART_MID)) {
         connect(id, startPart, targetNodeEl.dataset.id, partAtPoint(targetNodeEl, ct.clientX));
       }
       return;
@@ -4056,27 +4096,37 @@ function renderDisplayPanel() {
     chain.ids.forEach((id, idx) => {
       const n = nodes[id];
       if (!n) return;
+      const eds = chain.edges || [];
+      const words = SEGMENT_LABELS[segmentStyle] || SEGMENT_LABELS.inout;
+
+      // With segments on, the part an arrow arrived on goes right before the
+      // node name (after the incoming arrow), and the part the next arrow
+      // leaves from goes right after the name (before the outgoing arrow):
+      // e.g. "Zone (out) → (in) Zone".
+      if (segmentedNodes && !isPainting) {
+        const arrivedOn = idx > 0 ? eds[idx - 1] && eds[idx - 1].tPart : null;
+        if (arrivedOn === PART_IN || arrivedOn === PART_OUT) {
+          const tag = document.createElement('span');
+          tag.className = 'seg-tag';
+          tag.textContent = `(${arrivedOn === PART_IN ? words.in : words.out})`;
+          row.appendChild(tag);
+        }
+      }
+
       const span = document.createElement('span');
       span.textContent = zoneDisplayLabel(n);
       span.style.color = n.type === 'zone' ? n.color : 'var(--text)';
       span.style.fontWeight = n.type === 'kingdom' ? 'bold' : 'normal';
       row.appendChild(span);
 
-      // With segments on, tag each node with the part(s) its arrows touch:
-      // the one the incoming arrow lands on, then the one the outgoing arrow
-      // leaves from. Middle-part ends add nothing.
       if (segmentedNodes && !isPainting) {
-        const words = SEGMENT_LABELS[segmentStyle] || SEGMENT_LABELS.inout;
-        const eds = chain.edges || [];
-        const arrivedOn = idx > 0 ? eds[idx - 1] && eds[idx - 1].tPart : null;
-        const leftFrom  = idx < chain.ids.length - 1 ? eds[idx] && eds[idx].sPart : null;
-        [arrivedOn, leftFrom].forEach(part => {
-          if (part !== PART_IN && part !== PART_OUT) return;
+        const leftFrom = idx < chain.ids.length - 1 ? eds[idx] && eds[idx].sPart : null;
+        if (leftFrom === PART_IN || leftFrom === PART_OUT) {
           const tag = document.createElement('span');
           tag.className = 'seg-tag';
-          tag.textContent = `(${part === PART_IN ? words.in : words.out})`;
+          tag.textContent = `(${leftFrom === PART_IN ? words.in : words.out})`;
           row.appendChild(tag);
-        });
+        }
       }
 
       if (idx < chain.ids.length - 1) {
