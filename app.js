@@ -510,6 +510,36 @@ function onApcChanged() {
         if (k in saved.settings) state.settings[k] = saved.settings[k];
       });
     }
+
+    // notes.html / the side panel write loading-zone notes + painting notes
+    // straight to localStorage, then this same storage event lands here. The
+    // saveState() below would otherwise re-write this window's older in-memory
+    // copy of those slices and wipe whatever was just typed in the popout or
+    // side panel. `saved` still holds that fresh text right now, so pull it in
+    // before re-saving. (This is the same merge openLoadingZonesModal() does on
+    // open, applied on every panel update so nothing is lost in between.)
+    if (saved.loading_zones && state.loading_zones) {
+      for (const [kingdom, data] of Object.entries(state.loading_zones)) {
+        const savedKingdom = saved.loading_zones[kingdom];
+        if (!savedKingdom || !savedKingdom.zones) continue;
+        for (const zone of Object.keys(data.zones)) {
+          if (savedKingdom.zones[zone]) {
+            Object.assign(state.loading_zones[kingdom].zones[zone], savedKingdom.zones[zone]);
+          }
+        }
+      }
+    }
+    if (saved.kingdom_collapsed && state.kingdom_collapsed) {
+      for (const k of Object.keys(state.kingdom_collapsed)) {
+        if (k in saved.kingdom_collapsed) state.kingdom_collapsed[k] = saved.kingdom_collapsed[k];
+      }
+    }
+    if (saved.painting_notes) {
+      state.painting_notes = state.painting_notes || {};
+      for (const k of Object.keys(saved.painting_notes)) {
+        state.painting_notes[k] = saved.painting_notes[k];
+      }
+    }
   } catch (e) {
     console.error('Failed to read Abilities & Captures update:', e);
     return;
@@ -1782,10 +1812,12 @@ function buildPaintingNotesColumn() {
     noteArea.placeholder = 'Note…';
     noteArea.rows = 1;
     noteArea.addEventListener('input', () => {
-      noteArea.style.height = 'auto';
-      noteArea.style.height = noteArea.scrollHeight + 'px';
       state.painting_notes[kingdom] = noteArea.value;
       saveState();
+      requestAnimationFrame(() => {
+        noteArea.style.height = 'auto';
+        noteArea.style.height = noteArea.scrollHeight + 'px';
+      });
     });
     row.appendChild(noteArea);
     zonesRoot.appendChild(row);
@@ -2371,12 +2403,16 @@ function buildZoneRow(kingdom, zone, zoneData, color) {
   noteArea.rows = 1;
   if (zs.collapsed) noteArea.style.display = 'none';
 
-  // Auto-resize textarea
+  // Auto-resize textarea (deferred to the next frame so it can't race
+  // the browser's own keystroke/focus handling and kick focus out of
+  // the box - see the matching handler in notes.html)
   noteArea.addEventListener('input', () => {
-    noteArea.style.height = 'auto';
-    noteArea.style.height = noteArea.scrollHeight + 'px';
     zs.note = noteArea.value;
     saveState();
+    requestAnimationFrame(() => {
+      noteArea.style.height = 'auto';
+      noteArea.style.height = noteArea.scrollHeight + 'px';
+    });
   });
 
   // Click name to collapse/expand
@@ -2409,7 +2445,7 @@ function setupNotesScroll() {
     if (scrollWrap.scrollWidth <= scrollWrap.clientWidth) return;
     e.preventDefault();
     const px = state.settings.notes_scroll_px || 500;
-    scrollWrap.scrollLeft += e.deltaY > 0 ? px : -px;
+    scrollWrap.scrollTo({ left: scrollWrap.scrollLeft + (e.deltaY > 0 ? px : -px), behavior: 'smooth' });
   }, { passive: false });
 
   // MB4 (back, button=3) → scroll left; MB5 (forward, button=4) → scroll right
@@ -2428,10 +2464,10 @@ function setupNotesScroll() {
     const rb = state.settings.scroll_right_binding;
     if (lb && lb.type === 'mouse' && e.button === lb.code) {
       e.preventDefault();
-      scrollWrap.scrollLeft -= px;
+      scrollWrap.scrollTo({ left: scrollWrap.scrollLeft - px, behavior: 'smooth' });
     } else if (rb && rb.type === 'mouse' && e.button === rb.code) {
       e.preventDefault();
-      scrollWrap.scrollLeft += px;
+      scrollWrap.scrollTo({ left: scrollWrap.scrollLeft + px, behavior: 'smooth' });
     }
   });
 
@@ -2446,10 +2482,10 @@ function setupNotesScroll() {
     const rb = state.settings.scroll_right_binding;
     if (lb && lb.type === 'key' && e.code === lb.code) {
       e.preventDefault();
-      scrollWrap.scrollLeft -= px;
+      scrollWrap.scrollTo({ left: scrollWrap.scrollLeft - px, behavior: 'smooth' });
     } else if (rb && rb.type === 'key' && e.code === rb.code) {
       e.preventDefault();
-      scrollWrap.scrollLeft += px;
+      scrollWrap.scrollTo({ left: scrollWrap.scrollLeft + px, behavior: 'smooth' });
     }
   });
 }

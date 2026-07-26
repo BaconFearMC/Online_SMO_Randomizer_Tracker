@@ -422,6 +422,11 @@
           <button class="sys-btn sys-btn-outline-blue" id="btn-load-save">Load Save State</button>
           <input type="file" id="input-load-save" accept="application/json,.json" hidden>
 
+          <!-- Spoiler Log: gray fill, yellow border. Last option in System.
+               Wired up in spoiler-log.js. -->
+          <button class="sys-btn sys-btn-gray-yellow" id="btn-spoiler-log">Spoiler Log</button>
+          <input type="file" id="sl-file-input" accept=".txt,text/plain" hidden>
+
         </div>
 
       </div>
@@ -511,6 +516,7 @@
   <script src="sync.js"></script>
   <script src="apc-data.js?v=2"></script>
   <script src="app.js?v=2"></script>
+  <script src="spoiler-log.js?v=1"></script>
 </body>
 
 </html>

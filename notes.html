@@ -365,10 +365,12 @@
         noteArea.placeholder = 'Note…';
         noteArea.rows = 1;
         noteArea.addEventListener('input', () => {
-          noteArea.style.height = 'auto';
-          noteArea.style.height = noteArea.scrollHeight + 'px';
           fullState.painting_notes[kingdom] = noteArea.value;
           saveFullState();
+          requestAnimationFrame(() => {
+            noteArea.style.height = 'auto';
+            noteArea.style.height = noteArea.scrollHeight + 'px';
+          });
         });
         row.appendChild(noteArea);
         zonesRoot.appendChild(row);
@@ -506,10 +508,16 @@
       if (zs.collapsed) noteArea.style.display = 'none';
 
       noteArea.addEventListener('input', () => {
-        noteArea.style.height = 'auto';
-        noteArea.style.height = noteArea.scrollHeight + 'px';
         zs.note = noteArea.value;
         saveFullState();
+        // Deferred to the next frame so the height change (and the
+        // scroll-container reflow it can trigger) happens after the
+        // browser has finished handling this keystroke, instead of
+        // racing it and kicking focus out of the box.
+        requestAnimationFrame(() => {
+          noteArea.style.height = 'auto';
+          noteArea.style.height = noteArea.scrollHeight + 'px';
+        });
       });
 
       nameLabel.addEventListener('click', () => {
@@ -571,7 +579,7 @@
         if (scrollWrap.scrollWidth <= scrollWrap.clientWidth) return;
         e.preventDefault();
         const px = fullState.settings.notes_scroll_px || 100;
-        scrollWrap.scrollLeft += e.deltaY > 0 ? px : -px;
+        scrollWrap.scrollTo({ left: scrollWrap.scrollLeft + (e.deltaY > 0 ? px : -px), behavior: 'smooth' });
       }, { passive: false });
 
       scrollWrap.addEventListener('mousedown', (e) => {
@@ -588,10 +596,10 @@
         const rb = fullState.settings.scroll_right_binding;
         if (lb && lb.type === 'mouse' && e.button === lb.code) {
           e.preventDefault();
-          scrollWrap.scrollLeft -= px;
+          scrollWrap.scrollTo({ left: scrollWrap.scrollLeft - px, behavior: 'smooth' });
         } else if (rb && rb.type === 'mouse' && e.button === rb.code) {
           e.preventDefault();
-          scrollWrap.scrollLeft += px;
+          scrollWrap.scrollTo({ left: scrollWrap.scrollLeft + px, behavior: 'smooth' });
         }
       });
 
@@ -602,25 +610,61 @@
         const rb = fullState.settings.scroll_right_binding;
         if (lb && lb.type === 'key' && e.code === lb.code) {
           e.preventDefault();
-          scrollWrap.scrollLeft -= px;
+          scrollWrap.scrollTo({ left: scrollWrap.scrollLeft - px, behavior: 'smooth' });
         } else if (rb && rb.type === 'key' && e.code === rb.code) {
           e.preventDefault();
-          scrollWrap.scrollLeft += px;
+          scrollWrap.scrollTo({ left: scrollWrap.scrollLeft + px, behavior: 'smooth' });
         }
       });
     }
 
     // ── Stay in sync with settings changed in the main tracker window ──
+    // IMPORTANT: every keystroke here writes tracker_state, and the main
+    // tracker tab can echo that write straight back (its Abilities & Captures
+    // channel re-saves on any storage change). That echo fires a storage event
+    // in THIS window carrying the very same settings. If we rebuild the DOM on
+    // it, we destroy the textarea being typed in and drop focus after one
+    // character. So: only rebuild when something that actually changes the
+    // notes LAYOUT changed, and never yank focus out of a note mid-edit.
+    const NOTES_LAYOUT_KEYS = [
+      'notes_layout', 'notes_columns', 'notes_compact',
+      'show_painting_notes', 'show_kingdom_moon', 'zone_names',
+    ];
+
     window.addEventListener('storage', (e) => {
       if (e.key !== STATE_KEY || !e.newValue) return;
-      try {
-        const fresh = JSON.parse(e.newValue);
-        if (fresh.settings) {
-          fullState.settings = fresh.settings;
+
+      let fresh;
+      try { fresh = JSON.parse(e.newValue); } catch (err) { return; }
+      if (!fresh || !fresh.settings) return;
+
+      const prev = fullState.settings || {};
+      const layoutChanged = NOTES_LAYOUT_KEYS.some(
+        k => JSON.stringify(prev[k]) !== JSON.stringify(fresh.settings[k])
+      );
+
+      fullState.settings = fresh.settings;
+
+      // Note-text echoes and unrelated writes (moons, captures, abilities)
+      // don't touch our layout ignore them completely so typing is never
+      // interrupted.
+      if (!layoutChanged) return;
+
+      // A real layout change happened. If the user is currently editing a
+      // note, defer the rebuild until they leave the box so we don't steal
+      // focus; otherwise rebuild now.
+      const active = document.activeElement;
+      if (active && active.classList && active.classList.contains('zone-note')) {
+        applyNotesLayout(); // lightweight class toggles are focus-safe
+        active.addEventListener('blur', function rebuildOnce() {
+          active.removeEventListener('blur', rebuildOnce);
           buildLoadingZonesContent();
-          applyNotesLayout();
-        }
-      } catch (err) { /* ignore malformed updates */ }
+        }, { once: true });
+        return;
+      }
+
+      buildLoadingZonesContent();
+      applyNotesLayout();
     });
 
     // ── Init ────────────────────────────────────────────────────────
