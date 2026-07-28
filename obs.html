@@ -172,6 +172,14 @@
       width: 38px;
       object-fit: contain;
     }
+    /* Moon Cave captures (parabones, banzai, wire, golden) read as a 2x2 grid
+       instead of one long row. The Cave Skip ability row stays a plain flex row. */
+    #obs-capture-icons {
+      display: grid;
+      grid-template-columns: repeat(2, 38px);
+      justify-content: center;
+      gap: 5px;
+    }
     /* Individually hidden ability icons (Jump / Cap Bounce). justify-center on
        the row keeps whatever remains centered under the "Cave Skip" label. */
     .obs-icon-row img.icon-off { display: none; }
@@ -301,6 +309,7 @@
       { key:'parabones', locked:'assets/Parabones_Capture_Locked.png',    unlocked:'assets/Parabones_Capture.png'      },
       { key:'banzai',    locked:'assets/Banzai_Bill_Capture_Locked.png',  unlocked:'assets/Banzai_Bill_Capture.png'    },
       { key:'wire',      locked:'assets/Spark_pylon_Capture_Locked.png',  unlocked:'assets/Spark_pylon_Capture.png'    },
+      { key:'golden',    locked:'assets/golden_locked.png',               unlocked:'assets/golden.png'                 },
     ];
 
     const ABILITY_ICONS = [
@@ -310,7 +319,7 @@
     ];
 
     // Display names for the "Unlocked X" updater messages
-    const CAPTURE_NAMES = { parabones:'Parabones', banzai:'Banzai Bill', wire:'Spark Pylon', bowser:'Bowser' };
+    const CAPTURE_NAMES = { parabones:'Parabones', banzai:'Banzai Bill', wire:'Spark Pylon', golden:'Gold Chain Chomp', bowser:'Bowser' };
     const ABILITY_NAMES = { jump:'Long Jump', cap:'Cap Bounce', wall:'Wall Slide' };
 
     let currentState = null;

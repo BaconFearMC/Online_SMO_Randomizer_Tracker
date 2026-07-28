@@ -132,6 +132,7 @@
     banzai:    'Banzai_Bill_Capture',
     wire:      'Spark_pylon_Capture',
     bowser:    'Bowser_Capture',
+    golden:    'Gold_Chain_Chomp_Capture',
   };
   const ABILITY_LINKS = {
     jump: 'Long_Jump',  // "High Jump" on the main tracker uses the Long Jump art

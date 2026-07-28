@@ -582,6 +582,22 @@ h1 {
 }
 .ability-top.row-gone { display: none; }
 
+/* Bottom row holds Bowser + Wall. Default (Jump/Cap not both shown): stacked
+   and centered, Wall on top with Bowser on its own row directly under it
+   (column-reverse because the DOM order is bowser, wall). When both Jump and
+   Cap are shown, #ability-row gets .abilities-2x2 and this becomes a horizontal
+   row - Bowser to the left of Wall - so the four icons read as a clean 2x2. */
+.ability-bottom {
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  gap: 5px;
+}
+#ability-row.abilities-2x2 .ability-bottom {
+  flex-direction: row;
+  justify-content: center;
+}
+
 /* Individually hidden ability icon (Jump / Cap Bounce show toggles off) */
 .icon-toggle-btn.ability-icon.icon-off { display: none; }
 

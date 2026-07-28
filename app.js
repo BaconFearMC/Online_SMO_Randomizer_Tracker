@@ -48,7 +48,7 @@ const CAPTURE_ICONS = [
   { key: 'parabones', locked: 'assets/Parabones_Capture_Locked.png', unlocked: 'assets/Parabones_Capture.png' },
   { key: 'banzai', locked: 'assets/Banzai_Bill_Capture_Locked.png', unlocked: 'assets/Banzai_Bill_Capture.png' },
   { key: 'wire', locked: 'assets/Spark_pylon_Capture_Locked.png', unlocked: 'assets/Spark_pylon_Capture.png' },
-  { key: 'bowser', locked: 'assets/Bowser_Capture_Locked.png', unlocked: 'assets/Bowser_Capture.png' },
+  { key: 'golden', locked: 'assets/golden_locked.png', unlocked: 'assets/golden.png' },
 ];
 
 const ABILITY_ICONS = [
@@ -56,6 +56,14 @@ const ABILITY_ICONS = [
   { key: 'cap', locked: 'assets/Cappy_Locked.png', unlocked: 'assets/Cappy.png' },
   { key: 'wall', locked: 'assets/Wall_Jump_Locked.png', unlocked: 'assets/Wall_Jump.png' },
 ];
+
+// Bowser lives on the ability side of the main tracker (bottom-left of the 2x2),
+// but it is still a *capture* as far as saved state goes: its toggle owns
+// state.captures.bowser, so the APC panel's Bowser_Capture link and the
+// standalone Bowser icon on the OBS overlay keep working unchanged. It is drawn
+// with the ability styling so it participates in the ability grid + Ability Lock
+// hide behavior.
+const BOWSER_ABILITY_ICON = { key: 'bowser', locked: 'assets/Bowser_Capture_Locked.png', unlocked: 'assets/Bowser_Capture.png' };
 
 const PICKER_ICONS = [
   'Cascade.png', 'Sand.png', 'Lake.png', 'Wooded.png', 'Lost.png', 'Metro.png',
@@ -355,7 +363,7 @@ function getDefaultState() {
   return {
     settings: cloneDefaultSettings(),
     moons: KINGDOMS.map(() => ({ count: 0, max: null, lock: false, peace: false, rock:false, multi: false })),
-    captures: { parabones: false, banzai: false, wire: false, bowser: false },
+    captures: { parabones: false, banzai: false, wire: false, bowser: false, golden: false },
     abilities: { jump: false, cap: false, wall: false },
     // Full Abilities & Captures panel (apc.html). The seven entries that also
     // appear on the main tracker are mirrored here but owned by the two objects
@@ -1035,35 +1043,46 @@ function buildAbilityRow() {
   const container = document.getElementById('ability-row');
   container.innerHTML = '';
 
-  function makeAbilityBtn(ic) {
+  // `store` is the state slice this button owns - state.abilities for the real
+  // abilities, state.captures for Bowser (which lives on the ability side but is
+  // still a capture in saved state - see BOWSER_ABILITY_ICON).
+  function makeAbilityBtn(ic, store) {
+    store = store || state.abilities;
     const btn = document.createElement('button');
     btn.className = 'icon-toggle-btn ability-icon';
     btn.dataset.key = ic.key;
     btn.title = ic.key;
     const img = document.createElement('img');
-    img.src = state.abilities[ic.key] ? ic.unlocked : ic.locked;
+    img.src = store[ic.key] ? ic.unlocked : ic.locked;
     img.alt = ic.key;
     btn.appendChild(img);
-    btn.classList.toggle('active', state.abilities[ic.key]);
+    btn.classList.toggle('active', store[ic.key]);
     btn.addEventListener('click', () => {
-      state.abilities[ic.key] = !state.abilities[ic.key];
-      img.src = state.abilities[ic.key] ? ic.unlocked : ic.locked;
-      btn.classList.toggle('active', state.abilities[ic.key]);
+      store[ic.key] = !store[ic.key];
+      img.src = store[ic.key] ? ic.unlocked : ic.locked;
+      btn.classList.toggle('active', store[ic.key]);
       saveState();
     });
     return btn;
   }
 
-  // Layout: [jump][cap] centered on top, [wall] centered below. Jump and Cap
-  // can each be hidden independently (Show Jump / Show Cap Bounce settings);
-  // applyAllSettings() handles their visibility and re-centering so Wall lines
-  // up under whatever remains. ABILITY_ICONS = [jump, cap, wall].
+  // Layout is a 2x2: [jump][cap] on top, [bowser][wall] on the bottom. Jump and
+  // Cap can each be hidden independently (Show Jump / Show Cap Bounce settings).
+  // applyAllSettings() decides the bottom-row arrangement: when BOTH Jump and Cap
+  // show, #ability-row gets .abilities-2x2 and Bowser sits to the left of Wall
+  // (completing the 2x2). Otherwise Bowser drops onto its own row centered under
+  // Wall. ABILITY_ICONS = [jump, cap, wall]; Bowser owns state.captures.bowser.
   const top = document.createElement('div');
   top.className = 'ability-top';
   top.appendChild(makeAbilityBtn(ABILITY_ICONS[0])); // jump
   top.appendChild(makeAbilityBtn(ABILITY_ICONS[1])); // cap
   container.appendChild(top);
-  container.appendChild(makeAbilityBtn(ABILITY_ICONS[2])); // wall
+
+  const bottom = document.createElement('div');
+  bottom.className = 'ability-bottom';
+  bottom.appendChild(makeAbilityBtn(BOWSER_ABILITY_ICON, state.captures)); // bowser (left)
+  bottom.appendChild(makeAbilityBtn(ABILITY_ICONS[2]));                    // wall (right)
+  container.appendChild(bottom);
 
   // Build the standalone Notes button in #notes-section
   const notesSection = document.getElementById('notes-section');
@@ -1199,6 +1218,12 @@ function applyAllSettings() {
   if (jumpBtn) jumpBtn.classList.toggle('icon-off', !s.show_ability_jump);
   if (capBtn)  capBtn.classList.toggle('icon-off', !s.show_ability_cap);
   if (abilityTop) abilityTop.classList.toggle('row-gone', !s.show_ability_jump && !s.show_ability_cap);
+
+  // Bottom-row arrangement: only when BOTH Jump and Cap show do Bowser + Wall
+  // share a row (completing the 2x2). Otherwise Bowser drops onto its own row
+  // centered under Wall - see .ability-bottom rules in style.css.
+  const abilityRow = document.getElementById('ability-row');
+  if (abilityRow) abilityRow.classList.toggle('abilities-2x2', !!s.show_ability_jump && !!s.show_ability_cap);
 
   // Lock / Peace sign columns on the main tracker
   const moonRows = document.getElementById('moon-rows');
