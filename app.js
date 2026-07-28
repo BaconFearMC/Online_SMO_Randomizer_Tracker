@@ -183,6 +183,7 @@ const HOTKEY_DEFAULTS = {
   'Ruined Kingdom':   'Digit0',
   'Bowser Kingdom':   'Minus',
   'Moon Kingdom':     'Equal',
+  'Cap Kingdom':      'Backquote',
 };
 
 // Returns the live binding map, filling in any kingdom the user hasn't rebound.
