@@ -1344,10 +1344,10 @@ function isPaintingChain(cid) {
 }
 
 const DEAD_END_IDS = new Set([
-  ['Cascade','Dino'],['Sand','Shop'],['Sand','Employees'],['Sand','Slots'],['Sand','Rumble'],
+  ['Cap','Frog'],['Cascade','Dino'],['Sand','Shop'],['Sand','Employees'],['Sand','Slots'],['Sand','Rumble'],
   ['Sand','Outfit'],['Sand','Sphynx'],['Sand','Colossal Ruins'],['Lake','Zipper'],
   ['Lake','Shop'],['Lake','Puzzle'],['Wooded','DW Treasure'],['Wooded','DW Outfit'],
-  ['Wooded','Sheep'],['Wooded','Vine Clouds'],['Wooded','Breakdown'],['Lost','Shop'],
+  ['Wooded','Sheep'],['Wooded','Vine Clouds'],['Wooded','Breakdown'],['Wooded','Rocket'],['Lost','Shop'],
   ['Lost','Klepto'],['Metro','Yellow Shop'],['Metro','Purple Shop'],['Metro','Notes'],
   ['Metro','2D'],['Metro','Slots'],['Metro','Dark'],['Metro','Rotating Maze'],['Metro','RC Car'],
   ['Snow','Puzzle'],['Snow','Iceburn Circuit'],['Snow','Tracewalking'],['Snow','Clouds'],
@@ -1358,7 +1358,7 @@ const DEAD_END_IDS = new Set([
   ["Bowser's",'Hexagon Tower'],['Mushroom','Shop'],['Mushroom','Castle Door'],['Mushroom','Outfit'],
   ['Mushroom','Cloud Sea'],['Mushroom','Well'],['Mushroom','Knucklotec'],['Mushroom','Torkdrift'],
   ['Mushroom','Mechawiggler'],['Mushroom','Octopus'],['Mushroom','Cookatiel'],['Mushroom','Dragon'],
-  ['Mushroom','Rocket'],['Darkside','Breakdown'],['Darkerside','End'],['Cloud','2D Cube'],['Cloud','Picture Match'],
+  ['Mushroom','Rocket'],['Darkside','Breakdown'],['Cloud','2D Cube'],['Cloud','Picture Match'],
   ['Moon','Shop'],['Moon','Sphynx']
 ].map(([k,z]) => `zone:${k}:${z}`));
 
@@ -1690,7 +1690,7 @@ let decoupled = false;
 let nodePositions = {};   // id → {x, y}, only used while decoupled
 
 // Kingdom visibility (which kingdoms are shown on the map). Missing = visible.
-let kingdomVisible = { Moon: false, Cloud: false };
+let kingdomVisible = { Moon: true, Cloud: true };
 
 /** Section keys that should currently be rendered on the map, in order.
  *  When the painting tracker is on, the Paintings section is placed first

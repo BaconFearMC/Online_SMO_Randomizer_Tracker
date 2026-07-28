@@ -22,11 +22,27 @@ const KINGDOMS = [
   { name: 'Ruined Kingdom', img: 'assets/Ruin.png', multi: 'assets/Ruined_Multi.png', min: 1, max: 8 },
   { name: 'Bowser Kingdom', img: 'assets/Bowser.png', multi: 'assets/Bowser_Multi.png', min: 3, max: 13 },
   // Optional kingdoms: hidden unless their settingKey is turned on in Settings → Kingdoms.
+  // They live at the END of this array so the core kingdoms keep their saved
+  // moon-index positions; DEFAULT_DISPLAY_ORDER decides where they actually show
+  // on screen (Cap is forced to the top, above Cascade; Moon stays at the bottom).
   // To add another one later: give it a settingKey here, add a matching entry to
   // DEFAULT_SETTINGS (default false) and TOGGLE_SETTINGS, then copy a settings-row
-  // in index.html's "Kingdoms" section using the same id.
-  { name: 'Moon Kingdom', img: 'assets/MoonK.png', multi: 'assets/MoonK_Multi.png', min: 1, max: 1, settingKey: 'show_kingdom_moon' },
+  // in index.html's "Kingdoms" section using the same id. `hideMulti: true` hides
+  // the multi-moon (+3) button for that kingdom while keeping its slot for alignment.
+  { name: 'Moon Kingdom', img: 'assets/MoonK.png', multi: 'assets/MoonK_Multi.png', min: 2, max: 12, settingKey: 'show_kingdom_moon', hideMulti: true },
+  { name: 'Cap Kingdom', img: 'assets/Cap.png', multi: 'assets/Cascade_Multi.png', min: 6, max: 16, settingKey: 'show_kingdom_cap', hideMulti: true },
 ];
+
+// On-screen order for the moon rows (tracker + OBS). Cap Kingdom is stored last
+// in KINGDOMS to keep saved moon indices stable, but should display first (above
+// Cascade); every other kingdom follows in array order, so Moon stays at the
+// bottom. This is only the DEFAULT - a user's drag-to-reorder (kingdom_order)
+// still takes precedence. obs.html keeps an identical DEFAULT_DISPLAY_ORDER.
+const DEFAULT_DISPLAY_ORDER = (() => {
+  const capIdx = KINGDOMS.findIndex(k => k.name === 'Cap Kingdom');
+  const rest = KINGDOMS.map((_, i) => i).filter(i => i !== capIdx);
+  return capIdx === -1 ? rest : [capIdx, ...rest];
+})();
 
 const CAPTURE_ICONS = [
   { key: 'parabones', locked: 'assets/Parabones_Capture_Locked.png', unlocked: 'assets/Parabones_Capture.png' },
@@ -60,6 +76,7 @@ const DEFAULT_SETTINGS = {
   show_moon_range: true,
   show_complete_color: false,
   show_kingdom_moon: false,
+  show_kingdom_cap: false,     // Optional Cap Kingdom row (tracker + overlay)
   show_lock: true,             // Lock sign column visible (tracker + overlay)
   show_peace: true,            // Peace sign column visible (tracker + overlay)
   show_rock: false,            // Moon Rock sign column visible (tracker + overlay)
@@ -67,6 +84,8 @@ const DEFAULT_SETTINGS = {
   show_ability_cap: false,     // false = Cap Bounce icon hidden (default). true = shown
   show_moon_obs: true,         // Draw Moon Kingdom on the OBS overlay; only takes
                                // effect while show_kingdom_moon is also on
+  show_cap_obs: true,          // Draw Cap Kingdom on the OBS overlay; only takes
+                               // effect while show_kingdom_cap is also on
   show_moon_updater: false,    // Moon Updater message strip on the OBS overlay
   updater_location: 'top',     // 'top' | 'bottom' relative to the overlay body
   updater_count: 3,            // Visible messages (1-5); drives overlay height
@@ -180,15 +199,22 @@ function isPanelLocationAvailable() {
 }
 
 // ── Per-kingdom min/max scaling ───────────────────────────────────
-// Each of the 11 core kingdoms has a "normal" moon count C (out of the default
-// total of 124). When the Total Moon Requirement N changes, every normal scales
-// by N/124 and its displayed range becomes normal ± 5 (min clamped to >= 1).
-// The scaled normals are rounded with the largest-remainder method so they
-// always sum to exactly N. The optional Moon Kingdom is left untouched.
-const SCALE_KINGDOM_COUNT = 11;
+// Each kingdom has a "normal" moon count C. When the Total Moon Requirement N
+// changes, every normal scales by N/124 and its displayed range becomes
+// normal ± 5 (min clamped to >= 1). The scaled normals are rounded with the
+// largest-remainder method.
+//
+// Every kingdom now participates, Cap and Moon included. SCALE_DEFAULT_TOTAL
+// stays 124, so at the default requirement each kingdom shows its own base
+// min/max (Cap 6/16, Moon 2/12, and the core kingdoms unchanged from before);
+// they only rescale once the requirement is changed. The base counts now sum to
+// more than 124, so the scaled values no longer sum exactly to N and the
+// "counted / left" accounting can be slightly off - an accepted trade-off for
+// keeping the per-kingdom ranges pinned to their known values.
+const SCALE_KINGDOM_COUNT = KINGDOMS.length;
 const SCALE_DEFAULT_TOTAL = 124;
 const SCALE_RANGE = 5;
-// C for each core kingdom, derived from its default max (max = C + range).
+// C for each kingdom, derived from its default max (max = C + range).
 const SCALE_BASE = KINGDOMS.slice(0, SCALE_KINGDOM_COUNT).map(k => k.max - SCALE_RANGE);
 
 function computeScaledRanges(N) {
@@ -279,6 +305,8 @@ const TOGGLE_SETTINGS = [
   { id: 'toggle-moon-range', key: 'show_moon_range' },
   { id: 'toggle-kingdom-moon', key: 'show_kingdom_moon' },
   { id: 'toggle-moon-obs', key: 'show_moon_obs' },
+  { id: 'toggle-kingdom-cap', key: 'show_kingdom_cap' },
+  { id: 'toggle-cap-obs', key: 'show_cap_obs' },
   { id: 'toggle-moon-updater', key: 'show_moon_updater' },
   { id: 'toggle-painting-notes', key: 'show_painting_notes' },
 ];
@@ -292,6 +320,14 @@ const TOGGLE_SETTINGS = [
 const KINGDOM_VISIBILITY_SETTINGS = {
   Moon: 'show_kingdom_moon',
 };
+
+// Settings keys that control whether a whole kingdom ROW appears on the main
+// tracker (driven by KINGDOMS[].settingKey). Toggling one of these has to
+// rebuild the moon rows, not just flip a CSS class. Built from KINGDOMS so any
+// future optional kingdom is covered automatically.
+const KINGDOM_ROW_SETTING_KEYS = new Set(
+  KINGDOMS.map(k => k.settingKey).filter(Boolean)
+);
 
 // ── Painting tracker (Notes) ────────────────────────────────────────────────
 // A single "Paintings" notes column placed before Cascade. Each kingdom below
@@ -580,7 +616,7 @@ function orderedKingdomIndices() {
   saved.forEach(i => {
     if (Number.isInteger(i) && i >= 0 && i < KINGDOMS.length && !seen.has(i)) { seen.add(i); order.push(i); }
   });
-  KINGDOMS.forEach((_, i) => { if (!seen.has(i)) order.push(i); });
+  DEFAULT_DISPLAY_ORDER.forEach(i => { if (!seen.has(i)) order.push(i); });
   return order;
 }
 
@@ -763,14 +799,8 @@ function buildMoonRow(i) {
   incrBtn.textContent = '+';
   incrBtn.addEventListener('click', () => { increment(i); saveState(); });
 
-  // The Moon row has no fixed min/max range, but it still needs to reserve
-  // the exact same min/max column space as every other row so its −, count,
-  // and + land in the same spots. So we keep the identical structure here
-  // and just make the min/max boxes invisible instead of removing them.
-  if (kingdom.name === 'Moon Kingdom') {
-    minStack.style.visibility = 'hidden';
-    maxStack.style.visibility = 'hidden';
-  }
+  // Moon and Cap Kingdom now display their own fixed min/max just like the core
+  // kingdoms, so there's no special hiding of the range boxes here anymore.
   counter.appendChild(decrBtn);
   counter.appendChild(makeCounterSpacer());
   counter.appendChild(minStack);
@@ -903,14 +933,14 @@ function refreshMoonRow(i, rowEl) {
   // Multi moon button visibility
   const multiBtn = row.querySelector('.multi-moon-btn');
   if (multiBtn) {
-    const isMoonKingdom = !isNaN(parseInt(row.dataset.idx)) && KINGDOMS[parseInt(row.dataset.idx)]?.name === 'Moon Kingdom';
+    const hideMulti = KINGDOMS[parseInt(row.dataset.idx)]?.hideMulti === true;
     // Collapse in sync with every other row when the setting is off, so all
     // entry-groups shrink together and stay aligned. But when the setting is
-    // on, the Moon row still needs a multi-moon button-sized box (just
-    // invisible) so its entry-group width - and therefore the + button
+    // on, a hideMulti row (Moon, Cap) still needs a multi-moon button-sized box
+    // (just invisible) so its entry-group width - and therefore the + button
     // position - matches the other rows instead of expanding past them.
     multiBtn.classList.toggle('hidden', !state.settings.show_multi_moon);
-    if (isMoonKingdom) {
+    if (hideMulti) {
       multiBtn.style.visibility = state.settings.show_multi_moon ? 'hidden' : '';
       multiBtn.style.pointerEvents = 'none';
     } else {
@@ -1116,8 +1146,8 @@ function openSettings() {
 // Enable/disable and show/hide sub-controls based on their parent toggle:
 //  • Jump / Cap Bounce rows are dimmed while Ability Lock is off.
 //  • Updater Location / Message Count rows are dimmed while the updater is off.
-//  • The "Show Moon Kingdom on OBS" row is hidden entirely while Moon Kingdom
-//    is off (it can only be turned on as a sub-option of Moon Kingdom).
+//  • The "Show Moon/Cap Kingdom on OBS" rows are hidden entirely while their
+//    parent kingdom is off (each is a sub-option of its kingdom toggle).
 function updateSettingsEnablement() {
   const s = state.settings;
 
@@ -1132,6 +1162,9 @@ function updateSettingsEnablement() {
 
   const moonObsRow = document.getElementById('row-moon-obs');
   if (moonObsRow) moonObsRow.classList.toggle('row-gone', !s.show_kingdom_moon);
+
+  const capObsRow = document.getElementById('row-cap-obs');
+  if (capObsRow) capObsRow.classList.toggle('row-gone', !s.show_kingdom_cap);
 
   const panelOn = getPanelMode() !== 'none';
   const panelLocRow = document.getElementById('seg-panel-location')?.closest('.settings-row');
@@ -1384,14 +1417,16 @@ const BROWSER_SOURCE_MULTIPLIER = 3;
 
 // ── OBS overlay unscaled base size ────────────────────────────────
 // The overlay's natural (scale = 1) size. Width is fixed; height grows to make
-// room for two optional pieces: the extra Moon Kingdom row and the Moon Updater
-// message strip. obs.html computes its height with the IDENTICAL formula
+// room for optional pieces: the extra Cap Kingdom row, the extra Moon Kingdom
+// row, and the Moon Updater message strip. obs.html computes height with the
+// IDENTICAL formula
 // (keep OBS_* constants in sync across both files) so the OBS Browser Source
 // dimensions we display here always match what the overlay actually renders.
 const OBS_BASE_W = 315;
 const OBS_BASE_H = 450;          // 11 kingdoms, no updater
 const OBS_ROCK_COL_W = 23;       // extra body width when the Moon Rock column shows
 const OBS_MOON_ROW_H = 40;       // added when Moon Kingdom shows on the overlay
+const OBS_CAP_ROW_H = 40;        // added when Cap Kingdom shows on the overlay
 const OBS_UPDATER_MSG_H = 24;    // per visible updater message
 const OBS_UPDATER_PAD = 12;      // updater strip padding (top + bottom)
 
@@ -1399,6 +1434,7 @@ function getObsBaseSize(settings) {
   const s = settings || state.settings || {};
   let h = OBS_BASE_H;
   if (s.show_kingdom_moon && s.show_moon_obs !== false) h += OBS_MOON_ROW_H;
+  if (s.show_kingdom_cap && s.show_cap_obs !== false) h += OBS_CAP_ROW_H;
   if (s.show_moon_updater) {
     const n = Math.min(5, Math.max(1, s.updater_count || 3));
     h += n * OBS_UPDATER_MSG_H + OBS_UPDATER_PAD;
@@ -2813,7 +2849,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Kingdom show/hide toggles add or remove entire rows/columns rather
       // than just flipping a CSS class, so those need an explicit rebuild.
-      if (Object.values(KINGDOM_VISIBILITY_SETTINGS).includes(key)) {
+      if (KINGDOM_ROW_SETTING_KEYS.has(key) ||
+          Object.values(KINGDOM_VISIBILITY_SETTINGS).includes(key)) {
         buildAllMoonRows();
         applyAllSettings();
         const lzModal = document.getElementById('lz-modal');

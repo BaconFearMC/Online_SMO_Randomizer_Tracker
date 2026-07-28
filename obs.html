@@ -250,6 +250,7 @@
     const OBS_BASE_H = 450;        // 11 kingdoms, no updater
     const OBS_ROCK_COL_W = 23;     // extra body width when the Moon Rock column shows (18px icon + 5px gap)
     const OBS_MOON_ROW_H = 40;     // added when Moon Kingdom shows on the overlay
+    const OBS_CAP_ROW_H = 40;      // added when Cap Kingdom shows on the overlay
     const OBS_UPDATER_MSG_H = 24;  // per visible updater message
     const OBS_UPDATER_PAD = 12;    // updater strip padding (top + bottom)
 
@@ -268,6 +269,9 @@
     // name/img/multi/max plus the kingdom color + short label used by the Moon
     // Updater. Moon Kingdom is optional (settingKey) and only appears on the
     // overlay when both show_kingdom_moon and show_moon_obs are on.
+    // Kingdom order MUST match app.js's KINGDOMS exactly, since moon state and
+    // kingdom_order are indexed by array position. Optional kingdoms (Moon, Cap)
+    // live at the end; DEFAULT_DISPLAY_ORDER puts Cap on top for display.
     const KINGDOMS = [
       { name:'Cascade Kingdom',  img:'assets/Cascade.png',  multi:'assets/Cascade_Multi.png',  max:10, color:'#ff9900', short:'Cascade'  },
       { name:'Sand Kingdom',     img:'assets/Sand.png',     multi:'assets/Sand_Multi.png',     max:21, color:'#8bf12c', short:'Sand'     },
@@ -280,8 +284,18 @@
       { name:'Luncheon Kingdom', img:'assets/Luncheon.png', multi:'assets/Luncheon_Multi.png', max:23, color:'#3fddbb', short:'Luncheon' },
       { name:'Ruined Kingdom',   img:'assets/Ruin.png',     multi:'assets/Ruined_Multi.png',   max:8,  color:'#ffd7e2', short:'Ruined'   },
       { name:'Bowser Kingdom',   img:'assets/Bowser.png',   multi:'assets/Bowser_Multi.png',   max:13, color:'#d3304c', short:'Bowser'   },
-      { name:'Moon Kingdom',     img:'assets/MoonK.png',    multi:'assets/MoonK_Multi.png',    max:1,  color:'#b5c1cb', short:'Moon Kingdom', settingKey:'show_kingdom_moon' },
+      { name:'Moon Kingdom',     img:'assets/MoonK.png',    multi:'assets/MoonK_Multi.png',    max:12, color:'#b5c1cb', short:'Moon Kingdom', settingKey:'show_kingdom_moon', obsKey:'show_moon_obs' },
+      { name:'Cap Kingdom',      img:'assets/Cap.png',      multi:'assets/Cascade_Multi.png',  max:16, color:'#fff500', short:'Cap', settingKey:'show_kingdom_cap', obsKey:'show_cap_obs' },
     ];
+
+    // Default on-screen order (mirrors app.js): Cap first (above Cascade),
+    // everything else in array order so Moon stays last. A user's drag-reorder
+    // (kingdom_order) still wins over this.
+    const DEFAULT_DISPLAY_ORDER = (() => {
+      const capIdx = KINGDOMS.findIndex(k => k.name === 'Cap Kingdom');
+      const rest = KINGDOMS.map((_, i) => i).filter(i => i !== capIdx);
+      return capIdx === -1 ? rest : [capIdx, ...rest];
+    })();
 
     const CAPTURE_ICONS = [
       { key:'parabones', locked:'assets/Parabones_Capture_Locked.png',    unlocked:'assets/Parabones_Capture.png'      },
@@ -316,21 +330,35 @@
       return !!(settings && settings.show_kingdom_moon && settings.show_moon_obs !== false);
     }
 
+    // Whether the Cap Kingdom row is drawn on the overlay
+    function capOnObs(settings) {
+      return !!(settings && settings.show_kingdom_cap && settings.show_cap_obs !== false);
+    }
+
+    // Whether a given kingdom's row should be drawn. Non-optional kingdoms (no
+    // settingKey) always show; optional ones need their main toggle on AND, if
+    // they have an OBS sub-toggle (obsKey), that sub-toggle on too.
+    function kingdomShownOnObs(k, settings) {
+      if (!k.settingKey) return true;
+      if (!settings || !settings[k.settingKey]) return false;
+      return !k.obsKey || settings[k.obsKey] !== false;
+    }
+
     // Custom moon-row order set by drag-to-reorder in the main tracker. Returns
     // the display order as a list of KINGDOMS indices (unlisted ones appended).
     function kingdomOrderList(settings) {
       const saved = Array.isArray(settings && settings.kingdom_order) ? settings.kingdom_order : [];
       const seen = new Set(), order = [];
       saved.forEach(i => { if (Number.isInteger(i) && i >= 0 && i < KINGDOMS.length && !seen.has(i)) { seen.add(i); order.push(i); } });
-      KINGDOMS.forEach((_, i) => { if (!seen.has(i)) order.push(i); });
+      DEFAULT_DISPLAY_ORDER.forEach(i => { if (!seen.has(i)) order.push(i); });
       return order;
     }
 
     // ── Per-kingdom max scaling (mirrors app.js) ──────────────────
     // Green-complete uses each kingdom's scaled max, which tracks the Total
-    // Moon Requirement N. The 11 core kingdoms scale by N/124; Moon Kingdom
-    // (index 11) is left at its fixed max.
-    const SCALE_COUNT = 11, SCALE_DEFAULT = 124, SCALE_RANGE = 5;
+    // Moon Requirement N. Every kingdom scales by N/124 (Cap and Moon included);
+    // SCALE_DEFAULT stays 124 so each shows its base max at the default.
+    const SCALE_COUNT = KINGDOMS.length, SCALE_DEFAULT = 124, SCALE_RANGE = 5;
     const SCALE_BASE = KINGDOMS.slice(0, SCALE_COUNT).map(k => k.max - SCALE_RANGE);
     function computeScaledMax(N) {
       N = N || SCALE_DEFAULT;
@@ -365,6 +393,7 @@
       const s = settings || {};
       let h = OBS_BASE_H;
       if (moonOnObs(s)) h += OBS_MOON_ROW_H;
+      if (capOnObs(s)) h += OBS_CAP_ROW_H;
       if (s.show_moon_updater) {
         const n = Math.min(5, Math.max(1, s.updater_count || 3));
         h += n * OBS_UPDATER_MSG_H + OBS_UPDATER_PAD;
@@ -436,7 +465,7 @@
 
     // ── Build DOM ─────────────────────────────────────────────────
     function buildOBSLayout() {
-      // Moon rows (all kingdoms incl. Moon; Moon row toggled in updateOBS)
+      // Moon rows (all kingdoms; optional Moon/Cap rows toggled in updateOBS)
       const moonList = document.getElementById('obs-moon-list');
       moonList.innerHTML = '';
       KINGDOMS.forEach((k, i) => {
@@ -596,7 +625,6 @@
       applyScale();
       renderUpdater(settings);
 
-      const showMoonRow = moonOnObs(settings);
       const orderList = kingdomOrderList(settings);
 
       // Moon rows
@@ -608,8 +636,8 @@
         const pos = orderList.indexOf(i);
         row.style.order = pos === -1 ? i : pos;
 
-        // Optional Moon Kingdom row visibility
-        if (k.settingKey) row.classList.toggle('row-gone', !showMoonRow);
+        // Optional kingdom (Moon / Cap) row visibility
+        if (k.settingKey) row.classList.toggle('row-gone', !kingdomShownOnObs(k, settings));
 
         const m = (incoming.moons && incoming.moons[i]) || {};
 
