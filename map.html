@@ -285,29 +285,9 @@
   #main-area.dp-left   { flex-direction: row; }
   #main-area.dp-right  { flex-direction: row; }
 
-  /* Display panel */
-  #display-panel {
-    position: relative;
-    overflow: hidden;
-    font-size: 0.84rem;
-    flex-shrink: 0;
-    padding: 0;
-    border-bottom: none; /* overridden by position classes below */
-  }
-  /* Scrollable inner wrapper keeps the resize handle fixed to the panel
-     edge regardless of scroll position, since the handle now lives outside
-     the scrolling element instead of scrolling along with its content. */
-  #display-panel-content {
-    position: absolute;
-    inset: 0;
-    overflow-y: auto;
-    overflow-x: hidden;
-    padding: 10px 16px;
-  }
-  .dp-top    #display-panel { border-bottom: 1px solid var(--border); order: 0; }
-  .dp-bottom #display-panel { border-top:    1px solid var(--border); order: 1; }
-  .dp-left   #display-panel { border-right:  1px solid var(--border); order: 0; }
-  .dp-right  #display-panel { border-left:   1px solid var(--border); order: 1; }
+  /* Display panel base styling now lives in the generic .dock-panel rules
+     (see the docked-panels block later in this stylesheet). */
+  #display-panel { font-size: 0.84rem; }
 
   #display-panel .empty-note { color: var(--text-dim); font-style: italic; }
   .chain-row { display: flex; align-items: center; flex-wrap: wrap; padding: 3px 4px; line-height: 1.5; border-radius: 6px; cursor: pointer; transition: box-shadow 0.1s, background 0.1s; }
@@ -343,36 +323,8 @@
     line-height: 1;
   }
 
-  /* ── Display panel resize handle ─────────────────────────────── */
-  #display-resize-handle {
-    position: absolute;
-    z-index: 20;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .dp-top #display-resize-handle, .dp-bottom #display-resize-handle {
-    bottom: 0; left: 0; right: 0; height: 10px;
-    cursor: ns-resize;
-  }
-  .dp-bottom #display-resize-handle { bottom: auto; top: 0; }
-  .dp-left  #display-resize-handle  { top: 0; bottom: 0; right: 0; width: 10px; cursor: ew-resize; left: auto; }
-  .dp-right #display-resize-handle  { top: 0; bottom: 0; left: 0;  width: 10px; cursor: ew-resize; right: auto; }
-
-  #display-resize-handle::after {
-    content: '';
-    border-radius: 2px;
-    background: var(--border);
-    transition: background 0.15s;
-  }
-  .dp-top #display-resize-handle::after, .dp-bottom #display-resize-handle::after {
-    width: 40px; height: 3px;
-  }
-  .dp-left #display-resize-handle::after, .dp-right #display-resize-handle::after {
-    width: 3px; height: 40px;
-  }
-  #display-resize-handle:hover::after,
-  #display-resize-handle.dragging::after { background: var(--accent); }
+  /* Display resize handle styling now lives in the generic .panel-resize-handle
+     rules (see the docked-panels block later in this stylesheet). */
 
   /* ── Chain picker popup ──────────────────────────────────────── */
   .chain-picker-popup {
@@ -489,7 +441,7 @@
   .cluster-bg:hover { border-color: rgba(88,101,242,0.3); }
   .cluster-bg.dragging-cluster { border-color: var(--accent); z-index: 50; }
 
-  /* Resize handle – bottom-right triangle (width) */
+  /* Resize handle: bottom-right triangle (width) */
   .cluster-resize-handle {
     position: absolute;
     bottom: 0; right: 0;
@@ -504,7 +456,7 @@
   }
   .cluster-resize-handle:hover { background: var(--accent); }
 
-  /* Resize handle – bottom-center bar (height) */
+  /* Resize handle: bottom-center bar (height) */
   .cluster-resize-height-handle {
     position: absolute;
     bottom: 0;
@@ -945,6 +897,311 @@
       box-shadow: 0 0 0 1px var(--accent);
     }
   }
+
+  /* ── Generic docked panels (display + notes) ─────────────────── */
+  #inner-area {
+    display: flex;
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .dock-panel {
+    position: relative;
+    overflow: hidden;
+    background: var(--bg-card2);
+    font-size: 0.84rem;
+    color: var(--text-dim);
+    flex-shrink: 0;
+    padding: 0;
+  }
+  .dock-panel.hidden { display: none; }
+  .dock-panel .panel-scroll {
+    position: absolute;
+    inset: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 10px 16px;
+  }
+  .dock-panel.edge-top    { border-bottom: 1px solid var(--border); }
+  .dock-panel.edge-bottom { border-top:    1px solid var(--border); }
+  .dock-panel.edge-left   { border-right:  1px solid var(--border); }
+  .dock-panel.edge-right  { border-left:   1px solid var(--border); }
+
+  .panel-resize-handle {
+    position: absolute;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .edge-top .panel-resize-handle, .edge-bottom .panel-resize-handle {
+    left: 0; right: 0; height: 10px; cursor: ns-resize;
+  }
+  .edge-top .panel-resize-handle    { bottom: 0; }
+  .edge-bottom .panel-resize-handle { top: 0; }
+  .edge-left .panel-resize-handle, .edge-right .panel-resize-handle {
+    top: 0; bottom: 0; width: 10px; cursor: ew-resize;
+  }
+  .edge-left .panel-resize-handle  { right: 0; }
+  .edge-right .panel-resize-handle { left: 0; }
+  .panel-resize-handle::after {
+    content: '';
+    border-radius: 2px;
+    background: var(--border);
+    transition: background 0.15s;
+  }
+  .edge-top .panel-resize-handle::after, .edge-bottom .panel-resize-handle::after {
+    width: 40px; height: 3px;
+  }
+  .edge-left .panel-resize-handle::after, .edge-right .panel-resize-handle::after {
+    width: 3px; height: 40px;
+  }
+  .panel-resize-handle:hover::after, .panel-resize-handle.dragging::after { background: var(--accent); }
+
+  /* Combo strip: both panels sharing one edge, split across the cross axis. */
+  #combo-strip { position: relative; display: flex; flex-shrink: 0; overflow: hidden; }
+  #combo-strip.edge-top    { border-bottom: 1px solid var(--border); }
+  #combo-strip.edge-bottom { border-top:    1px solid var(--border); }
+  #combo-strip.edge-left   { border-right:  1px solid var(--border); }
+  #combo-strip.edge-right  { border-left:   1px solid var(--border); }
+  #combo-strip.strip-h > .dock-panel + .dock-panel { border-left: 1px solid var(--border); }
+  #combo-strip.strip-v > .dock-panel + .dock-panel { border-top:  1px solid var(--border); }
+  #combo-strip .dock-panel.combo-child {
+    position: relative;
+    flex: 1 1 0;
+    min-width: 0; min-height: 0;
+    border: none;
+  }
+  #combo-resize-handle { position: absolute; z-index: 20; display: flex; align-items: center; justify-content: center; }
+  #combo-strip.edge-top #combo-resize-handle, #combo-strip.edge-bottom #combo-resize-handle {
+    left: 0; right: 0; height: 10px; cursor: ns-resize;
+  }
+  #combo-strip.edge-top    #combo-resize-handle { bottom: 0; }
+  #combo-strip.edge-bottom #combo-resize-handle { top: 0; }
+  #combo-strip.edge-left #combo-resize-handle, #combo-strip.edge-right #combo-resize-handle {
+    top: 0; bottom: 0; width: 10px; cursor: ew-resize;
+  }
+  #combo-strip.edge-left  #combo-resize-handle { right: 0; }
+  #combo-strip.edge-right #combo-resize-handle { left: 0; }
+  #combo-resize-handle::after {
+    content: ''; border-radius: 2px; background: var(--border); transition: background 0.15s;
+  }
+  #combo-strip.edge-top #combo-resize-handle::after, #combo-strip.edge-bottom #combo-resize-handle::after { width: 40px; height: 3px; }
+  #combo-strip.edge-left #combo-resize-handle::after, #combo-strip.edge-right #combo-resize-handle::after { width: 3px; height: 40px; }
+  #combo-resize-handle:hover::after, #combo-resize-handle.dragging::after { background: var(--accent); }
+
+  /* While a panel lives inside the combo strip it must NOT show its own
+     resize bar the strip supplies its own shared handles. This prevents the
+     duplicate/overlapping bar when both panels share the same edge. */
+  #combo-strip .dock-panel.combo-child .panel-resize-handle { display: none; }
+
+  /* Split divider: sits on the boundary between the two combo panels and sets
+     how the shared edge is divided between Display and Notes. Cursor is ↔ when
+     the panels sit side-by-side (top/bottom edge) and ↕ when they're stacked
+     (left/right edge). */
+  #combo-split-handle {
+    position: absolute; z-index: 21;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #combo-strip.strip-h #combo-split-handle {
+    top: 0; bottom: 0; width: 12px; cursor: ew-resize; transform: translateX(-50%);
+  }
+  #combo-strip.strip-v #combo-split-handle {
+    left: 0; right: 0; height: 12px; cursor: ns-resize; transform: translateY(-50%);
+  }
+  #combo-split-handle::after {
+    content: ''; border-radius: 2px; background: var(--border); transition: background 0.15s;
+  }
+  #combo-strip.strip-h #combo-split-handle::after { width: 3px; height: 40px; }
+  #combo-strip.strip-v #combo-split-handle::after { width: 40px; height: 3px; }
+  #combo-split-handle:hover::after, #combo-split-handle.dragging::after { background: var(--accent); }
+
+  /* ── Notes panel content ─────────────────────────────────────── */
+  #notes-panel-content { padding: 8px 10px; }
+  .notes-panel-title {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-dim);
+    font-weight: bold;
+    margin-bottom: 8px;
+  }
+  .pnote-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 5px 6px;
+    border-radius: var(--radius-sm);
+    transition: background 0.12s;
+    cursor: text;
+  }
+  .pnote-row:hover { background: var(--bg-hover); }
+  .pnote-num {
+    flex: 0 0 auto;
+    min-width: 16px;
+    text-align: right;
+    color: var(--text-dim);
+    font-size: 0.78rem;
+    line-height: 1.5;
+    user-select: none;
+    padding-top: 1px;
+  }
+  .pnote-body {
+    flex: 1 1 auto;
+    min-width: 0;
+    color: var(--text);
+    font-size: 0.82rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+  .pnote-row.pnote-placeholder { opacity: 0.45; }
+  .pnote-row.pnote-placeholder .pnote-body { font-style: italic; color: var(--text-dim); }
+  .pnote-body img.note-icon {
+    height: 16px; width: 16px;
+    object-fit: contain;
+    vertical-align: -3px;
+    margin: 0 1px;
+    cursor: pointer;
+    border-radius: 3px;
+  }
+  .pnote-body img.note-icon:hover { outline: 2px solid var(--accent); }
+  .pnote-edit {
+    width: 100%;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 0.82rem;
+    line-height: 1.5;
+    resize: none;
+    overflow: hidden;
+    display: block;
+    padding: 0;
+  }
+  .pnote-empty-hint {
+    color: var(--text-dim);
+    font-style: italic;
+    font-size: 0.78rem;
+    padding: 4px 6px;
+  }
+
+  /* ── Node connection navigator bar ───────────────────────────── */
+  #node-nav {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    background: var(--bg-card2);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  #node-nav.hidden { display: none; }
+  #node-nav .nn-btn {
+    background: var(--btn-bg);
+    border: none;
+    color: var(--text);
+    width: 28px; height: 26px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s;
+  }
+  #node-nav .nn-btn:hover { background: var(--btn-hover); }
+  #node-nav .nn-btn:disabled { opacity: 0.4; cursor: default; }
+  #node-nav #node-nav-label {
+    font-size: 0.82rem;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  #node-nav #node-nav-label .nn-count { color: var(--text-dim); margin-right: 6px; }
+  #node-nav #node-nav-close {
+    background: none; border: none; color: var(--text-dim);
+    font-size: 0.95rem; cursor: pointer; line-height: 1; padding: 2px 4px;
+  }
+  #node-nav #node-nav-close:hover { color: var(--red); }
+
+  /* ── Info & Controls (card layout, no bullet points) ─────────── */
+  #controls-panel { padding: 14px 16px; }
+  .controls-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 10px;
+  }
+  .ctrl-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 9px 11px;
+    line-height: 1.45;
+  }
+  .ctrl-card .ctrl-key {
+    display: inline-block;
+    color: var(--accent);
+    font-weight: bold;
+    margin-bottom: 3px;
+    font-size: 0.82rem;
+    text-decoration: underline solid var(--accent-h) 1px;
+  }
+  .ctrl-card .ctrl-desc { color: var(--text-dim); font-size: 0.79rem; }
+  .controls-section-title {
+    font-size: 0.74rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-dim);
+    font-weight: bold;
+    margin: 4px 0 10px;
+  }
+  .controls-section-title:not(:first-child) { margin-top: 18px; }
+
+  /* Palette editor (settings) */
+  .palette-editor { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .palette-swatch {
+    position: relative;
+    width: 30px; height: 30px;
+    border-radius: var(--radius-sm);
+    border: 2px solid rgba(255,255,255,0.25);
+    cursor: pointer;
+    padding: 0;
+    overflow: visible;
+  }
+  .palette-swatch input[type="color"] {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    opacity: 0; cursor: pointer; border: none; padding: 0;
+  }
+  .palette-swatch .swatch-remove {
+    position: absolute;
+    top: -6px; right: -6px;
+    width: 15px; height: 15px;
+    border-radius: 50%;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--red);
+    font-size: 0.62rem;
+    line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+  }
+  .palette-add {
+    width: 30px; height: 30px;
+    border-radius: var(--radius-sm);
+    border: 1px dashed var(--text-dim);
+    background: transparent;
+    color: var(--text-dim);
+    font-size: 1.1rem;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .palette-add:hover { color: var(--green); border-color: var(--green); }
 </style>
 </head>
 <body>
@@ -963,63 +1220,85 @@
   <div id="controls-panel" class="side-panel hidden">
     <!-- Desktop controls -->
     <div class="controls-desktop">
-    <strong>Controls</strong>
-    <ul>
-      <li><strong>Left Mouse Button</strong> hold and drag a zone/kingdom to draw a connection arrow. A node can have any number of outgoing and incoming arrows.</li>
-      <li><strong>With Segmented Nodes on</strong>, the arrow attaches to whichever part you started on and whichever part you released on (entrance, name, or exit). Only the segment under the cursor lights up as you drag. Kingdom nodes are never split, so arrows meet them anywhere along their border. Two nodes can hold several arrows as long as each uses a different pair of parts.</li>
-      <li><strong>Single-click a node</strong> to highlight every chain going in and out of it, each chain in its own color. Click it again (or empty canvas) to clear.</li>
-      <li><strong>Double Left Mouse Button</strong> on a node to remove ALL of its outgoing arrows at once.</li>
-      <li><strong>Double-click an arrow</strong> to remove just that connection and split its chain (the part after the break becomes a new chain).</li>
-      <li><strong>Click an arrow</strong> on the map (or a path in the Display panel) to highlight that path on both; click again to unhighlight.</li>
-      <li><strong>Middle Mouse Button</strong> to mark/unmark a stage green. <strong>Right Mouse Button</strong> to mark/unmark a stage red.</li>
-      <li><strong>Drag the panel background or kingdom header</strong> to move a kingdom panel.</li>
-      <li><strong>Triangle handle</strong> (bottom-right of each panel) to resize it. Zones reflow automatically in that space.</li>
-      <li><strong>Hold for 1 second</strong> on a node (with Stage Previews on) to view its loading zone screenshot.</li>
-      <li><strong>Node triangle</strong> (bottom-right of each node, Decouple only): drag it to move that node on its own. It moves and it never resizes. Dragging anywhere else on the node still draws an arrow.</li>
-      <li><strong>Hover</strong> over an arrow to see what letter chain it is part of.</li>
-      <li><strong>Single-click</strong> an arrow to view its chain and what chain it can be linked to or add it to a new chain.</li>
-      <li>Scroll to zoom, drag empty space to pan.</li>
-    </ul>
+      <div class="controls-section-title">Controls</div>
+      <div class="controls-grid">
+        <div class="ctrl-card"><span class="ctrl-key">Drag a node</span><div class="ctrl-desc">Hold left mouse and drag from one node to another to <strong>draw a connection arrow</strong>. A node can carry any number of arrows, except dead-end nodes.</div></div>
+        <div class="ctrl-card"><span class="ctrl-key">Left-click a node</span><div class="ctrl-desc">Highlights every chain running through it, and opens the connection navigator below the header. Click again (or empty canvas) to clear.</div></div>
+        <div class="ctrl-card"><span class="ctrl-key">Right-click a node</span><div class="ctrl-desc">Cycles its color through the palette, then back to none. With Segmented Nodes on, colors the entrance, name, or exit separately.</div></div>
+        <div class="ctrl-card"><span class="ctrl-key">Double-click a node</span><div class="ctrl-desc">Removes all of its outgoing arrows at once.</div></div>
+        <div class="ctrl-card"><span class="ctrl-key">Double-click an arrow</span><div class="ctrl-desc">Removes just that connection and splits its chain (the part after the break becomes a new chain).</div></div>
+        <div class="ctrl-card"><span class="ctrl-key">Ctrl + click a node</span><div class="ctrl-desc">Opens its loading-zone screenshot (Stage Previews must be on).</div></div>
+        <div class="ctrl-card"><span class="ctrl-key">Click an arrow</span><div class="ctrl-desc">Highlights that path on the map and the Display panel; click again to clear. Also opens its chain picker so you can link it to another chain or start a new one.</div></div>
+        <div class="ctrl-card"><span class="ctrl-key">Hover an arrow</span><div class="ctrl-desc">Shows which letter chain it belongs to.</div></div>
+        <div class="ctrl-card"><span class="ctrl-key">Connection navigator</span><div class="ctrl-desc">With a node selected, the bar under the header steps through each chain through it. Use its arrows or the Left / Right arrow keys.</div></div>
+        <div class="ctrl-card"><span class="ctrl-key">Notes</span><div class="ctrl-desc">Double-click empty canvas to add a sticky note; shift-click a note to delete it. The Notes panel (Settings) keeps a numbered list. {icon} tokens render as images in both.</div></div>
+        <div class="ctrl-card"><span class="ctrl-key">Undo / redo</span><div class="ctrl-desc">Ctrl + Z undo and Ctrl + Shift + Z redo connections, chain changes, colors, notes, and node moves.</div></div>
+        <div class="ctrl-card"><span class="ctrl-key">Panels</span><div class="ctrl-desc">Drag a kingdom's background or header to move it; drag its bottom-right triangle to resize. Drag a panel's bar to resize the Display and Notes panels.</div></div>
+        <div class="ctrl-card"><span class="ctrl-key">Decouple</span><div class="ctrl-desc">Drag a node's bottom-right triangle to move it on its own. Dragging anywhere else still draws an arrow.</div></div>
+        <div class="ctrl-card"><span class="ctrl-key">Navigate</span><div class="ctrl-desc">Scroll to zoom, drag empty space to pan.</div></div>
+      </div>
     </div>
     <!-- Mobile controls -->
     <div class="controls-mobile">
-      <strong>Controls</strong>
-      <ul>
-        <li><strong>Hold and drag</strong> any zone or kingdom to draw a connection arrow. A node can have any number of outgoing and incoming arrows.</li>
-        <li><strong>With Segmented Nodes on</strong>, the arrow attaches to the part you started on and the part you lifted off on (entrance, name, or exit). Kingdom nodes stay whole.</li>
-        <li><strong>Double-tap</strong> a node to remove ALL of its outgoing arrows at once.</li>
-        <li><strong>Tap a path</strong> in the Display panel to highlight it on the map; tap again to unhighlight.</li>
-        <li><strong>Single tap</strong> a node to cycle its color: green → red → none.</li>
-        <li><strong>Tap once</strong> a panel's empty background to select it (border lights up), then <strong>drag</strong> from that background to move it. Deactivates automatically when you lift your finger.</li>
-        <li><strong>Triangle handle</strong> (bottom-right of each panel): drag to resize it. Zones reflow automatically.</li>
-        <li><strong>Node triangle</strong> (bottom-right of each node, Decouple only): drag it to move that node on its own. Dragging anywhere else still draws an arrow.</li>
-        <li><strong>Hold for 1 second</strong> on a node without moving (Stage Previews must be on) to view its loading zone screenshot. Moving your finger cancels it and starts a connection drag instead.</li>
-        <li>Pinch to zoom, drag empty canvas to pan.</li>
-      </ul>
+      <div class="controls-section-title">Controls</div>
+      <div class="controls-grid">
+        <div class="ctrl-card"><span class="ctrl-key">Drag a node</span><div class="ctrl-desc">Hold and drag from one node to another to draw a connection arrow.</div></div>
+        <div class="ctrl-card"><span class="ctrl-key">Single tap a node</span><div class="ctrl-desc">Cycles its color through the palette, then back to none.</div></div>
+        <div class="ctrl-card"><span class="ctrl-key">Double-tap a node</span><div class="ctrl-desc">Removes all of its outgoing arrows.</div></div>
+        <div class="ctrl-card"><span class="ctrl-key">Hold a node</span><div class="ctrl-desc">Opens its loading-zone screenshot (Stage Previews must be on). Moving your finger cancels it and starts a connection drag.</div></div>
+        <div class="ctrl-card"><span class="ctrl-key">Tap a path</span><div class="ctrl-desc">Highlights it on the map; tap again to clear.</div></div>
+        <div class="ctrl-card"><span class="ctrl-key">Notes</span><div class="ctrl-desc">Double-tap empty canvas to add a sticky note; double-tap a note to delete it.</div></div>
+        <div class="ctrl-card"><span class="ctrl-key">Panels</span><div class="ctrl-desc">Tap a panel's background to select it, then drag to move. Drag the bottom-right triangle to resize.</div></div>
+        <div class="ctrl-card"><span class="ctrl-key">Navigate</span><div class="ctrl-desc">Pinch to zoom, drag empty canvas to pan.</div></div>
+      </div>
     </div>
     <!-- Info same on all devices -->
-    <strong>Info</strong>
-    <ul>
-      <li>The <strong>striped loading zones</strong> represent one-ways, one entrance in or out.</li>
-    </ul>
+    <div class="controls-section-title">Info</div>
+    <div class="controls-grid">
+      <div class="ctrl-card"><span class="ctrl-key">Striped loading zones</span><div class="ctrl-desc">These represent one-ways: one entrance in or out.</div></div>
+        <div class="ctrl-card"><span class="ctrl-key">Segmented Nodes</span><div class="ctrl-desc">The arrow attaches to whichever part you start on and release on (entrance, name, or exit). Only the segment under the cursor lights up as in indicator.</div></div>
+    </div>
   </div>
 
-  <div id="main-area" class="dp-top">
+  <!-- Node connection navigator (appears when a node is selected) -->
+  <div id="node-nav" class="hidden">
+    <button class="nn-btn" id="node-nav-prev" title="Previous connection (Left arrow)">&#8249;</button>
+    <button class="nn-btn" id="node-nav-next" title="Next connection (Right arrow)">&#8250;</button>
+    <span id="node-nav-label"></span>
+    <button id="node-nav-close" title="Clear selection">&#10005;</button>
+  </div>
+
+  <div id="main-area">
     <!-- Display panel -->
-    <div id="display-panel" class="side-panel">
-      <div id="display-panel-content"></div>
-      <div id="display-resize-handle"></div>
+    <div id="display-panel" class="dock-panel">
+      <div id="display-panel-content" class="panel-scroll"></div>
+      <div id="display-resize-handle" class="panel-resize-handle"></div>
     </div>
 
-    <div id="viewport">
-      <div id="canvas">
-        <svg id="lines-layer"></svg>
-      </div>
-      <div id="author-credit">Made by FireRisingRaging and gmo7</div>
-      <div id="zoom-control">
-        <input id="zoom-slider" type="range" min="60" max="120" value="80" step="1" title="Zoom">
-        <span id="zoom-readout" title="Click to type a zoom value">80%</span>
-        <input id="zoom-input" type="number" min="60" max="120" style="display:none">
+    <!-- Notes panel -->
+    <div id="notes-panel" class="dock-panel hidden">
+      <div id="notes-panel-content" class="panel-scroll"></div>
+      <div id="notes-resize-handle" class="panel-resize-handle"></div>
+    </div>
+
+    <!-- Combo strip (used only when both panels share an edge) -->
+    <div id="combo-strip">
+      <div id="combo-resize-handle"></div>
+      <div id="combo-split-handle"></div>
+    </div>
+
+    <!-- Inner area wraps the viewport (and the notes panel in nested layouts) -->
+    <div id="inner-area">
+      <div id="viewport">
+        <div id="canvas">
+          <svg id="lines-layer"></svg>
+        </div>
+        <div id="author-credit">Made by FireRisingRaging and gmo7</div>
+        <div id="zoom-control">
+          <input id="zoom-slider" type="range" min="60" max="120" value="80" step="1" title="Zoom">
+          <span id="zoom-readout" title="Click to type a zoom value">80%</span>
+          <input id="zoom-input" type="number" min="60" max="120" style="display:none">
+        </div>
       </div>
     </div>
   </div>
@@ -1054,7 +1333,7 @@
 
       <div class="settings-row">
         <div class="settings-row-label">Stage Previews</div>
-        <div class="settings-row-desc">Click and hold any kingdom or zone node to view its loading zone screenshot.</div>
+        <div class="settings-row-desc"> Ctrl + Click on PC and hold on mobile, on any kingdom or zone node to view its loading zone screenshot.</div>
         <div class="settings-row-control">
           <label class="toggle-wrap" for="toggle-images">
             <span class="toggle-switch">
@@ -1070,7 +1349,7 @@
 
       <div class="settings-row">
         <div class="settings-row-label">Painting Tracker</div>
-        <div class="settings-row-desc">Adds a Paintings section. Paintings only connect to other paintings, show at the top of the Display, and have white arrows.</div>
+        <div class="settings-row-desc">Adds a Paintings section. Paintings only connect to other paintings, shows at the top of the Display.</div>
         <div class="settings-row-control">
           <label class="toggle-wrap" for="toggle-painting">
             <span class="toggle-switch">
@@ -1086,7 +1365,7 @@
 
       <div class="settings-row">
         <div class="settings-row-label">Segmented Nodes</div>
-        <div class="settings-row-desc">Splits every zone node into an entrance segment on the left and an exit segment on the right. Kingdom nodes are left whole. </div>
+        <div class="settings-row-desc">Splits every zone node into an entrance segment on the left and an exit segment on the right.</div>
         <div class="settings-row-control">
           <label class="toggle-wrap" for="toggle-segmented">
             <span class="toggle-switch">
@@ -1170,6 +1449,34 @@
       <div class="settings-divider"></div>
 
       <div class="settings-row">
+        <div class="settings-row-label">Node Colors</div>
+        <div class="settings-row-desc">Right-click a node to cycle it through these colors, then back to none. Add or remove colors below; click a swatch to change it.</div>
+        <div class="palette-editor" id="palette-editor"></div>
+
+        <div class="arrow-color-option" style="margin-top:6px;">
+          <label class="toggle-wrap" for="toggle-fill-colors">
+            <span class="toggle-switch">
+              <input type="checkbox" id="toggle-fill-colors" checked>
+              <span class="toggle-track"></span>
+            </span>
+            <span class="toggle-label">Fill Colors</span>
+          </label>
+        </div>
+        <div class="arrow-color-option">
+          <label class="toggle-wrap" for="toggle-frame-colors">
+            <span class="toggle-switch">
+              <input type="checkbox" id="toggle-frame-colors">
+              <span class="toggle-track"></span>
+            </span>
+            <span class="toggle-label">Frame Colors</span>
+          </label>
+        </div>
+        <div class="settings-row-note">Fill tints the node; Frame draws a second border. Turn on both to get both, using the same color. With Segmented Nodes on, each part colors on its own.</div>
+      </div>
+
+      <div class="settings-divider"></div>
+
+      <div class="settings-row">
         <div class="settings-row-label">Chain Highlighting</div>
         <div class="settings-row-desc">Hover or click an arrow on the map (or a path in the Display panel) to highlight it on both.</div>
         <div class="settings-row-control">
@@ -1220,6 +1527,30 @@
         <div class="settings-row-desc">Choose where the chain display panel appears relative to the map canvas.</div>
         <div class="settings-row-control">
           <select id="display-position-select">
+            <option value="top">Top</option>
+            <option value="bottom">Bottom</option>
+            <option value="left">Left</option>
+            <option value="right">Right</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="settings-divider"></div>
+
+      <div class="settings-row">
+        <div class="settings-row-label">Notes Panel</div>
+        <div class="settings-row-desc">A docked panel of numbered notes. Click to add a note and type; {icon} tokens work like the sticky notes. Shift-click a note to delete it.</div>
+        <div class="settings-row-control">
+          <label class="toggle-wrap" for="toggle-notes-panel">
+            <span class="toggle-switch">
+              <input type="checkbox" id="toggle-notes-panel">
+              <span class="toggle-track"></span>
+            </span>
+            <span class="toggle-label" id="toggle-notes-panel-label">Off</span>
+          </label>
+        </div>
+        <div class="settings-row-control" id="notes-position-row">
+          <select id="notes-position-select">
             <option value="top">Top</option>
             <option value="bottom">Bottom</option>
             <option value="left">Left</option>
@@ -1582,6 +1913,8 @@ const STORAGE_EDGE_CHAINS = 'smo_edge_chains';
 const STORAGE_CHAIN_META  = 'smo_chain_meta';
 const STORAGE_NOTES       = 'smo_map_notes';
 const STORAGE_NODE_POS    = 'smo_map_node_positions';
+const STORAGE_NODE_COLORS = 'smo_map_node_colors';
+const STORAGE_PANEL_NOTES = 'smo_map_panel_notes';
 
 // ─────────────────────────────────────────────────────────────────
 // Zone name overrides (from the main tracker's tracker_state)
@@ -1648,6 +1981,17 @@ let canvasW = 2000, canvasH = 1400;
 let edgeList = [];   // [{ src, sPart, tgt, tPart }]
 let outgoing = {}, incoming = {}, marks = {};
 
+// ── Node coloring ─────────────────────────────────────────────────
+// Right-clicking a node cycles it through the color palette. A node stores an
+// index into colorPalette (or is absent = no color). When Segmented Nodes is on,
+// each region (in / mid / out) is colored independently via segColors. Segment
+// colors are discarded the moment segmentation is turned off.
+let colorPalette = ['#f87171', '#4ade80', '#facc15', '#22d3ee', '#60a5fa']; // red, green, yellow, cyan, blue
+let nodeColors = {};   // id -> palette index (whole-node color, used when not segmented)
+let segColors  = {};   // id -> { in, mid, out } palette indices (used when segmented)
+let fillColorsOn  = true;  // color renders as a fill
+let frameColorsOn = false; // color renders as a second border (frame)
+
 // Per-cluster overrides (keyed by kingdomKey)
 let clusterPositions = {};  // {x, y} absolute canvas positions for each cluster
 let clusterSizes = {};      // {w} user-set width for each cluster
@@ -1664,7 +2008,20 @@ let randomChainColors = true; // legacy, kept for old-save migration only
 let arrowColorMode = 'random'; // 'random' | 'one' | 'gradient'
 let displayPosition = 'top';
 let displaySize = 150;
+let displayVisible = true;      // toggled by the Hide/Show Display button
 let paintingTracker = false; // Painting section shown on the map (default off)
+
+// ── Notes panel ───────────────────────────────────────────────────
+// A docked panel of numbered notes (separate from the freeform sticky notes on
+// the canvas, but sharing the {icon} rendering). Off by default.
+let notesPanelOn  = false;
+let notesPosition = 'right';
+let notesSize     = 220;
+// When both panels share an edge (combo strip), this holds the Display panel's
+// fraction of that shared edge, kept independently per edge. Notes gets 1-frac.
+let comboSplit    = { top: 0.5, bottom: 0.5, left: 0.5, right: 0.5 };
+let panelNotes    = [];   // [{ id, text }]
+let nextPanelNoteId = 1;
 
 // ── Segmented nodes ───────────────────────────────────────────────
 // When on, every non-painting node is split into an entrance segment (left) and
@@ -1716,6 +2073,19 @@ let pinnedHighlightNodeId  = null;
 // Chain picker state
 let activePickerEdge = null;
 let activePickerEl   = null;
+
+// ── Undo / redo ───────────────────────────────────────────────────
+// Snapshot-based history. pushUndoSnapshot() records the full undoable state
+// BEFORE a change; undo restores it (pushing the current state onto redo).
+let undoStack = [];
+let redoStack = [];
+const UNDO_LIMIT = 100;
+
+// ── Node connection navigator ─────────────────────────────────────
+// When a node is pinned (single-clicked), a bar appears letting you arrow
+// through each chain that passes through that node.
+let navChains = [];    // chain objects for the pinned node
+let navIndex  = -1;    // -1 = show all chains (no single selection yet)
 
 // ── Freeform notes ────────────────────────────────────────────────
 // Sticky notes drawn on top of the canvas (above arrows). Positions/sizes are in
@@ -1978,11 +2348,19 @@ function loadAll() {
       randomChainColors = arrowColorMode === 'random';
       displayPosition   = s.displayPosition || displayPosition;
       displaySize       = s.displaySize     || displaySize;
+      if (s.displayVisible !== undefined) displayVisible = !!s.displayVisible;
       paintingTracker   = !!s.paintingTracker;
       segmentedNodes    = !!s.segmentedNodes;
       if (s.segmentStyle && SEGMENT_LABELS[s.segmentStyle]) segmentStyle = s.segmentStyle;
       decoupled         = !!s.decoupled;
       if (s.kingdomVisible) kingdomVisible = { ...kingdomVisible, ...s.kingdomVisible };
+      if (Array.isArray(s.colorPalette) && s.colorPalette.length) colorPalette = s.colorPalette.slice();
+      if (s.fillColorsOn  !== undefined) fillColorsOn  = !!s.fillColorsOn;
+      if (s.frameColorsOn !== undefined) frameColorsOn = !!s.frameColorsOn;
+      if (s.notesPanelOn  !== undefined) notesPanelOn  = !!s.notesPanelOn;
+      notesPosition     = s.notesPosition || notesPosition;
+      notesSize         = s.notesSize     || notesSize;
+      if (s.comboSplit && typeof s.comboSplit === 'object') comboSplit = { ...comboSplit, ...s.comboSplit };
     }
   } catch (e) {}
 
@@ -2027,6 +2405,36 @@ function loadAll() {
       }
     }
   } catch (e) {}
+
+  try {
+    const raw = localStorage.getItem(STORAGE_NODE_COLORS);
+    if (raw) {
+      const c = JSON.parse(raw);
+      if (c && typeof c === 'object') {
+        nodeColors = c.nodeColors || {};
+        segColors  = c.segColors  || {};
+      }
+    }
+  } catch (e) {}
+  // Migrate the old green/red marks into palette colors (green -> index 1,
+  // red -> index 0) so existing maps keep their coloring.
+  if (marks && Object.keys(marks).length && !Object.keys(nodeColors).length) {
+    for (const [id, m] of Object.entries(marks)) {
+      if (m === 'green') nodeColors[id] = 1;
+      else if (m === 'red') nodeColors[id] = 0;
+    }
+  }
+
+  try {
+    const raw = localStorage.getItem(STORAGE_PANEL_NOTES);
+    if (raw) {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) {
+        panelNotes = arr.filter(n => n && typeof n === 'object');
+        nextPanelNoteId = panelNotes.reduce((mx, n) => Math.max(mx, (n.id || 0) + 1), 1);
+      }
+    }
+  } catch (e) {}
 }
 
 function saveState()    { localStorage.setItem(STORAGE_KEY, JSON.stringify({ outgoing, marks, edgeList })); }
@@ -2036,9 +2444,17 @@ function saveGrid()     { localStorage.setItem(STORAGE_GRID, JSON.stringify({ ro
 function saveSettings() {
   localStorage.setItem(STORAGE_SETTINGS, JSON.stringify({
     showImages, arrowColor, highlightColor, highlightEnabled,
-    randomChainColors, arrowColorMode, displayPosition, displaySize, kingdomVisible,
-    paintingTracker, segmentedNodes, segmentStyle, decoupled
+    randomChainColors, arrowColorMode, displayPosition, displaySize, displayVisible, kingdomVisible,
+    paintingTracker, segmentedNodes, segmentStyle, decoupled,
+    colorPalette, fillColorsOn, frameColorsOn,
+    notesPanelOn, notesPosition, notesSize, comboSplit
   }));
+}
+function saveNodeColors() {
+  localStorage.setItem(STORAGE_NODE_COLORS, JSON.stringify({ nodeColors, segColors }));
+}
+function savePanelNotes() {
+  localStorage.setItem(STORAGE_PANEL_NOTES, JSON.stringify(panelNotes));
 }
 function saveNodePositions() {
   localStorage.setItem(STORAGE_NODE_POS, JSON.stringify(nodePositions));
@@ -2058,6 +2474,79 @@ function saveEdgeChains() {
   localStorage.setItem(STORAGE_CHAIN_META, JSON.stringify({ nextChainId, colors: chainColors }));
 }
 function saveNotes() { localStorage.setItem(STORAGE_NOTES, JSON.stringify(mapNotes)); }
+
+// ─────────────────────────────────────────────────────────────────
+// Undo / redo (snapshot based)
+// ─────────────────────────────────────────────────────────────────
+function captureSnapshot() {
+  return JSON.parse(JSON.stringify({
+    edgeList, edgeChains, chainColors, nextChainId,
+    nodeColors, segColors,
+    mapNotes, nextNoteId,
+    panelNotes, nextPanelNoteId,
+    nodePositions,
+  }));
+}
+
+function restoreSnapshot(s) {
+  edgeList        = s.edgeList        || [];
+  edgeChains      = s.edgeChains      || {};
+  chainColors     = s.chainColors     || {};
+  nextChainId     = s.nextChainId     || 0;
+  nodeColors      = s.nodeColors      || {};
+  segColors       = s.segColors       || {};
+  mapNotes        = s.mapNotes        || [];
+  nextNoteId      = s.nextNoteId      || 1;
+  panelNotes      = s.panelNotes      || [];
+  nextPanelNoteId = s.nextPanelNoteId || 1;
+  nodePositions   = s.nodePositions   || {};
+
+  // Any in-flight selections may now point at things that no longer exist.
+  hoverHighlightChainId = null;
+  pinnedHighlightChainId = null;
+  pinnedHighlightNodeId = null;
+  closeActiveChainPicker();
+  clearNodeNav();
+
+  rebuildAdjacency();
+  recomputeChainLabels();
+
+  // Persist the restored state to every store.
+  saveState();
+  saveEdgeChains();
+  saveNodeColors();
+  saveNotes();
+  savePanelNotes();
+  if (decoupled) saveNodePositions();
+
+  fullRender();
+  renderNotes();
+  renderPanelNotes();
+}
+
+// Record the current state so the next mutation can be undone.
+function pushUndoSnapshot() {
+  commitUndoSnapshot(captureSnapshot());
+}
+// Push an already-captured snapshot (used when the "before" state must be grabbed
+// ahead of a gesture, e.g. a node drag, and only kept if the gesture changed it).
+function commitUndoSnapshot(snap) {
+  undoStack.push(snap);
+  if (undoStack.length > UNDO_LIMIT) undoStack.shift();
+  redoStack = [];
+}
+
+function undo() {
+  if (!undoStack.length) return;
+  redoStack.push(captureSnapshot());
+  restoreSnapshot(undoStack.pop());
+}
+
+function redo() {
+  if (!redoStack.length) return;
+  undoStack.push(captureSnapshot());
+  restoreSnapshot(redoStack.pop());
+}
 
 // ─────────────────────────────────────────────────────────────────
 // Connection helpers
@@ -2140,6 +2629,7 @@ function connect(src, sPart, tgt, tPart) {
     flashRejected(src);
     return;
   }
+  pushUndoSnapshot();
   const ed = { src, sPart, tgt, tPart };
   edgeList.push(ed);
   rebuildAdjacency();
@@ -2292,6 +2782,7 @@ function migrateOldEdgeChains() {
  * side (after the break) becomes a brand-new chain. The rest stays intact.
  */
 function breakChainAtEdge(ed) {
+  pushUndoSnapshot();
   const key = edgeKeyOf(ed);
   const src = ed.src;
   const cid = edgeChains[key];
@@ -2357,11 +2848,37 @@ function flashRejected(id) {
   setTimeout(() => el.classList.remove('connect-rejected'), 350);
 }
 
-function toggleMark(id, color) {
-  marks[id] = (marks[id] === color) ? null : color;
-  if (!marks[id]) delete marks[id];
-  saveState();
-  applyMarkClass(id);
+function paletteColor(i) {
+  return (i != null && i >= 0 && i < colorPalette.length) ? colorPalette[i] : null;
+}
+
+/** Advance one color slot, wrapping to "no color" after the last entry. */
+function nextColorIndex(cur) {
+  const next = (cur == null) ? 0 : cur + 1;
+  return next >= colorPalette.length ? null : next;
+}
+
+// Right-click a node (or a segment region) to cycle its color. region is one of
+// 'in' / 'mid' / 'out' when segmented, else null for the whole node.
+function cycleNodeColor(id, region) {
+  if (!fillColorsOn && !frameColorsOn) return; // nothing would be shown
+  pushUndoSnapshot();
+  if (nodeIsSegmented(id) && region) {
+    if (!segColors[id]) segColors[id] = {};
+    const next = nextColorIndex(segColors[id][region]);
+    if (next == null) {
+      delete segColors[id][region];
+      if (Object.keys(segColors[id]).length === 0) delete segColors[id];
+    } else {
+      segColors[id][region] = next;
+    }
+  } else {
+    const next = nextColorIndex(nodeColors[id]);
+    if (next == null) delete nodeColors[id];
+    else nodeColors[id] = next;
+  }
+  saveNodeColors();
+  applyNodeColorStyles(id);
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -2411,7 +2928,7 @@ function renderClusters() {
     div.style.width = cw + 'px';
     div.style.height = ch + 'px';
 
-    // Resize handle (width – bottom-right)
+    // Resize handle (width, bottom-right)
     const handle = document.createElement('div');
     handle.className = 'cluster-resize-handle';
     div.appendChild(handle);
@@ -2782,7 +3299,7 @@ function renderNodes() {
 
     canvasEl.appendChild(el);
     wireNodeEvents(el, n.id);
-    applyMarkClass(n.id);
+    applyNodeColorStyles(n.id);
   });
 }
 
@@ -2799,12 +3316,58 @@ function hexWithAlpha(hex, alpha) {
   return `rgba(${r},${g},${b},${alpha})`;
 }
 
-function applyMarkClass(id) {
+// Paint a node's fill and/or frame from its stored color(s). Fill sets the
+// background + border; frame draws a second border (outline for whole nodes,
+// inset shadow for individual segments so the node's overflow can't clip it).
+function applyNodeColorStyles(id) {
   const el = canvasEl.querySelector(`.map-node[data-id="${cssEscape(id)}"]`);
   if (!el) return;
-  el.classList.remove('mark-green','mark-red');
-  if (marks[id] === 'green') el.classList.add('mark-green');
-  if (marks[id] === 'red')   el.classList.add('mark-red');
+  const n = nodes[id];
+  if (!n) return;
+  const defaultBorder = n.type === 'zone' ? hexWithAlpha(n.color, 0.5) : n.color;
+
+  // Reset whole-node styling first.
+  el.style.outline = '';
+  el.style.outlineOffset = '';
+
+  if (nodeIsSegmented(id)) {
+    el.style.background = '';
+    el.style.borderColor = defaultBorder;
+    const seg = segColors[id] || {};
+    const regionEls = {
+      in:  el.querySelector('.node-seg-in'),
+      mid: el.querySelector('.node-label'),
+      out: el.querySelector('.node-seg-out'),
+    };
+    for (const region of ['in', 'mid', 'out']) {
+      const segEl = regionEls[region];
+      if (!segEl) continue;
+      segEl.style.background = '';
+      segEl.style.boxShadow  = '';
+      const c = paletteColor(seg[region]);
+      if (!c) continue;
+      if (fillColorsOn)  segEl.style.background = hexWithAlpha(c, 0.30);
+      if (frameColorsOn) segEl.style.boxShadow  = `inset 0 0 0 2px ${c}`;
+    }
+  } else {
+    const c = paletteColor(nodeColors[id]);
+    if (c && fillColorsOn) {
+      el.style.background = hexWithAlpha(c, 0.18);
+      el.style.borderColor = c;
+    } else {
+      el.style.background = '';
+      el.style.borderColor = defaultBorder;
+    }
+    if (c && frameColorsOn) {
+      el.style.outline = `3px solid ${c}`;
+      el.style.outlineOffset = '1px';
+    }
+  }
+}
+
+// Re-apply coloring to every currently-rendered node.
+function applyAllNodeColors() {
+  Object.keys(nodes).forEach(applyNodeColorStyles);
 }
 
 function cssEscape(s) { return s.replace(/[:.]/g,'\\$&'); }
@@ -3039,6 +3602,7 @@ function openChainPicker(event, ed) {
     badge.title = `Chain ${lbl}`;
     badge.addEventListener('click', (e) => {
       e.stopPropagation();
+      if (getEdgeChainId(ed) !== cid) pushUndoSnapshot();
       assignChain(ed, cid);
       saveEdgeChains();
       closeActiveChainPicker();
@@ -3052,6 +3616,7 @@ function openChainPicker(event, ed) {
   newBtn.textContent = '+'; newBtn.title = 'Start a new chain';
   newBtn.addEventListener('click', (e) => {
     e.stopPropagation();
+    pushUndoSnapshot();
     assignNewChain(ed);
     saveEdgeChains();
     closeActiveChainPicker();
@@ -3496,7 +4061,34 @@ let nodePressFired = false;
 function toggleNodeHighlight(id) {
   pinnedHighlightNodeId  = (pinnedHighlightNodeId === id) ? null : id;
   pinnedHighlightChainId = null; // don't fight the single-chain pin
-  applyHighlightClasses();
+  if (pinnedHighlightNodeId) {
+    buildNodeNav(id);
+    // With chain highlighting on, show every chain through the node in its own
+    // color (existing behavior). With it off, still show them, in the highlight
+    // color, so the selection is visible.
+    if (highlightEnabled) applyHighlightClasses();
+    else forceShowAllNavChains();
+  } else {
+    clearNodeNav();
+    applyHighlightClasses();
+  }
+}
+
+// Highlight every chain through the pinned node in the highlight color, ignoring
+// the highlightEnabled setting.
+function forceShowAllNavChains() {
+  const edgeColors = new Map(), nodeIds = new Set(), chainIds = new Set();
+  if (pinnedHighlightNodeId != null) nodeIds.add(pinnedHighlightNodeId);
+  navChains.forEach(chain => {
+    chainIds.add(chain.chainId);
+    for (const [key, c] of Object.entries(edgeChains)) {
+      if (c !== chain.chainId) continue;
+      edgeColors.set(key, highlightColor);
+      const pk = parseEkey(key);
+      if (pk) { nodeIds.add(pk.src); nodeIds.add(pk.tgt); }
+    }
+  });
+  applyForcedHighlight({ edgeColors, nodeIds, chainIds });
 }
 
 // ── Decouple: drag a single node by its bottom-right triangle ─────
@@ -3524,8 +4116,11 @@ function wireNodeMove(handle, el, id) {
     const n = nodes[id];
     const startX = n.x, startY = n.y;
     const startMx = e.clientX, startMy = e.clientY;
+    const preMove = captureSnapshot();
+    let moved = false;
 
     function onMove(ev) {
+      moved = true;
       moveNodeTo(id, startX + (ev.clientX - startMx) / zoom,
                      startY + (ev.clientY - startMy) / zoom, el);
       renderConnections();
@@ -3535,7 +4130,7 @@ function wireNodeMove(handle, el, id) {
       document.removeEventListener('mouseup', onUp);
       el.classList.remove('node-moving');
       updateCanvasBounds();
-      saveNodePositions();
+      if (moved) { commitUndoSnapshot(preMove); saveNodePositions(); }
       renderConnections();
       setTimeout(() => { nodeMoveActive = false; }, 0);
     }
@@ -3554,10 +4149,13 @@ function wireNodeMove(handle, el, id) {
     const startX = n.x, startY = n.y;
     const t0 = e.touches[0];
     const startMx = t0.clientX, startMy = t0.clientY;
+    const preMove = captureSnapshot();
+    let moved = false;
 
     function onTouchMove(ev) {
       if (ev.touches.length !== 1) return;
       ev.preventDefault();
+      moved = true;
       const t = ev.touches[0];
       moveNodeTo(id, startX + (t.clientX - startMx) / zoom,
                      startY + (t.clientY - startMy) / zoom, el);
@@ -3569,7 +4167,7 @@ function wireNodeMove(handle, el, id) {
       document.removeEventListener('touchcancel', onTouchEnd);
       el.classList.remove('node-moving');
       updateCanvasBounds();
-      saveNodePositions();
+      if (moved) { commitUndoSnapshot(preMove); saveNodePositions(); }
       renderConnections();
       setTimeout(() => { nodeMoveActive = false; }, 0);
     }
@@ -3634,6 +4232,14 @@ function updateDropHighlight(clientX, clientY, srcId) {
 function wireNodeEvents(el, id) {
   el.addEventListener('mousedown', (e) => {
     if (e.button === 0) {
+      // Ctrl-click (or Cmd-click) opens the stage preview on desktop, replacing
+      // the old press-and-hold. It never starts a connection drag.
+      if ((e.ctrlKey || e.metaKey) && showImages && !isPaintingNode(id)) {
+        e.preventDefault(); e.stopPropagation();
+        nodePressFired = true; // swallow the following mouseup click
+        openImageViewer(id);
+        return;
+      }
       e.stopPropagation();
       mouseDownTime = Date.now();
       mouseDownPos = { x: e.clientX, y: e.clientY };
@@ -3643,32 +4249,21 @@ function wireNodeEvents(el, id) {
       const origin = dragOrigin(id, startPart);
       previewLine = drawLine(origin, origin, arrowColor, false);
       previewLine.setAttribute('stroke-dasharray','5,4');
-      // Hold for 1s (without moving) opens the stage preview, as on mobile.
-      if (showImages && !isPaintingNode(id)) {
-        clearTimeout(nodePressTimer);
-        nodePressTimer = setTimeout(() => {
-          nodePressTimer = null;
-          nodePressFired = true;
-          // Cancel the pending connection drag and show the screenshot instead
-          connecting = null;
-          if (previewLine) { previewLine.remove(); previewLine = null; }
-          canvasEl.querySelectorAll('.map-node.drag-target').forEach(n => n.classList.remove('drag-target'));
-          openImageViewer(id);
-        }, 1000);
-      }
-    } else if (e.button === 1) {
-      e.preventDefault(); e.stopPropagation();
-      toggleMark(id, 'green');
     }
   });
 
+  // Right-click cycles the node's color (or the color of the segment region
+  // under the cursor when Segmented Nodes is on).
   el.addEventListener('contextmenu', (e) => {
     e.preventDefault(); e.stopPropagation();
-    toggleMark(id, 'red');
+    const region = nodeIsSegmented(id) ? partAtPoint(el, e.clientX) : null;
+    cycleNodeColor(id, region);
   });
 
   el.addEventListener('dblclick', (e) => {
     e.preventDefault(); e.stopPropagation();
+    if (!edgeList.some(ed => ed.src === id)) return; // nothing to remove
+    pushUndoSnapshot();
     disconnectOutgoing(id);
     saveState();
     saveEdgeChains();
@@ -3743,10 +4338,8 @@ let pendingTapTimer = null, lastTapNodeId = null, lastTapTime = 0;
 const DOUBLE_TAP_MS = 320, TAP_MOVE_THRESHOLD = 10;
 
 function cycleMarkMobile(id) {
-  const cur = marks[id] || null;
-  const next = cur==='green' ? 'red' : cur==='red' ? null : 'green';
-  if (next) marks[id] = next; else delete marks[id];
-  saveState(); applyMarkClass(id);
+  // On mobile a single tap cycles the whole-node color through the palette.
+  cycleNodeColor(id, null);
 }
 
 function updateTouchDragHover(cx, cy, src) {
@@ -3823,7 +4416,10 @@ function handleNodeTouchStart(e, id) {
     if (lastTapNodeId === id && (now - lastTapTime) < DOUBLE_TAP_MS) {
       if (pendingTapTimer) { clearTimeout(pendingTapTimer); pendingTapTimer = null; }
       lastTapNodeId = null;
-      disconnectOutgoing(id); saveState(); saveEdgeChains(); renderConnections(); renderDisplayPanel();
+      if (edgeList.some(ed => ed.src === id)) {
+        pushUndoSnapshot();
+        disconnectOutgoing(id); saveState(); saveEdgeChains(); renderConnections(); renderDisplayPanel();
+      }
     } else {
       lastTapNodeId = id; lastTapTime = now;
       if (pendingTapTimer) clearTimeout(pendingTapTimer);
@@ -3986,51 +4582,134 @@ function computeChainsFromEdgeAssignments() {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// Display panel layout & resize
+// Panel layout & resize (Display + Notes)
 // ─────────────────────────────────────────────────────────────────
-function applyDisplayLayout() {
-  const mainArea = document.getElementById('main-area');
-  mainArea.className = `dp-${displayPosition}`;
-  const panel = document.getElementById('display-panel');
-  if (displayPosition === 'top' || displayPosition === 'bottom') {
-    panel.style.height = displaySize + 'px';
-    panel.style.width  = '';
-  } else {
-    panel.style.width  = displaySize + 'px';
-    panel.style.height = '';
-  }
+function panelAxis(pos) { return (pos === 'top' || pos === 'bottom') ? 'v' : 'h'; }
+function panelBefore(pos) { return pos === 'top' || pos === 'left'; }
+
+// Arrange the Display and Notes panels around the viewport. Three cases:
+//  - only one (or neither) panel on: dock it on its edge.
+//  - both on, different edges: display reserves its full edge, notes reserves
+//    its edge in the remaining area (nested), so neither can hide the other.
+//  - both on, same edge: they split that edge into two halves (a combo strip),
+//    and one shared bar resizes both together.
+// Cached once: these get reparented between main-area / combo-strip and may be
+// temporarily detached, so re-querying by id would fail. Hold the references.
+const _panelEls = {
+  main:  document.getElementById('main-area'),
+  dp:    document.getElementById('display-panel'),
+  np:    document.getElementById('notes-panel'),
+  inner: document.getElementById('inner-area'),
+  combo: document.getElementById('combo-strip'),
+  comboHandle: document.getElementById('combo-resize-handle'),
+  splitHandle: document.getElementById('combo-split-handle'),
+};
+
+// Display's fraction of a shared edge, clamped to sane bounds.
+function comboSplitFor(pos) {
+  const v = comboSplit[pos];
+  return (typeof v === 'number' && v > 0.05 && v < 0.95) ? v : 0.5;
 }
 
-(function setupDisplayResize() {
-  const handle = document.getElementById('display-resize-handle');
-  let dragging = false, startPos = 0, startSize = 0;
+function applyPanelsLayout() {
+  const main  = _panelEls.main;
+  const dp    = _panelEls.dp;
+  const np    = _panelEls.np;
+  const inner = _panelEls.inner;
+  const combo = _panelEls.combo;
+  const comboHandle = _panelEls.comboHandle;
+  const dOn = displayVisible;
+  const nOn = notesPanelOn;
 
-  // Shared for mouse + touch: axis follows the panel position (vertical when the
-  // panel is on the top/bottom edge, horizontal when it's on the left/right).
-  function begin(clientX, clientY) {
-    dragging = true;
-    handle.classList.add('dragging');
-    startPos  = (displayPosition === 'top' || displayPosition === 'bottom') ? clientY : clientX;
-    startSize = displaySize;
+  // Detach the movable pieces (keeps their listeners intact).
+  [dp, np, inner, combo].forEach(el => { if (el.parentNode === main) main.removeChild(el); });
+  if (viewport.parentNode !== inner) inner.appendChild(viewport);
+
+  // Reset classes / inline sizing.
+  dp.className = 'dock-panel';
+  np.className = 'dock-panel';
+  dp.classList.toggle('hidden', !dOn);
+  np.classList.toggle('hidden', !nOn);
+  dp.style.width = dp.style.height = dp.style.flex = '';
+  np.style.width = np.style.height = np.style.flex = '';
+  combo.className = '';
+  combo.style.width = combo.style.height = combo.style.flexDirection = '';
+  inner.style.flexDirection = '';
+
+  if (dOn && nOn && displayPosition === notesPosition) {
+    const pos = displayPosition;
+    const vert = panelAxis(pos) === 'v';           // strip lies along a top/bottom edge
+    main.style.flexDirection = vert ? 'column' : 'row';
+    combo.className = 'edge-' + pos + (vert ? ' strip-h' : ' strip-v');
+    combo.style.flexDirection = vert ? 'row' : 'column';
+    if (vert) combo.style.height = displaySize + 'px';
+    else      combo.style.width  = displaySize + 'px';
+    dp.classList.add('combo-child');
+    np.classList.add('combo-child');
+    combo.insertBefore(np, comboHandle);
+    combo.insertBefore(dp, np);                    // display first (left / top)
+    // Divide the strip's cross-axis between Display (frac) and Notes (1-frac).
+    const frac = comboSplitFor(pos);
+    dp.style.flex = frac + ' 1 0';
+    np.style.flex = (1 - frac) + ' 1 0';
+    const split = _panelEls.splitHandle;
+    if (vert) { split.style.left = (frac * 100) + '%'; split.style.top = ''; }
+    else      { split.style.top  = (frac * 100) + '%'; split.style.left = ''; }
+    const kids = panelBefore(pos) ? [combo, inner] : [inner, combo];
+    kids.forEach(k => main.appendChild(k));
+  } else {
+    // Nested (or single). Notes lives inside inner-area with the viewport.
+    if (nOn) {
+      inner.style.flexDirection = panelAxis(notesPosition) === 'v' ? 'column' : 'row';
+      np.classList.add('edge-' + notesPosition);
+      if (panelAxis(notesPosition) === 'v') np.style.height = notesSize + 'px';
+      else                                  np.style.width  = notesSize + 'px';
+      const innerKids = panelBefore(notesPosition) ? [np, viewport] : [viewport, np];
+      innerKids.forEach(k => inner.appendChild(k));
+    } else {
+      inner.appendChild(viewport);
+    }
+    if (dOn) {
+      main.style.flexDirection = panelAxis(displayPosition) === 'v' ? 'column' : 'row';
+      dp.classList.add('edge-' + displayPosition);
+      if (panelAxis(displayPosition) === 'v') dp.style.height = displaySize + 'px';
+      else                                    dp.style.width  = displaySize + 'px';
+      const mainKids = panelBefore(displayPosition) ? [dp, inner] : [inner, dp];
+      mainKids.forEach(k => main.appendChild(k));
+    } else {
+      main.style.flexDirection = 'row';
+      main.appendChild(inner);
+    }
   }
-  function move(clientX, clientY) {
+}
+// Back-compat alias (older call sites).
+function applyDisplayLayout() { applyPanelsLayout(); }
+
+// Generic resize-handle wiring shared by the display, notes, and combo bars.
+function setupPanelResize(handle, cfg) {
+  let dragging = false, startPos = 0, startSize = 0, edge = 'top';
+  function begin(cx, cy) {
+    dragging = true; edge = cfg.edge();
+    handle.classList.add('dragging');
+    startPos  = (edge === 'top' || edge === 'bottom') ? cy : cx;
+    startSize = cfg.get();
+  }
+  function move(cx, cy) {
     if (!dragging) return;
-    let delta;
-    if      (displayPosition === 'top')    delta =  (clientY - startPos);
-    else if (displayPosition === 'bottom') delta = -(clientY - startPos);
-    else if (displayPosition === 'left')   delta =  (clientX - startPos);
-    else                                   delta = -(clientX - startPos);
-    displaySize = Math.max(60, Math.min(700, startSize + delta));
-    applyDisplayLayout();
+    let d;
+    if      (edge === 'top')    d =  (cy - startPos);
+    else if (edge === 'bottom') d = -(cy - startPos);
+    else if (edge === 'left')   d =  (cx - startPos);
+    else                        d = -(cx - startPos);
+    cfg.set(Math.max(60, Math.min(700, startSize + d)));
+    applyPanelsLayout();
   }
   function end() {
     if (!dragging) return;
     dragging = false;
     handle.classList.remove('dragging');
-    saveSettings();
+    cfg.save();
   }
-
-  // Mouse
   handle.addEventListener('mousedown', (e) => {
     if (e.button !== 0) return;
     begin(e.clientX, e.clientY);
@@ -4038,8 +4717,6 @@ function applyDisplayLayout() {
   });
   document.addEventListener('mousemove', (e) => move(e.clientX, e.clientY));
   document.addEventListener('mouseup', end);
-
-  // Touch (mobile): the handle had no touch wiring, so it couldn't be dragged.
   handle.addEventListener('touchstart', (e) => {
     if (e.touches.length !== 1) return;
     begin(e.touches[0].clientX, e.touches[0].clientY);
@@ -4052,7 +4729,75 @@ function applyDisplayLayout() {
   }, { passive: false });
   handle.addEventListener('touchend', end);
   handle.addEventListener('touchcancel', end);
-})();
+}
+
+setupPanelResize(document.getElementById('display-resize-handle'), {
+  edge: () => displayPosition,
+  get:  () => displaySize,
+  set:  (v) => { displaySize = v; },
+  save: () => saveSettings(),
+});
+setupPanelResize(document.getElementById('notes-resize-handle'), {
+  edge: () => notesPosition,
+  get:  () => notesSize,
+  set:  (v) => { notesSize = v; },
+  save: () => saveSettings(),
+});
+// In combo mode the shared bar drives the strip thickness (displaySize).
+setupPanelResize(document.getElementById('combo-resize-handle'), {
+  edge: () => displayPosition,
+  get:  () => displaySize,
+  set:  (v) => { displaySize = v; },
+  save: () => saveSettings(),
+});
+
+// The split divider sets the Display-vs-Notes ratio within a shared edge. Unlike
+// the thickness bars it works in fractions of the strip's cross-axis, so it has
+// its own handler. Axis follows the layout: side-by-side panels (top/bottom
+// edge) drag horizontally (↔); stacked panels (left/right edge) drag vertically (↕).
+function setupComboSplitResize(handle) {
+  let dragging = false, vert = false, rect = null;
+  function begin() {
+    dragging = true;
+    handle.classList.add('dragging');
+    vert = panelAxis(displayPosition) === 'v';   // true = panels side-by-side
+    rect = _panelEls.combo.getBoundingClientRect();
+  }
+  function move(cx, cy) {
+    if (!dragging || !rect) return;
+    let frac, minFrac;
+    if (vert) { frac = (cx - rect.left) / rect.width;  minFrac = 60 / rect.width; }
+    else      { frac = (cy - rect.top)  / rect.height; minFrac = 60 / rect.height; }
+    if (!isFinite(minFrac) || minFrac >= 0.5) minFrac = 0.1;
+    frac = Math.max(minFrac, Math.min(1 - minFrac, frac));
+    comboSplit[displayPosition] = frac;
+    applyPanelsLayout();
+  }
+  function end() {
+    if (!dragging) return;
+    dragging = false;
+    handle.classList.remove('dragging');
+    saveSettings();
+  }
+  handle.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return;
+    begin(); e.preventDefault(); e.stopPropagation();
+  });
+  document.addEventListener('mousemove', (e) => move(e.clientX, e.clientY));
+  document.addEventListener('mouseup', end);
+  handle.addEventListener('touchstart', (e) => {
+    if (e.touches.length !== 1) return;
+    begin(); e.preventDefault(); e.stopPropagation();
+  }, { passive: false });
+  handle.addEventListener('touchmove', (e) => {
+    if (!dragging || e.touches.length !== 1) return;
+    move(e.touches[0].clientX, e.touches[0].clientY);
+    e.preventDefault();
+  }, { passive: false });
+  handle.addEventListener('touchend', end);
+  handle.addEventListener('touchcancel', end);
+}
+setupComboSplitResize(document.getElementById('combo-split-handle'));
 
 function renderDisplayPanel() {
   const panel = document.getElementById('display-panel-content');
@@ -4216,7 +4961,9 @@ viewport.addEventListener('mousedown', (e) => {
   if (activeClusDrag) return;
   if (e.target!==viewport && e.target!==canvasEl) return;
   if (pinnedHighlightChainId !== null || pinnedHighlightNodeId !== null) {
-    pinnedHighlightChainId = null; pinnedHighlightNodeId = null; applyHighlightClasses();
+    pinnedHighlightChainId = null; pinnedHighlightNodeId = null;
+    clearNodeNav();
+    applyHighlightClasses();
   }
   isPanning=true; viewport.classList.add('panning');
   panStart={x:e.clientX, y:e.clientY}; panOrigin={x:panX, y:panY};
@@ -4318,26 +5065,32 @@ document.getElementById('settings-overlay').addEventListener('click', (e) => {
 });
 
 document.getElementById('btn-display').addEventListener('click', (e) => {
-  const panel = document.getElementById('display-panel');
-  const hidden = panel.classList.toggle('hidden');
-  e.target.classList.toggle('active', !hidden);
-  e.target.textContent = hidden ? 'Show Display' : 'Hide Display';
+  displayVisible = !displayVisible;
+  e.target.classList.toggle('active', displayVisible);
+  e.target.textContent = displayVisible ? 'Hide Display' : 'Show Display';
+  saveSettings();
+  applyPanelsLayout();
 });
 
 document.getElementById('btn-clear').addEventListener('click', () => {
-  if (!confirm('Clear all connections, marks, and notes on the map?')) return;
+  if (!confirm('Clear all connections, colors, and notes on the map?')) return;
+  pushUndoSnapshot();
   edgeList=[]; outgoing={}; incoming={}; marks={};
   edgeChains={}; chainColors={}; nextChainId=0;
+  nodeColors={}; segColors={};
   hoverHighlightChainId = null; pinnedHighlightChainId = null; pinnedHighlightNodeId = null;
+  clearNodeNav();
   closeActiveChainPicker();
   recomputeChainLabels();
   saveState();
   saveEdgeChains();
+  saveNodeColors();
   clearNotes();
+  panelNotes = []; savePanelNotes();
   // Clearing also resets any decoupled node positions back to the grouped layout.
   clearNodePositions();
-  canvasEl.querySelectorAll('.map-node').forEach(el => el.classList.remove('mark-green','mark-red'));
   fullRender();
+  renderPanelNotes();
 });
 
 // Settings: grid apply
@@ -4413,6 +5166,12 @@ toggleSegmented.addEventListener('change', () => {
   segmentedNodes = toggleSegmented.checked;
   toggleSegmentedLabel.textContent = segmentedNodes ? 'On' : 'Off';
   syncSegmentStyleRow();
+  // Per-segment colors only make sense while segmentation is on; drop them when
+  // it's turned off so nodes go back to their single whole-node color.
+  if (!segmentedNodes && Object.keys(segColors).length) {
+    segColors = {};
+    saveNodeColors();
+  }
   saveSettings();
   fullRender();
 });
@@ -4508,9 +5267,115 @@ if (displayPositionSelect) {
   displayPositionSelect.addEventListener('change', () => {
     displayPosition = displayPositionSelect.value;
     saveSettings();
-    applyDisplayLayout();
-    renderDisplayPanel(); // redraw to reattach resize handle
+    applyPanelsLayout();
   });
+}
+
+// Notes panel: toggle + position
+const toggleNotesPanel      = document.getElementById('toggle-notes-panel');
+const toggleNotesPanelLabel = document.getElementById('toggle-notes-panel-label');
+const notesPositionRow      = document.getElementById('notes-position-row');
+const notesPositionSelect   = document.getElementById('notes-position-select');
+
+function syncNotesPositionRow() {
+  // The position dropdown stays enabled at all times, matching the Display
+  // Panel Position dropdown.
+}
+toggleNotesPanel.addEventListener('change', () => {
+  notesPanelOn = toggleNotesPanel.checked;
+  toggleNotesPanelLabel.textContent = notesPanelOn ? 'On' : 'Off';
+  syncNotesPositionRow();
+  saveSettings();
+  applyPanelsLayout();
+  renderPanelNotes();
+});
+notesPositionSelect.addEventListener('change', () => {
+  notesPosition = notesPositionSelect.value;
+  saveSettings();
+  applyPanelsLayout();
+});
+
+// Node colors: Fill / Frame toggles
+const toggleFillColors  = document.getElementById('toggle-fill-colors');
+const toggleFrameColors = document.getElementById('toggle-frame-colors');
+toggleFillColors.addEventListener('change', () => {
+  fillColorsOn = toggleFillColors.checked;
+  saveSettings();
+  applyAllNodeColors();
+});
+toggleFrameColors.addEventListener('change', () => {
+  frameColorsOn = toggleFrameColors.checked;
+  saveSettings();
+  applyAllNodeColors();
+});
+
+// Node colors: palette editor
+const paletteEditor = document.getElementById('palette-editor');
+function renderPaletteEditor() {
+  if (!paletteEditor) return;
+  paletteEditor.innerHTML = '';
+  colorPalette.forEach((col, i) => {
+    const swatch = document.createElement('label');
+    swatch.className = 'palette-swatch';
+    swatch.style.background = col;
+    swatch.title = 'Click to change this color';
+
+    const input = document.createElement('input');
+    input.type = 'color';
+    input.value = col;
+    input.addEventListener('input', () => {
+      colorPalette[i] = input.value;
+      swatch.style.background = input.value;
+    });
+    input.addEventListener('change', () => {
+      colorPalette[i] = input.value;
+      saveSettings();
+      applyAllNodeColors();
+    });
+    swatch.appendChild(input);
+
+    // Keep at least one color in the palette.
+    if (colorPalette.length > 1) {
+      const rm = document.createElement('span');
+      rm.className = 'swatch-remove';
+      rm.textContent = '\u2715';
+      rm.title = 'Remove this color';
+      rm.addEventListener('click', (e) => {
+        e.preventDefault(); e.stopPropagation();
+        colorPalette.splice(i, 1);
+        // Drop any node/segment colors that pointed past the new end.
+        for (const id of Object.keys(nodeColors)) {
+          if (nodeColors[id] === i) delete nodeColors[id];
+          else if (nodeColors[id] > i) nodeColors[id]--;
+        }
+        for (const id of Object.keys(segColors)) {
+          for (const region of Object.keys(segColors[id])) {
+            if (segColors[id][region] === i) delete segColors[id][region];
+            else if (segColors[id][region] > i) segColors[id][region]--;
+          }
+          if (Object.keys(segColors[id]).length === 0) delete segColors[id];
+        }
+        saveSettings();
+        saveNodeColors();
+        renderPaletteEditor();
+        applyAllNodeColors();
+      });
+      swatch.appendChild(rm);
+    }
+    paletteEditor.appendChild(swatch);
+  });
+
+  const add = document.createElement('button');
+  add.className = 'palette-add';
+  add.textContent = '+';
+  add.title = 'Add a color';
+  add.addEventListener('click', (e) => {
+    e.preventDefault();
+    colorPalette.push('#ffffff');
+    saveSettings();
+    renderPaletteEditor();
+  });
+  paletteEditor.appendChild(add);
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -4580,7 +5445,7 @@ function renderNoteDisplay(note, content) {
     img.addEventListener('mousedown', (e) => e.stopPropagation());
     img.addEventListener('click', (e) => {
       e.stopPropagation();
-      openNoteIconPicker(note, idx, e.clientX, e.clientY);
+      openNoteIconPicker((file) => setNoteTokenIcon(note, idx, file), e.clientX, e.clientY);
     });
     content.appendChild(img);
     last = m.index + m[0].length;
@@ -4589,20 +5454,24 @@ function renderNoteDisplay(note, content) {
   if (last < text.length) content.appendChild(document.createTextNode(text.slice(last)));
 }
 
-// Replace the Nth {icon...} token in a note's text with a chosen icon file.
-function setNoteTokenIcon(note, tokenIndex, file) {
+// Replace the Nth {icon...} token in some text with a chosen icon file.
+function replaceTokenIcon(text, tokenIndex, file) {
   let i = 0;
-  note.text = (note.text || '').replace(NOTE_ICON_RE, (match) => {
-    return (i++ === tokenIndex) ? `{icon:${file}}` : match;
-  });
+  return (text || '').replace(NOTE_ICON_RE, (match) => (i++ === tokenIndex) ? `{icon:${file}}` : match);
+}
+
+// Sticky-note version: rewrite the token and repaint.
+function setNoteTokenIcon(note, tokenIndex, file) {
+  note.text = replaceTokenIcon(note.text, tokenIndex, file);
   saveNotes();
   const el = getNoteEl(note.id);
   if (el) renderNoteDisplay(note, el.querySelector('.note-content'));
 }
 
-function openNoteIconPicker(note, tokenIndex, clientX, clientY) {
+// Open the icon picker. applyFn(file) is called with the chosen icon's filename.
+function openNoteIconPicker(applyFn, clientX, clientY) {
   const picker = document.getElementById('note-icon-picker');
-  notePickerState = { note, tokenIndex };
+  notePickerState = { apply: applyFn };
   picker.innerHTML = '';
   NOTE_PICKER_ICONS.forEach(file => {
     const img = document.createElement('img');
@@ -4611,13 +5480,12 @@ function openNoteIconPicker(note, tokenIndex, clientX, clientY) {
     img.title = file.replace('.png', '');
     img.addEventListener('click', (e) => {
       e.stopPropagation();
-      if (notePickerState) setNoteTokenIcon(notePickerState.note, notePickerState.tokenIndex, file);
+      if (notePickerState && notePickerState.apply) notePickerState.apply(file);
       closeNoteIconPicker();
     });
     picker.appendChild(img);
   });
   picker.classList.add('open');
-  // Clamp to viewport
   const pw = 190, ph = 130;
   let x = Math.min(clientX, window.innerWidth - pw - 8);
   let y = Math.min(clientY, window.innerHeight - ph - 8);
@@ -4670,6 +5538,7 @@ function enterNoteEdit(note, el) {
 }
 
 function addNoteAt(canvasX, canvasY) {
+  pushUndoSnapshot();
   const note = { id: nextNoteId++, x: Math.round(canvasX), y: Math.round(canvasY), w: NOTE_DEFAULT_W, text: '' };
   mapNotes.push(note);
   saveNotes();
@@ -4729,15 +5598,19 @@ function wireNoteInteractions(note, el, content, handle) {
     if (suppressClick) { suppressClick = false; return; }
     if (noteIsEditing(el)) return;
     if (e.target.classList.contains('note-icon')) return;
+    // Shift-click deletes on desktop (double-click no longer removes).
+    if (e.shiftKey) {
+      e.preventDefault();
+      clearTimeout(editTimer);
+      pushUndoSnapshot();
+      removeNote(note.id);
+      return;
+    }
     clearTimeout(editTimer);
-    editTimer = setTimeout(() => enterNoteEdit(note, el), 210);
+    enterNoteEdit(note, el);
   });
-  el.addEventListener('dblclick', (e) => {
-    clearTimeout(editTimer);
-    if (noteIsEditing(el)) return; // let text selection work while editing
-    e.preventDefault();
-    removeNote(note.id);
-  });
+  // Keep double-click from bubbling to the canvas (which would add a note).
+  el.addEventListener('dblclick', (e) => { e.preventDefault(); e.stopPropagation(); });
 
   // Mouse: resize handle
   handle.addEventListener('mousedown', (e) => {
@@ -4769,7 +5642,7 @@ function wireNoteInteractions(note, el, content, handle) {
     if (wasMoved) return;
     if (e.target.classList.contains('note-icon')) return;
     const now = Date.now();
-    if (now - lastTap < 320) { lastTap = 0; removeNote(note.id); } // double-tap removes
+    if (now - lastTap < 320) { lastTap = 0; pushUndoSnapshot(); removeNote(note.id); } // double-tap removes
     else { lastTap = now; enterNoteEdit(note, el); }              // single tap edits
   });
   handle.addEventListener('touchstart', (e) => {
@@ -4848,6 +5721,303 @@ viewport.addEventListener('touchend', (e) => {
   }
 });
 
+// ─────────────────────────────────────────────────────────────────
+// Notes panel (numbered list, separate from the freeform sticky notes)
+// ─────────────────────────────────────────────────────────────────
+let panelNoteEditing = null; // id currently being edited (or 'new')
+
+function savePanelNote(text, id) {
+  const clean = (text || '');
+  if (id === 'new') {
+    if (!clean.trim()) return; // don't create an empty note
+    pushUndoSnapshot();
+    panelNotes.push({ id: nextPanelNoteId++, text: clean });
+  } else {
+    const note = panelNotes.find(n => n.id === id);
+    if (!note) return;
+    if (!clean.trim()) {
+      // Emptying a committed note deletes it.
+      pushUndoSnapshot();
+      panelNotes = panelNotes.filter(n => n.id !== id);
+    } else if (note.text !== clean) {
+      pushUndoSnapshot();
+      note.text = clean;
+    }
+  }
+  savePanelNotes();
+}
+
+function removePanelNote(id) {
+  if (!panelNotes.some(n => n.id === id)) return;
+  pushUndoSnapshot();
+  panelNotes = panelNotes.filter(n => n.id !== id);
+  savePanelNotes();
+  renderPanelNotes();
+}
+
+// Render one panel note's text (with {icon} images) into a body element.
+function renderPanelNoteBody(bodyEl, text, noteRef) {
+  bodyEl.innerHTML = '';
+  const t = text || '';
+  let last = 0, tokenIndex = 0, m;
+  NOTE_ICON_RE.lastIndex = 0;
+  while ((m = NOTE_ICON_RE.exec(t)) !== null) {
+    if (m.index > last) bodyEl.appendChild(document.createTextNode(t.slice(last, m.index)));
+    const file = (m[1] && m[1].trim()) ? m[1].trim() : 'Moon.png';
+    const img = document.createElement('img');
+    img.className = 'note-icon';
+    img.src = 'assets/' + file;
+    img.alt = 'icon';
+    img.title = 'Click to change icon';
+    const idx = tokenIndex;
+    img.addEventListener('mousedown', (e) => e.stopPropagation());
+    img.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openNoteIconPicker((f) => {
+        if (!noteRef) return;
+        noteRef.text = replaceTokenIcon(noteRef.text, idx, f);
+        savePanelNotes();
+        renderPanelNotes();
+      }, e.clientX, e.clientY);
+    });
+    bodyEl.appendChild(img);
+    last = m.index + m[0].length;
+    tokenIndex++;
+  }
+  if (last < t.length) bodyEl.appendChild(document.createTextNode(t.slice(last)));
+}
+
+// Put a row into edit mode (auto-growing textarea). id is a note id or 'new'.
+function editPanelNoteRow(row, id, initialText) {
+  if (row._editing) return;
+  row._editing = true;
+  panelNoteEditing = id;
+  const body = row.querySelector('.pnote-body');
+  body.innerHTML = '';
+  const ta = document.createElement('textarea');
+  ta.className = 'pnote-edit';
+  ta.value = initialText || '';
+  body.appendChild(ta);
+  const grow = () => { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; };
+  ta.addEventListener('input', grow);
+  let committed = false;
+  const commit = () => {
+    if (committed) return;
+    committed = true;
+    savePanelNote(ta.value, id);
+    panelNoteEditing = null;
+    renderPanelNotes();
+  };
+  ta.addEventListener('blur', commit);
+  ta.addEventListener('keydown', (e) => {
+    // Enter commits (and spawns the next placeholder); Shift+Enter is a newline.
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); commit(); }
+    else if (e.key === 'Escape') { e.preventDefault(); committed = true; panelNoteEditing = null; renderPanelNotes(); }
+  });
+  ta.focus();
+  grow();
+  ta.setSelectionRange(ta.value.length, ta.value.length);
+}
+
+function renderPanelNotes() {
+  const panel = document.getElementById('notes-panel-content');
+  if (!panel) return;
+  panel.innerHTML = '';
+
+  const title = document.createElement('div');
+  title.className = 'notes-panel-title';
+  title.textContent = 'Notes';
+  panel.appendChild(title);
+
+  // Committed notes, numbered.
+  panelNotes.forEach((note, i) => {
+    const row = document.createElement('div');
+    row.className = 'pnote-row';
+    row.dataset.id = note.id;
+
+    const num = document.createElement('span');
+    num.className = 'pnote-num';
+    num.textContent = (i + 1) + '.';
+    row.appendChild(num);
+
+    const body = document.createElement('div');
+    body.className = 'pnote-body';
+    renderPanelNoteBody(body, note.text, note);
+    row.appendChild(body);
+
+    row.addEventListener('click', (e) => {
+      if (e.target.classList.contains('note-icon')) return;
+      if (e.shiftKey) { e.preventDefault(); removePanelNote(note.id); return; }
+      editPanelNoteRow(row, note.id, note.text);
+    });
+    panel.appendChild(row);
+  });
+
+  // Trailing transparent placeholder (the "add a note" row).
+  const ph = document.createElement('div');
+  ph.className = 'pnote-row pnote-placeholder';
+  const phNum = document.createElement('span');
+  phNum.className = 'pnote-num';
+  phNum.textContent = (panelNotes.length + 1) + '.';
+  ph.appendChild(phNum);
+  const phBody = document.createElement('div');
+  phBody.className = 'pnote-body';
+  phBody.textContent = panelNotes.length === 0 ? 'Click to add a note' : 'New note';
+  ph.appendChild(phBody);
+  ph.addEventListener('click', (e) => {
+    if (e.shiftKey) return;
+    ph.classList.remove('pnote-placeholder');
+    editPanelNoteRow(ph, 'new', '');
+  });
+  panel.appendChild(ph);
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Node connection navigator
+// ─────────────────────────────────────────────────────────────────
+const nodeNavBar   = document.getElementById('node-nav');
+const nodeNavPrev  = document.getElementById('node-nav-prev');
+const nodeNavNext  = document.getElementById('node-nav-next');
+const nodeNavLabel = document.getElementById('node-nav-label');
+const nodeNavClose = document.getElementById('node-nav-close');
+
+function clearNodeNav() {
+  navChains = [];
+  navIndex = -1;
+  if (nodeNavBar) nodeNavBar.classList.add('hidden');
+}
+
+// Build the navigator for a pinned node: collect every chain running through it.
+function buildNodeNav(id) {
+  const all = computeChainsFromEdgeAssignments();
+  navChains = all.filter(c => c.ids.includes(id));
+  navIndex = -1; // start showing all chains (matches the node-highlight default)
+  updateNodeNavBar();
+}
+
+function updateNodeNavBar() {
+  if (!nodeNavBar) return;
+  if (pinnedHighlightNodeId == null) { nodeNavBar.classList.add('hidden'); return; }
+  nodeNavBar.classList.remove('hidden');
+  const node = nodes[pinnedHighlightNodeId];
+  const nodeName = node ? zoneDisplayLabel(node) : '';
+  const n = navChains.length;
+  const hasMany = n > 1;
+  nodeNavPrev.disabled = n === 0;
+  nodeNavNext.disabled = n === 0;
+
+  let label;
+  if (n === 0) {
+    label = `<span class="nn-count">0</span>${nodeName} has no connections`;
+  } else if (navIndex === -1) {
+    label = `<span class="nn-count">${n}</span>${nodeName}: ${n} connection${n === 1 ? '' : 's'}`;
+  } else {
+    const chain = navChains[navIndex];
+    const letter = chainLabelMap[chain.chainId];
+    const pathTxt = chain.ids.map(cid => nodes[cid] ? zoneDisplayLabel(nodes[cid]) : '?').join(' \u2192 ');
+    label = `<span class="nn-count">${navIndex + 1}/${n}</span>${letter ? 'Chain ' + letter + ': ' : ''}${pathTxt}`;
+  }
+  nodeNavLabel.innerHTML = label;
+}
+
+// Highlight only the currently-selected chain (used once the user starts arrowing).
+function highlightNavChain() {
+  const chain = navChains[navIndex];
+  if (!chain) return;
+  // Force a single-chain highlight in the highlight color even if chain
+  // highlighting is turned off.
+  pinnedHighlightChainId = chain.chainId;
+  const hl = singleChainHighlightState(chain.chainId);
+  applyForcedHighlight(hl);
+  scrollDisplayToChain(chain.chainId);
+}
+
+// Paint a specific highlight state regardless of the highlightEnabled setting.
+function applyForcedHighlight(hl) {
+  const defs = linesLayer.querySelector('defs');
+  const nodeIds    = hl ? hl.nodeIds    : new Set();
+  const edgeColors = hl ? hl.edgeColors : new Map();
+  const chainIds   = hl ? hl.chainIds   : new Set();
+  const hlPath = linesLayer.querySelector('#arrowhead-highlight path');
+  if (hlPath) hlPath.setAttribute('fill', highlightColor);
+  canvasEl.querySelectorAll('.map-node').forEach(el => {
+    el.classList.toggle('chain-highlight', nodeIds.has(el.dataset.id));
+  });
+  linesLayer.querySelectorAll('.conn-line').forEach(el => {
+    const color = edgeColors.get(el.dataset.ekey);
+    const isActive = color !== undefined;
+    el.classList.toggle('chain-highlight-line', isActive);
+    if (isActive) {
+      el.setAttribute('stroke', color);
+      el.setAttribute('stroke-width', 4);
+      const mId = (color === highlightColor || !defs) ? 'arrowhead-highlight' : ensureHighlightColorMarker(defs, color);
+      el.setAttribute('marker-end', `url(#${mId})`);
+    } else {
+      el.setAttribute('stroke', el.dataset.normalStroke || arrowColor);
+      el.setAttribute('stroke-width', 2.5);
+      el.setAttribute('marker-end', el.dataset.normalMarker || 'url(#arrowhead)');
+    }
+  });
+  document.querySelectorAll('#display-panel .chain-row').forEach(row => {
+    const rowCid = parseInt(row.dataset.chainId);
+    row.classList.toggle('chain-highlight', !isNaN(rowCid) && chainIds.has(rowCid));
+  });
+}
+
+function scrollDisplayToChain(chainId) {
+  const row = document.querySelector(`#display-panel .chain-row[data-chain-id="${chainId}"]`);
+  if (row && row.scrollIntoView) row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+
+function stepNodeNav(dir) {
+  if (pinnedHighlightNodeId == null || navChains.length === 0) return;
+  const n = navChains.length;
+  if (navIndex === -1) navIndex = (dir > 0) ? 0 : n - 1;
+  else navIndex = (navIndex + dir + n) % n; // wrap around
+  updateNodeNavBar();
+  highlightNavChain();
+}
+
+if (nodeNavPrev) nodeNavPrev.addEventListener('click', () => stepNodeNav(-1));
+if (nodeNavNext) nodeNavNext.addEventListener('click', () => stepNodeNav(1));
+if (nodeNavClose) nodeNavClose.addEventListener('click', () => {
+  pinnedHighlightNodeId = null;
+  clearNodeNav();
+  applyHighlightClasses();
+});
+
+// ─────────────────────────────────────────────────────────────────
+// Keyboard shortcuts
+// ─────────────────────────────────────────────────────────────────
+function typingInField(e) {
+  const t = e.target;
+  return t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable);
+}
+
+document.addEventListener('keydown', (e) => {
+  const key = e.key.toLowerCase();
+
+  // Undo / redo
+  if ((e.ctrlKey || e.metaKey) && key === 'z') {
+    if (typingInField(e)) return; // let text edits use their own undo
+    e.preventDefault();
+    if (e.shiftKey) redo(); else undo();
+    return;
+  }
+  if ((e.ctrlKey || e.metaKey) && key === 'y') { // common redo alias
+    if (typingInField(e)) return;
+    e.preventDefault();
+    redo();
+    return;
+  }
+
+  // Arrow keys step the connection navigator (when a node is selected).
+  if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && pinnedHighlightNodeId != null && !typingInField(e)) {
+    e.preventDefault();
+    stepNodeNav(e.key === 'ArrowRight' ? 1 : -1);
+  }
+});
+
 function init() {
   loadAll();
   refreshZoneNameCache();
@@ -4889,15 +6059,30 @@ function init() {
     t.checked = kingdomVisible[t.dataset.kingdom] !== false;
   });
 
+  // Node colors + notes panel UI
+  toggleFillColors.checked  = fillColorsOn;
+  toggleFrameColors.checked = frameColorsOn;
+  renderPaletteEditor();
+  toggleNotesPanel.checked = notesPanelOn;
+  toggleNotesPanelLabel.textContent = notesPanelOn ? 'On' : 'Off';
+  notesPositionSelect.value = notesPosition;
+  syncNotesPositionRow();
+
+  // Display show/hide button state
+  const btnDisplay = document.getElementById('btn-display');
+  btnDisplay.classList.toggle('active', displayVisible);
+  btnDisplay.textContent = displayVisible ? 'Hide Display' : 'Show Display';
+
   buildLayout();
   canvasEl.style.width = canvasW + 'px';
   canvasEl.style.height = canvasH + 'px';
-  applyDisplayLayout();
+  applyPanelsLayout();
   renderClusters();
   renderNodes();
   renderConnections();
   renderNotes();
   renderDisplayPanel();
+  renderPanelNotes();
   applyTransform();
 }
 

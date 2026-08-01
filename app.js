@@ -118,6 +118,7 @@ const DEFAULT_SETTINGS = {
   apc_sort: 'locked',          // 'locked' | 'unlocked' | 'game' | 'az'
   apc_size: 'medium',          // icon size: 'small' | 'medium' | 'large'
   apc_hide_unlocked: false,    // hide entries you've already got
+  apc_hide_labels: false,      // hide the text labels (icons get bigger)
 
   // ── Kingdom hotkeys ─────────────────────────────────────────────
   // Off by default. Key = add a moon, Shift + key = remove one, Ctrl + key =
@@ -480,7 +481,7 @@ function adoptPanelOwnedState() {
   });
 
   if (saved.settings) {
-    ['apc_sort', 'apc_size', 'apc_hide_unlocked'].forEach(k => {
+    ['apc_sort', 'apc_size', 'apc_hide_unlocked', 'apc_hide_labels'].forEach(k => {
       if (k in saved.settings) state.settings[k] = saved.settings[k];
     });
   }
@@ -520,6 +521,11 @@ function mirrorLinkedToApc() {
 let apcChannel = null;
 let apcLastSignature = null;
 let applyingApc = false;
+// Set while an authoritative wipe (Clear) is being written, so the generic
+// "apc-changed" ping is held back and a single explicit "apc-reset" is sent
+// instead - see resetAll(). Prevents the panel from re-asserting a just-cleared
+// entry during its edit-grace window.
+let suppressApcNotify = false;
 
 function apcSignature() {
   if (!window.APC) return '';
@@ -532,6 +538,7 @@ function notifyApcIfChanged() {
   const sig = apcSignature();
   if (sig === apcLastSignature) return;
   apcLastSignature = sig;
+  if (suppressApcNotify) return; // an explicit apc-reset is sent instead
   if (apcChannel && !applyingApc) apcChannel.post({ type: 'apc-changed' });
 }
 
@@ -1085,38 +1092,42 @@ function buildAbilityRow() {
   bottom.appendChild(makeAbilityBtn(ABILITY_ICONS[2]));                    // wall (right)
   container.appendChild(bottom);
 
-  // Build the standalone Notes button in #notes-section
+  // Build the Notes / Map / Ability + Capture buttons in #notes-section.
+  //
+  // When a side panel is already on screen (see sidePanelActive()), a click
+  // SWITCHES the panel to that page - or toggles it back off if that page is
+  // already the one showing. When no panel is open, each button falls back to
+  // its own standalone view: Notes → in-page modal, Map and Ability + Capture
+  // → a new tab.
   const notesSection = document.getElementById('notes-section');
   notesSection.innerHTML = '';
+
   const notesBtn = document.createElement('button');
   notesBtn.className = 'notes-btn';
   notesBtn.textContent = 'Loading Zone Notes';
-  // On wide screens (or in Vertical mode, at any width) this toggles the
-  // embedded side panel. When Horizontal mode has nowhere to go (mobile),
-  // fall back to the original in-page modal.
   notesBtn.addEventListener('click', () => {
-    // Notes uses the embedded side panel only when its panel toggle is on and
-    // there's room for the panel; otherwise it opens the in-page modal.
-    if (state.settings.show_notes_panel && isPanelLocationAvailable()) {
-      toggleSidePanel('notes');
-    } else {
-      openLoadingZones();
-    }
+    if (sidePanelActive()) toggleSidePanel('notes');
+    else openLoadingZones();
   });
   notesSection.appendChild(notesBtn);
+
   const mapBtn = document.createElement('button');
   mapBtn.className = 'map-btn';
   mapBtn.textContent = 'Connection Map';
-  // Same idea as the Notes button: side panel when its toggle is on and there's
-  // room, otherwise open map.html in a new tab.
   mapBtn.addEventListener('click', () => {
-    if (state.settings.show_map_panel && isPanelLocationAvailable()) {
-      toggleSidePanel('map');
-    } else {
-      openMap();
-    }
+    if (sidePanelActive()) toggleSidePanel('map');
+    else openMap();
   });
   notesSection.appendChild(mapBtn);
+
+  const apcBtn = document.createElement('button');
+  apcBtn.className = 'apc-btn';
+  apcBtn.textContent = 'Ability + Capture';
+  apcBtn.addEventListener('click', () => {
+    if (sidePanelActive()) toggleSidePanel('apc');
+    else openApc();
+  });
+  notesSection.appendChild(apcBtn);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1220,11 +1231,19 @@ function applyAllSettings() {
   if (capBtn)  capBtn.classList.toggle('icon-off', !s.show_ability_cap);
   if (abilityTop) abilityTop.classList.toggle('row-gone', !s.show_ability_jump && !s.show_ability_cap);
 
-  // Bottom-row arrangement: only when BOTH Jump and Cap show do Bowser + Wall
-  // share a row (completing the 2x2). Otherwise Bowser drops onto its own row
-  // centered under Wall - see .ability-bottom rules in style.css.
+  // Bottom-row arrangement, driven by how many of Jump / Cap are shown:
+  //   both → .abilities-2x2 : [Jump][Cap] over [Bowser][Wall], a clean 2x2.
+  //   one  → .abilities-3   : [Jump|Cap][Wall] on top, Bowser on its own row
+  //          below and aligned under the LEFT column (not centered).
+  //   none → neither class  : just Bowser + Wall stacked and centered.
+  // See the .abilities-2x2 / .abilities-3 rules in style.css.
   const abilityRow = document.getElementById('ability-row');
-  if (abilityRow) abilityRow.classList.toggle('abilities-2x2', !!s.show_ability_jump && !!s.show_ability_cap);
+  if (abilityRow) {
+    const showJump = !!s.show_ability_jump;
+    const showCap = !!s.show_ability_cap;
+    abilityRow.classList.toggle('abilities-2x2', showJump && showCap);
+    abilityRow.classList.toggle('abilities-3', showJump !== showCap); // exactly one
+  }
 
   // Lock / Peace sign columns on the main tracker
   const moonRows = document.getElementById('moon-rows');
@@ -1389,6 +1408,15 @@ function toggleSidePanel(which) {
   setPanelMode(getPanelMode() === which ? 'none' : which);
 }
 
+// True when a side panel is actually on screen right now: a mode is selected
+// AND the chosen location has room to render it (Horizontal needs width beyond
+// the mobile breakpoint; Vertical always fits). The tracker's Notes / Map /
+// Ability + Capture buttons use this to decide between switching the open panel
+// and falling back to a standalone view.
+function sidePanelActive() {
+  return isPanelLocationAvailable() && getPanelMode() !== 'none';
+}
+
 // Keeps the Settings segmented control in step when the mode changes from
 // somewhere else (the panel's ✕, the Notes/Map buttons, a remote sync).
 function refreshPanelModeButtons() {
@@ -1422,10 +1450,16 @@ function resetAll() {
   state = getDefaultState();
   state.settings = savedSettings;
   // Clearing progress is meant to wipe the panel too, so this write wins over
-  // whatever is currently in storage.
+  // whatever is currently in storage. Hold back the generic "apc-changed" ping
+  // and send one explicit "apc-reset" afterwards: that tells any open Abilities
+  // & Captures panel to drop its short-lived edit protection so it can't
+  // re-assert an entry that was just cleared here.
   authoritativeWrite = true;
+  suppressApcNotify = true;
   saveState();
+  suppressApcNotify = false;
   authoritativeWrite = false;
+  if (apcChannel) apcChannel.post({ type: 'apc-reset' });
   buildAllMoonRows();
   buildCaptureRow();
   buildAbilityRow();
@@ -1741,6 +1775,7 @@ function setupSyncUI() {
 // ─────────────────────────────────────────────────────────────────────────────
 let notesWindow = null;
 let mapWindow = null;
+let apcWindow = null;
 
 function openMap() {
   // If the map tab is already open, refocus it instead of spawning another.
@@ -1751,6 +1786,17 @@ function openMap() {
   // No feature string → browsers open a real new tab (not a popup window); the
   // 'ConnectionMap' target name keeps repeat clicks to a single reused tab.
   mapWindow = window.open('map.html', 'ConnectionMap');
+}
+
+function openApc() {
+  // If the Abilities & Captures tab is already open, refocus it instead of
+  // spawning another. No feature string → a real new tab, not a popup window;
+  // the 'AbilitiesCaptures' target name keeps repeat clicks to one reused tab.
+  if (apcWindow && !apcWindow.closed) {
+    apcWindow.focus();
+    return;
+  }
+  apcWindow = window.open('apc.html?v=2', 'AbilitiesCaptures');
 }
 
 function openLoadingZones() {
@@ -1803,8 +1849,14 @@ function resyncLoadingZonesFromStorage() {
 }
 
 function popOutNotes() {
-  const features = 'width=1150,height=750,resizable=yes,scrollbars=yes,toolbar=no,menubar=no';
-  notesWindow = window.open('notes.html', 'MoonTrackerNotes', features);
+  // If the Notes tab is already open, refocus it instead of spawning another.
+  if (notesWindow && !notesWindow.closed) {
+    notesWindow.focus();
+  } else {
+    // No feature string → a real new tab (not a popup window); the
+    // 'MoonTrackerNotes' target name keeps repeat clicks to one reused tab.
+    notesWindow = window.open('notes.html', 'MoonTrackerNotes');
+  }
   document.getElementById('lz-modal').classList.add('hidden');
 }
 
@@ -1940,12 +1992,20 @@ function syncNotesToolbar() {
 
 // Grow each visible note textarea to fit its saved text so column packing
 // measures real heights (and long notes aren't clipped to one line).
+//
+// Perf: only boxes that actually contain text need measuring - an empty note
+// is already the correct single-row height. And the work is batched into three
+// phases (reset all heights, read all scrollHeights, then apply all heights) so
+// we don't interleave writes and reads. Interleaving forces a full synchronous
+// reflow of the whole notes masonry on every box, which is what made opening
+// the notes view (modal, side panel, and notes.html) feel slow.
 function autosizeNotes(root) {
-  (root || document).querySelectorAll('.zone-note').forEach(t => {
-    if (t.style.display === 'none') return;
-    t.style.height = 'auto';
-    t.style.height = t.scrollHeight + 'px';
-  });
+  const nodes = Array.from((root || document).querySelectorAll('.zone-note'))
+    .filter(t => t.style.display !== 'none' && t.value.trim() !== '');
+  if (!nodes.length) return;
+  nodes.forEach(t => { t.style.height = 'auto'; });
+  const heights = nodes.map(t => t.scrollHeight);
+  nodes.forEach((t, i) => { t.style.height = heights[i] + 'px'; });
 }
 
 // Build the toolbar once and insert it above the scroll area in the modal.

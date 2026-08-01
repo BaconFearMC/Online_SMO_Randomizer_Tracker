@@ -4,10 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Loading Zone Notes</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="assets/SMO-ColoredGlobe.png">
   <style>
     /* Override the main stylesheet's page padding/sizing this page IS the window */
     html { height: 100%; }
@@ -39,7 +37,6 @@
     <h2>Loading Zone Notes</h2>
     <div class="modal-header-actions">
       <button class="modal-icon-btn-red" id="notes-page-clear" title="Clear all notes">Clear</button>
-      <button class="modal-close" id="notes-page-close" aria-label="Close">X</button>
     </div>
   </div>
   <div class="lz-scroll-wrap">
@@ -241,11 +238,16 @@
     }
 
     function autosizeNotes(root) {
-      (root || document).querySelectorAll('.zone-note').forEach(t => {
-        if (t.style.display === 'none') return;
-        t.style.height = 'auto';
-        t.style.height = t.scrollHeight + 'px';
-      });
+      // Only measure boxes that actually have text (an empty note is already a
+      // correct single row), and batch reset/read/apply into three phases so we
+      // don't force a full reflow of the notes masonry on every single box.
+      // Interleaving write→read→write per box is what made this view slow.
+      const nodes = Array.from((root || document).querySelectorAll('.zone-note'))
+        .filter(t => t.style.display !== 'none' && t.value.trim() !== '');
+      if (!nodes.length) return;
+      nodes.forEach(t => { t.style.height = 'auto'; });
+      const heights = nodes.map(t => t.scrollHeight);
+      nodes.forEach((t, i) => { t.style.height = heights[i] + 'px'; });
     }
 
     function ensureNotesToolbar() {
@@ -668,7 +670,6 @@
     });
 
     // ── Init ────────────────────────────────────────────────────────
-    document.getElementById('notes-page-close').addEventListener('click', () => window.close());
     document.getElementById('notes-page-clear').addEventListener('click', clearAllNotes);
 
     document.addEventListener('DOMContentLoaded', () => {

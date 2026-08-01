@@ -43,6 +43,15 @@
       </span>
     </label>
 
+    <label class="apc-toolbar-toggle">
+      <span>Hide Labels</span>
+      <span class="toggle-switch">
+        <input type="checkbox" id="apc-hide-labels">
+        <span class="toggle-track"></span>
+      </span>
+    </label>
+
+    <button type="button" class="apc-popout-btn" id="apc-popout" title="Open in a new tab">↗️Popout</button>
     <button type="button" class="apc-reset-btn" id="apc-reset">Reset</button>
   </div>
 
@@ -80,6 +89,7 @@
     apc_sort: 'locked',       // 'locked' | 'unlocked' | 'game' | 'az'
     apc_size: 'medium',       // 'small' | 'medium' | 'large'
     apc_hide_unlocked: false,
+    apc_hide_labels: false,   // hide the text labels (icons get bigger)
   };
 
   let state = { settings: {}, captures: {}, abilities: {}, apc: { captures: {}, abilities: {} } };
@@ -143,13 +153,27 @@
   // redraws right when the user might be mid-click, so coalesce them into one
   // redraw on the next frame instead.
   let externalRenderPending = false;
-  function scheduleExternalRender() {
+  let externalResort = false;
+  function scheduleExternalRender(data) {
+    // An authoritative wipe from the main tracker's Clear button. Drop this
+    // panel's short-lived edit protection immediately (synchronously, before
+    // any pending render runs) so it can't re-assert an entry that was just
+    // cleared, and resort so the freshly-locked entries settle into place.
+    if (data && data.type === 'apc-reset') {
+      recentEdits.captures.clear();
+      recentEdits.abilities.clear();
+      recentSettings.clear();
+      warnedAboutClobber = false;
+      externalResort = true;
+    }
     if (externalRenderPending) return;
     externalRenderPending = true;
     requestAnimationFrame(() => {
       externalRenderPending = false;
+      const resort = externalResort;
+      externalResort = false;
       readState();
-      render(false);
+      render(resort);
     });
   }
   const channel = APC.makeChannel(scheduleExternalRender);
@@ -350,9 +374,13 @@
     document.querySelectorAll('#apc-seg-size .seg-btn').forEach(b =>
       b.classList.toggle('active', b.dataset.value === state.settings.apc_size));
     document.getElementById('apc-hide-unlocked').checked = !!state.settings.apc_hide_unlocked;
+    document.getElementById('apc-hide-labels').checked = !!state.settings.apc_hide_labels;
 
     document.body.classList.remove('apc-size-small', 'apc-size-medium', 'apc-size-large');
     document.body.classList.add(`apc-size-${state.settings.apc_size || 'medium'}`);
+    // Icons-only mode: hides the text labels and enlarges the icons (see the
+    // .apc-hide-labels rules in style.css).
+    document.body.classList.toggle('apc-hide-labels', !!state.settings.apc_hide_labels);
   }
 
   function render(resort) {
@@ -390,6 +418,21 @@
     noteSetting('apc_hide_unlocked', e.target.checked);
     mutate(s => { s.settings.apc_hide_unlocked = e.target.checked; });
     render();
+  });
+
+  document.getElementById('apc-hide-labels').addEventListener('change', (e) => {
+    noteSetting('apc_hide_labels', e.target.checked);
+    mutate(s => { s.settings.apc_hide_labels = e.target.checked; });
+    // Only the labels/sizing change, so no resort is needed - redraw in place.
+    render(false);
+  });
+
+  // Pop this panel out into its own browser tab. The named target means
+  // clicking it again just refocuses the same tab rather than piling up new
+  // ones, and it's the same target the main tracker's "Ability + Capture"
+  // button uses, so the two never fight over separate tabs.
+  document.getElementById('apc-popout').addEventListener('click', () => {
+    window.open('apc.html?v=2', 'AbilitiesCaptures');
   });
 
   document.getElementById('apc-reset').addEventListener('click', () => {
