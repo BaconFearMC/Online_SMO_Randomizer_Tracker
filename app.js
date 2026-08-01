@@ -558,7 +558,8 @@ function onApcChanged() {
     }
     // The panel also owns its own view options (sort / size / hide unlocked).
     if (saved.settings) {
-      ['apc_sort', 'apc_size', 'apc_hide_unlocked'].forEach(k => {
+      ['apc_sort', 'apc_size', 'apc_hide_unlocked', 'apc_hide_labels',
+       'notes_layout', 'notes_columns', 'notes_compact'].forEach(k => {
         if (k in saved.settings) state.settings[k] = saved.settings[k];
       });
     }
