@@ -227,11 +227,12 @@
 
   // ── Rendering ──────────────────────────────────────────────────────────────
   // Last computed order per section, as a list of keys. Toggling an entry
-  // deliberately does NOT re-sort: under "Locked First" a freshly unlocked
-  // entry would otherwise leap to the bottom the instant you clicked it and
-  // slide a different one under your cursor, which makes ticking off a run
-  // miserable. The order refreshes when you change the sort, search, or the
-  // Hide Unlocked switch, and whenever the panel is reopened.
+  // re-sorts immediately so a freshly (un)locked item jumps to its new spot
+  // under "Locked First" / "Unlocked First" right when you click it, rather
+  // than lingering until the next sort/search/Hide-Unlocked change. The order
+  // also refreshes on those changes and whenever the panel is reopened.
+  // (Trade-off: under a lock-sensitive sort the grid shifts under the cursor
+  // as items move, so rapid tick-off runs can land on a neighbouring entry.)
   let orderCache = { captures: null, abilities: null };
 
   function sortedItems(kind) {
@@ -306,7 +307,11 @@
       const next = !APC.isUnlocked(state, kind, it.key);
       noteEdit(kind, it.key, next);
       mutate(s => APC.setUnlocked(s, kind, it.key, next));
-      render(false); // redraw in place - see orderCache
+      // Re-sort on click so a freshly (un)locked entry jumps to its new
+      // position immediately under Locked/Unlocked First, instead of waiting
+      // for the next sort/search/filter change. Nodes are still reused (see
+      // gridElems), so the same element just slides into place.
+      render(true);
     };
     btn.addEventListener('click', toggle);
     // Clicking the name works too - it's a bigger target than the icon.

@@ -871,6 +871,128 @@
   }
   #image-viewer-resize:hover { background: var(--accent); }
 
+  /* ── Stage-preview popup (zones.html style) ─────────────────── */
+  #stagepop-overlay {
+    position: fixed; inset: 0; z-index: 1400;
+    display: none; background: rgba(0,0,0,0.42);
+  }
+  #stagepop-overlay.visible { display: block; }
+
+  .sp-box {
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 380px;
+    max-width: calc(100vw - 24px);
+    max-height: calc(100vh - 60px);
+    background: var(--bg-card);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: 0 12px 42px rgba(0,0,0,0.78);
+    display: none;
+    flex-direction: column;
+    z-index: 1450;
+    overflow: hidden;
+  }
+  .sp-box.visible { display: flex; }
+
+  .sp-hdr {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    padding: 11px 14px; gap: 8px;
+    background: var(--bg-card2);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  /* Bold + larger zone name in the popup header */
+  .sp-nick {
+    font-size: 1.18rem;
+    font-weight: 800;
+    line-height: 1.15;
+  }
+  .sp-official {
+    font-size: 0.72rem;
+    color: #888;
+    margin-top: 3px;
+  }
+  .sp-close {
+    background: none; border: none; color: var(--text-dim);
+    font-size: 1.15rem; cursor: pointer; line-height: 1;
+    padding: 0 2px; flex-shrink: 0; margin-top: 1px;
+  }
+  .sp-close:hover { color: var(--red); }
+
+  .sp-body {
+    overflow-y: auto; flex: 1;
+    padding: 12px 14px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+
+  .sp-moons-row { display: flex; flex-wrap: wrap; gap: 7px; }
+  .sp-moon-slot {
+    width: 34px; height: 34px; border-radius: 50%;
+    border: 2px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; background: var(--bg-card2);
+    transition: border-color 0.15s, background 0.15s; flex-shrink: 0;
+  }
+  .sp-moon-slot:hover { border-color: var(--accent); background: var(--bg-hover); }
+  .sp-moon-slot img { width: 22px; height: 22px; object-fit: contain; }
+  .sp-moon-slot img.slot-empty-icon { opacity: 0.35; }
+
+  .sp-img-tabs { display: flex; gap: 6px; }
+  .sp-img-tab {
+    background: var(--btn-bg); border: none; color: var(--text-dim);
+    font-family: var(--font); font-size: 0.76rem;
+    padding: 4px 13px; border-radius: var(--radius-sm);
+    cursor: pointer; transition: background 0.15s, color 0.15s;
+  }
+  .sp-img-tab:hover { background: var(--btn-hover); color: var(--text); }
+  .sp-img-tab.active { background: var(--accent); color: #fff; }
+
+  .sp-img-wrap {
+    width: 100%; border-radius: var(--radius-sm); overflow: hidden;
+    background: #111; min-height: 80px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .sp-img-wrap img {
+    width: 340px; max-width: 100%; height: auto;
+    display: block; object-fit: cover; border-radius: var(--radius-sm);
+  }
+  .sp-no-img { color: var(--text-dim); font-size: 0.78rem; padding: 20px; text-align: center; }
+
+  /* Icon picker popup for choosing moon icons */
+  .sp-icon-picker {
+    position: fixed; z-index: 2000;
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 8px;
+    box-shadow: 0 8px 28px rgba(0,0,0,0.7);
+    display: flex; flex-wrap: wrap; gap: 5px; max-width: 210px;
+  }
+  .sp-icon-picker img {
+    width: 30px; height: 30px; object-fit: contain; cursor: pointer;
+    border-radius: 6px; border: 2px solid transparent;
+    transition: border-color 0.12s, transform 0.12s;
+    background: var(--bg-card2); padding: 2px;
+  }
+  .sp-icon-picker img:hover { border-color: var(--accent); transform: scale(1.15); }
+
+  /* ── Tiny moon icons above a node (Moon Tracking on) ─────────── */
+  .map-node.has-moons { overflow: visible; }
+  .map-node.has-moons .node-label { min-width: 0; }
+  .node-moon-strip {
+    position: absolute;
+    left: 50%; bottom: 100%;
+    transform: translateX(-50%);
+    margin-bottom: 3px;
+    display: flex; gap: 2px;
+    pointer-events: none; z-index: 4;
+    line-height: 0; white-space: nowrap;
+  }
+  .node-moon-strip img {
+    width: 14px; height: 14px; object-fit: contain;
+    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.85));
+  }
+
   /* ── Mobile-only overrides ─────────────────────────────────── */
   @media (pointer: coarse) {
     /* Image viewer fills most of the screen on touch devices */
@@ -896,6 +1018,8 @@
       border-color: var(--accent) !important;
       box-shadow: 0 0 0 1px var(--accent);
     }
+    /* Stage-preview popup gets a bit more room on touch devices */
+    .sp-box { width: 92vw; }
   }
 
   /* ── Generic docked panels (display + notes) ─────────────────── */
@@ -1364,6 +1488,22 @@
       <div class="settings-divider"></div>
 
       <div class="settings-row">
+        <div class="settings-row-label">Moon Tracking</div>
+        <div class="settings-row-desc">Adds moon icons per node. Ctrl + Click (PC) or hold (mobile) a node to pick its moon icons; chosen icons show as tiny icons above the node. Works with Stage Previews on (moon buttons appear in the preview popup) or off (opens a moon-only picker).</div>
+        <div class="settings-row-control">
+          <label class="toggle-wrap" for="toggle-moons">
+            <span class="toggle-switch">
+              <input type="checkbox" id="toggle-moons">
+              <span class="toggle-track"></span>
+            </span>
+            <span class="toggle-label" id="toggle-moons-label">Off</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="settings-divider"></div>
+
+      <div class="settings-row">
         <div class="settings-row-label">Segmented Nodes</div>
         <div class="settings-row-desc">Splits every zone node into an entrance segment on the left and an exit segment on the right.</div>
         <div class="settings-row-control">
@@ -1573,6 +1713,29 @@
     <!-- content injected by JS -->
   </div>
   <div id="image-viewer-resize" title="Drag to resize"></div>
+</div>
+
+<!-- Stage-preview popup (zones.html style) -->
+<div id="stagepop-overlay"></div>
+<div id="stage-popup" class="sp-box">
+  <div class="sp-hdr">
+    <div>
+      <div class="sp-nick" id="sp-nick"></div>
+      <div class="sp-official" id="sp-official"></div>
+    </div>
+    <button class="sp-close" id="sp-close" title="Close">✕</button>
+  </div>
+  <div class="sp-body">
+    <div class="sp-moons-row" id="sp-moons" style="display:none"></div>
+    <div class="sp-img-tabs" id="sp-tabs">
+      <button class="sp-img-tab active" data-tab="entrance">Entrance</button>
+      <button class="sp-img-tab" data-tab="inside">Inside</button>
+    </div>
+    <div class="sp-img-wrap" id="sp-img-wrap">
+      <img id="sp-img" src="" alt="">
+      <div class="sp-no-img" id="sp-noimg" style="display:none">No image available</div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -1856,10 +2019,10 @@ const ZONE_IMAGES = {
   'zone:Mushroom:Well':        'DotHardExStage.jpg',
   'zone:Mushroom:Knucklotec':  'RevengeBossKnuckleStage.jpg',
   'zone:Mushroom:Torkdrift':   'RevengeForestBossStage.jpg',
-  'zone:Mushroom:Mechawiggler':'high/RevengeMofumofuStage.jpg',
-  'zone:Mushroom:Octopus':     'high/RevengeGiantWanderBossStage.jpg',
+  'zone:Mushroom:Mechawiggler':'RevengeMofumofuStage.jpg',
+  'zone:Mushroom:Octopus':     'RevengeGiantWanderBossStage.jpg',
   'zone:Mushroom:Cookatiel':   'RevengeBossMagmaStage.jpg',
-  'zone:Mushroom:Dragon':      'high/RevengeBossRaidStage.jpg',
+  'zone:Mushroom:Dragon':      'RevengeBossRaidStage.jpg',
   'zone:Mushroom:Rocket':      'FukuwaraiMarioStage.jpg',
 
   // Darkside zones
@@ -1867,7 +2030,7 @@ const ZONE_IMAGES = {
   'zone:Darkside:Invisible':  'PackunPoisonNoCapExStage.jpg',
   'zone:Darkside:Vanishing':  'BikeSteelNoCapExStage.jpg',
   'zone:Darkside:Yoshi Siege':  'ShootingCityYoshiExStage.jpg',
-  'zone:Darkside:Lava Rising':  'LavaWorldUpDownYoshiExStage.jpg',
+  'zone:Darkside:Lava Rising':  'SenobiTowerYoshiExStage.jpg',
   'zone:Darkside:Magma Swamp':  'LavaWorldUpDownYoshiExStage.jpg',
 
   // Darkerside zones
@@ -1883,6 +2046,423 @@ const ZONE_IMAGES = {
   'zone:Cloud:2D Cube':        'Cube2DExStage.jpg',
   'zone:Cloud:Picture Match':  'FukuwaraiKuriboStage.jpg',
 };
+
+// ─────────────────────────────────────────────────────────────────
+// Entrance / in-game-name / moon data (merged from the Zone Tracker
+// dataset + loading_zone_dictionary.json). ZONE_IMAGES above stays the
+// "Inside" screenshot; ZONE_ENT is the "Entrance" screenshot.
+// ─────────────────────────────────────────────────────────────────
+const EXT_IMG = 'assets/exterior/';   // entrance screenshots live here
+// Moon icon choices available in the picker (same set as the Zone Tracker)
+const MOON_PICKER_ICONS = ['Cascade.png','Sand.png','Lake.png','Wooded.png','Lost.png','Metro.png','Snow.png','Seaside.png','Luncheon.png','Ruin.png','Bowser.png','Cap.png','Dark.png','Star.png','Cloud.png','MoonK.png','Moon.png','Moon_Dark.png','checkmark.png','xmark.png'];
+
+// ── Entrance screenshots (assets/exterior/<file>) ─────────────────
+const ZONE_ENT = {
+  'zone:Cap:Orange': 'CapK_8-1.webp',
+  'zone:Cap:Paragoomba': 'CapK_6-1.webp',
+  'zone:Cap:Frog': 'CapK_10-1.webp',
+  'zone:Cap:Rolling On': 'CapK_30-1.webp',
+  'zone:Cascade:Dino': 'CascadeK_12-1.webp',
+  'zone:Cascade:2D': 'CascadeK_16-1.webp',
+  'zone:Cascade:Chain Chomp': 'CascadeK_14-1.webp',
+  'zone:Cascade:Swings': 'CascadeK_37-1.webp',
+  'zone:Cascade:Windy': 'CascadeK_39-1.webp',
+  'zone:Sand:Icy Cave': 'Ice_Cave_Treasure_1.webp',
+  'zone:Sand:Moe-eye': 'Sign3.webp',
+  'zone:Sand:Shop': 'crazy-cap-sand-kingdom.900x.webp',
+  'zone:Sand:Employees': 'Employee1.webp',
+  'zone:Sand:Slots': 'SandK_44-1.webp',
+  'zone:Sand:Rumble': 'SandK_52-1.webp',
+  'zone:Sand:Outfit': 'Dancing1.webp',
+  'zone:Sand:Jaxi Ruins': 'SandK_58-1.webp',
+  'zone:Sand:Bullet Bill': 'BillMaze1.webp',
+  'zone:Sand:Gushen': 'SandK_88-1.webp',
+  'zone:Sand:Sphynx': 'Sphynx1.webp',
+  'zone:Sand:Moving Platform': 'SandK_84-1.webp',
+  'zone:Sand:Rocket': 'Rocket1.webp',
+  'zone:Sand:Colossal Ruins': 'RocketFlowerExStageExt.webp',
+  'zone:Lake:Poison Waves': 'LakeK_41-1.webp',
+  'zone:Lake:Zipper': 'Unzip1.webp',
+  'zone:Lake:Grab Climb': 'JGCC1.webp',
+  'zone:Lake:Shop': 'crazy-cap-lake-kingdom.900x.webp',
+  'zone:Lake:Puzzle': 'Repair1.webp',
+  'zone:Wooded:DW Odyssey': 'maxresdefault (1).jpg',
+  'zone:Wooded:DW Red Maze': 'maxresdefault (1).jpg',
+  'zone:Wooded:DW Pond': 'Screenshot_7.png',
+  'zone:Wooded:DW Treasure': 'smo180-600x338.png',
+  'zone:Wooded:DW Outfit': 'Screenshot_6.png',
+  'zone:Wooded:Rocket': 'Fog1.webp',
+  'zone:Wooded:Sheep': 'WoodedK_73-1.webp',
+  'zone:Wooded:Tank': 'Escalation2.webp',
+  'zone:Wooded:Vine Clouds': 'maxresdefault.jpg',
+  'zone:Wooded:Breakdown': 'WoodedK_75-1.webp',
+  'zone:Wooded:Invisible': 'WoodedK_71-1.webp',
+  'zone:Wooded:Flooded Pipes': 'Flood1.webp',
+  'zone:Wooded:Flower Road': 'WoodedK_43-1.webp',
+  'zone:Wooded:Treasure Room': 'Screenshot_5.png',
+  'zone:Lost:Wiggler': 'Traverse1.webp',
+  'zone:Lost:Shop': 'EnjoyView1.webp',
+  'zone:Lost:Klepto': 'Klepto1.webp',
+  'zone:Metro:Yellow Shop': 'crazy-cap-metro-kingdom.900x.webp',
+  'zone:Metro:Purple Shop': 'crazy-cap-metro-kingdom.900x.webp',
+  'zone:Metro:Dino': 'Scooter1.webp',
+  'zone:Metro:Bullet Billding': 'Billding1.webp',
+  'zone:Metro:Taxi': 'smo300-600x338.png',
+  'zone:Metro:Notes': 'NoteTake1.webp',
+  'zone:Metro:2D': 'MetroK_64-1.webp',
+  'zone:Metro:Slots': 'MKTimer1.webp',
+  'zone:Metro:People': 'Crowd1.webp',
+  'zone:Metro:Outfit': 'Rewire1.webp',
+  'zone:Metro:Rocket': 'MetroK_45-1.webp',
+  'zone:Metro:Dark': 'Pitchblack1.webp',
+  'zone:Metro:Scaffolding': 'Scaffolding1.webp',
+  'zone:Metro:Scooter': 'Daredevil1.webp',
+  'zone:Metro:Rotating Maze': 'Rotate1.webp',
+  'zone:Metro:RC Car': 'smo315-600x338.png',
+  'zone:Snow:Puzzle': 'smo343-600x338.png',
+  'zone:Snow:Capless': 'SnowK_26-1.webp',
+  'zone:Snow:Rocket Flower': 'SnowK_24-1.webp',
+  'zone:Snow:Iceburn Circuit': 'Iceburn2.webp',
+  'zone:Snow:Flower Road': 'FlowRoad1.webp',
+  'zone:Snow:Tracewalking': 'SnowK_22-1.webp',
+  'zone:Snow:Clouds': 'smo340-600x338.png',
+  'zone:Snow:Outfit': 'SnowK29-1.webp',
+  'zone:Snow:Shop': 'crazy-cap-snow-kingdom.large.webp',
+  'zone:Seaside:Well Enter': 'smo371-600x338.png',
+  'zone:Seaside:Well Exit': 'SeasideK_39-1.webp',
+  'zone:Seaside:Rumble': 'SeasideK_41-1.webp',
+  'zone:Seaside:Rocket': 'SeaCloud1.webp',
+  'zone:Seaside:Outfit': 'Resort1.webp',
+  'zone:Seaside:Gushen': 'Valley1.webp',
+  'zone:Seaside:Sphynx': 'SeaQuiz1.webp',
+  'zone:Seaside:Pokio': 'Aim1.webp',
+  'zone:Seaside:Lava Rising': 'Hurry1.webp',
+  'zone:Seaside:Sandy Bottom': 'Wriggling1.webp',
+  'zone:Seaside:Spinning Maze': 'SpinMaze1.webp',
+  'zone:Luncheon:Magma Swamp': 'Sinking1.webp',
+  'zone:Luncheon:Forks': 'Flick1.webp',
+  'zone:Luncheon:Cheese Rocks': 'Search1.webp',
+  'zone:Luncheon:Veggie Room': 'Veggies1.webp',
+  'zone:Luncheon:Slots': 'smo434.png',
+  'zone:Luncheon:Shop': 'crazy-cap-luncheon-kingdom.900x.webp',
+  'zone:Luncheon:Outfit': 'Simmer1.webp',
+  'zone:Luncheon:Spinning Athletics': 'Athletics1.webp',
+  'zone:Luncheon:Lava Islands': 'LavaLand1.webp',
+  'zone:Luncheon:Volcano Cave': 'Cruisin1.webp',
+  'zone:Luncheon:Gears': 'Screenshot_2.png',
+  'zone:Luncheon:Magma Path': 'smo452-600x338.png',
+  'zone:Ruined:Chargin\' Chuck': 'Chargin1.webp',
+  'zone:Ruined:Rocket': 'Roulette1.webp',
+  'zone:Bowser\'s:Jizo': 'JizoAd1.webp',
+  'zone:Bowser\'s:Shop': 'crazy-cap-bowsers-kingdom.900x.webp',
+  'zone:Bowser\'s:Outfit': 'Samu1.webp',
+  'zone:Bowser\'s:Treasure Room': 'VaultB1.webp',
+  'zone:Bowser\'s:Spinning Tower': 'SpinTower1.webp',
+  'zone:Bowser\'s:Vine Clouds': 'Vine.png',
+  'zone:Bowser\'s:Hexagon Tower': 'Hexagon2.webp',
+  'zone:Bowser\'s:Wooden Tower': 'WoodTower2.webp',
+  'zone:Mushroom:Shop': 'crazy-cap-mushroom-kingdom.900x.webp',
+  'zone:Mushroom:Castle Door': 'CastelloPeach.webp',
+  'zone:Mushroom:Outfit': 'Screenshot_8.png',
+  'zone:Mushroom:Well': 'Secret_2D_Treasure_(3).webp',
+  'zone:Mushroom:Knucklotec': 'Screenshot_9.png',
+  'zone:Mushroom:Torkdrift': 'Screenshot_12.png',
+  'zone:Mushroom:Mechawiggler': 'Screenshot_11.png',
+  'zone:Mushroom:Octopus': 'Screenshot_13.png',
+  'zone:Mushroom:Cookatiel': 'Screenshot_14.png',
+  'zone:Mushroom:Dragon': 'Screenshot_10.png',
+  'zone:Mushroom:Rocket': 'Basically_Mario_(2).webp',
+  'zone:Darkside:Breakdown': 'DarkSide_3-1.webp',
+  'zone:Darkside:Invisible': 'DarkSide_5-1.webp',
+  'zone:Darkside:Vanishing': 'DarkSide_7-1.webp',
+  'zone:Darkside:Yoshi Siege': 'DarkSide_9-1.webp',
+  'zone:Darkside:Lava Rising': 'DarkSide_11-1.webp',
+  'zone:Darkside:Magma Swamp': 'DarkSide_13-1.webp',
+  'zone:Moon:2D Snowman': 'Galaxy1.webp',
+  'zone:Moon:Shop': 'MoonDog2.webp',
+  'zone:Moon:Swings': 'Swings1.webp',
+  'zone:Moon:Sphynx': 'QuizMoon1.webp',
+  'zone:Cloud:2D Cube': 'KCube1.webp',
+  'zone:Cloud:Picture Match': 'CloudK_1-1.webp',
+};
+
+// ── Moon-slot counts per zone (from zones.html) ───────────────────
+const ZONE_MOON_COUNT = {
+  'zone:Cap:Orange': 2,
+  'zone:Cap:Paragoomba': 2,
+  'zone:Cap:Frog': 2,
+  'zone:Cap:Rolling On': 2,
+  'zone:Cascade:Dino': 2,
+  'zone:Cascade:2D': 2,
+  'zone:Cascade:Chain Chomp': 2,
+  'zone:Cascade:Swings': 2,
+  'zone:Cascade:Windy': 2,
+  'zone:Sand:Icy Cave': 1,
+  'zone:Sand:Moe-eye': 2,
+  'zone:Sand:Shop': 1,
+  'zone:Sand:Employees': 1,
+  'zone:Sand:Slots': 1,
+  'zone:Sand:Rumble': 1,
+  'zone:Sand:Outfit': 1,
+  'zone:Sand:Jaxi Ruins': 2,
+  'zone:Sand:Bullet Bill': 2,
+  'zone:Sand:Gushen': 2,
+  'zone:Sand:Sphynx': 1,
+  'zone:Sand:Moving Platform': 2,
+  'zone:Sand:Rocket': 2,
+  'zone:Sand:Colossal Ruins': 2,
+  'zone:Lake:Poison Waves': 2,
+  'zone:Lake:Zipper': 2,
+  'zone:Lake:Grab Climb': 2,
+  'zone:Lake:Shop': 1,
+  'zone:Lake:Puzzle': 1,
+  'zone:Wooded:DW Treasure': 1,
+  'zone:Wooded:DW Outfit': 1,
+  'zone:Wooded:Rocket': 2,
+  'zone:Wooded:Sheep': 2,
+  'zone:Wooded:Tank': 2,
+  'zone:Wooded:Vine Clouds': 2,
+  'zone:Wooded:Breakdown': 2,
+  'zone:Wooded:Invisible': 2,
+  'zone:Wooded:Flooded Pipes': 2,
+  'zone:Wooded:Flower Road': 2,
+  'zone:Wooded:Treasure Room': 1,
+  'zone:Lost:Wiggler': 2,
+  'zone:Lost:Shop': 1,
+  'zone:Lost:Klepto': 2,
+  'zone:Metro:Yellow Shop': 1,
+  'zone:Metro:Purple Shop': 1,
+  'zone:Metro:Dino': 2,
+  'zone:Metro:Bullet Billding': 2,
+  'zone:Metro:Taxi': 2,
+  'zone:Metro:Notes': 1,
+  'zone:Metro:2D': 2,
+  'zone:Metro:Slots': 1,
+  'zone:Metro:People': 2,
+  'zone:Metro:Outfit': 2,
+  'zone:Metro:Rocket': 2,
+  'zone:Metro:Dark': 2,
+  'zone:Metro:Scaffolding': 2,
+  'zone:Metro:Scooter': 2,
+  'zone:Metro:Rotating Maze': 2,
+  'zone:Metro:RC Car': 2,
+  'zone:Snow:Puzzle': 1,
+  'zone:Snow:Capless': 2,
+  'zone:Snow:Rocket Flower': 2,
+  'zone:Snow:Iceburn Circuit': 2,
+  'zone:Snow:Flower Road': 2,
+  'zone:Snow:Tracewalking': 1,
+  'zone:Snow:Clouds': 2,
+  'zone:Snow:Outfit': 2,
+  'zone:Snow:Shop': 1,
+  'zone:Seaside:Well Enter': 1,
+  'zone:Seaside:Well Exit': 1,
+  'zone:Seaside:Rumble': 1,
+  'zone:Seaside:Rocket': 2,
+  'zone:Seaside:Outfit': 1,
+  'zone:Seaside:Gushen': 2,
+  'zone:Seaside:Sphynx': 1,
+  'zone:Seaside:Pokio': 2,
+  'zone:Seaside:Lava Rising': 2,
+  'zone:Seaside:Sandy Bottom': 1,
+  'zone:Seaside:Spinning Maze': 2,
+  'zone:Luncheon:Magma Swamp': 2,
+  'zone:Luncheon:Forks': 2,
+  'zone:Luncheon:Cheese Rocks': 2,
+  'zone:Luncheon:Veggie Room': 1,
+  'zone:Luncheon:Slots': 1,
+  'zone:Luncheon:Shop': 1,
+  'zone:Luncheon:Outfit': 2,
+  'zone:Luncheon:Spinning Athletics': 2,
+  'zone:Luncheon:Lava Islands': 2,
+  'zone:Luncheon:Volcano Cave': 2,
+  'zone:Luncheon:Gears': 2,
+  'zone:Luncheon:Magma Path': 2,
+  'zone:Ruined:Chargin\' Chuck': 2,
+  'zone:Ruined:Rocket': 2,
+  'zone:Bowser\'s:Jizo': 2,
+  'zone:Bowser\'s:Shop': 1,
+  'zone:Bowser\'s:Outfit': 2,
+  'zone:Bowser\'s:Treasure Room': 1,
+  'zone:Bowser\'s:Spinning Tower': 2,
+  'zone:Bowser\'s:Vine Clouds': 2,
+  'zone:Bowser\'s:Hexagon Tower': 2,
+  'zone:Bowser\'s:Wooden Tower': 2,
+  'zone:Mushroom:Shop': 1,
+  'zone:Mushroom:Castle Door': 2,
+  'zone:Mushroom:Outfit': 2,
+  'zone:Mushroom:Cloud Sea': 2,
+  'zone:Mushroom:Well': 2,
+  'zone:Mushroom:Knucklotec': 1,
+  'zone:Mushroom:Torkdrift': 1,
+  'zone:Mushroom:Mechawiggler': 1,
+  'zone:Mushroom:Octopus': 1,
+  'zone:Mushroom:Cookatiel': 1,
+  'zone:Mushroom:Dragon': 1,
+  'zone:Mushroom:Rocket': 2,
+  'zone:Darkside:Breakdown': 2,
+  'zone:Darkside:Invisible': 2,
+  'zone:Darkside:Vanishing': 2,
+  'zone:Darkside:Yoshi Siege': 2,
+  'zone:Darkside:Lava Rising': 2,
+  'zone:Darkside:Magma Swamp': 2,
+  'zone:Moon:2D Snowman': 2,
+  'zone:Moon:Shop': 1,
+  'zone:Moon:Swings': 2,
+  'zone:Moon:Sphynx': 1,
+  'zone:Cloud:2D Cube': 2,
+  'zone:Cloud:Picture Match': 2,
+};
+
+// ── In-game names (from loading_zone_dictionary.json) ─────────────
+const ZONE_INGAME = {
+  'kingdom:Cap': 'Cap Kingdom',
+  'kingdom:Cascade': 'Cascade Kingdom',
+  'kingdom:Sand': 'Sand Kingdom',
+  'kingdom:Lake': 'Lake Kingdom',
+  'kingdom:Wooded': 'Wooded Kingdom',
+  'kingdom:Lost': 'Lost Kingdom',
+  'kingdom:Metro': 'Metro Kingdom',
+  'kingdom:Snow': 'Snow Kingdom',
+  'kingdom:Seaside': 'Seaside Kingdom',
+  'kingdom:Luncheon': 'Luncheon Kingdom',
+  'kingdom:Ruined': 'Ruined Kingdom',
+  'kingdom:Bowser\'s': 'Bowser\'s Kingdom',
+  'kingdom:Mushroom': 'Mushroom Kingdom',
+  'kingdom:Darkside': 'Dark Side',
+  'kingdom:Darkerside': 'Darker Side',
+  'kingdom:Moon': 'Moon Kingdom',
+  'kingdom:Cloud': 'Cloud Kingdom',
+  'zone:Cap:Orange': 'Push Block Peril',
+  'zone:Cap:Paragoomba': 'Poison Tides',
+  'zone:Cap:Frog': 'Frog Pond',
+  'zone:Cap:Rolling On': 'Precision Rolling',
+  'zone:Cascade:Dino': 'Dinosaur Nest',
+  'zone:Cascade:2D': '8-Bit Chasm Lifts',
+  'zone:Cascade:Chain Chomp': 'Nice Shots with Chain Chomps',
+  'zone:Cascade:Swings': 'Mysterious Clouds',
+  'zone:Cascade:Windy': 'Gusty Bridges',
+  'zone:Sand:Icy Cave': 'Ice Cave',
+  'zone:Sand:Moe-eye': 'Transparent Lifts',
+  'zone:Sand:Shop': 'Crazy Cap Store',
+  'zone:Sand:Employees': 'Crazy Cap Store',
+  'zone:Sand:Slots': 'Tostarena Slots',
+  'zone:Sand:Rumble': 'Rumbling Floor House',
+  'zone:Sand:Outfit': 'Costume Room',
+  'zone:Sand:Jaxi Ruins': 'Jaxi Driving',
+  'zone:Sand:Bullet Bill': 'Bullet Bill Maze',
+  'zone:Sand:Gushen': 'Freezing Waterway',
+  'zone:Sand:Sphynx': 'Sphynx Treasure Vault',
+  'zone:Sand:Moving Platform': 'The Invisible Maze',
+  'zone:Sand:Rocket': 'Strange Neighborhood',
+  'zone:Sand:Colossal Ruins': 'Colossal Ruins',
+  'zone:Lake:Poison Waves': 'Waves of Poison',
+  'zone:Lake:Zipper': 'Unzipping the Chasm',
+  'zone:Lake:Grab Climb': 'Jump, Grab, Cling, Climb',
+  'zone:Lake:Shop': 'Crazy Cap Store',
+  'zone:Lake:Puzzle': 'Puzzle Room',
+  'zone:Wooded:DW Odyssey': 'Wooded Kingdom',
+  'zone:Wooded:DW Red Maze': 'Deep Woods',
+  'zone:Wooded:DW Pond': 'Wooded Kingdom',
+  'zone:Wooded:DW Treasure': 'Deep Woods Treasure Vault',
+  'zone:Wooded:DW Outfit': 'Costume Room',
+  'zone:Wooded:Rocket': 'Shards in the Fog',
+  'zone:Wooded:Sheep': 'Herding Sheep',
+  'zone:Wooded:Tank': 'Crowded Elevator',
+  'zone:Wooded:Vine Clouds': 'Walking on Clouds',
+  'zone:Wooded:Breakdown': 'Breakdown Road',
+  'zone:Wooded:Invisible': 'Invisible Road',
+  'zone:Wooded:Flooded Pipes': 'Flooding Pipeway',
+  'zone:Wooded:Flower Road': 'Flower Road',
+  'zone:Wooded:Treasure Room': 'Spinning-Platforms Treasure Vault',
+  'zone:Lost:Wiggler': 'Stretch and Traverse the Jungle',
+  'zone:Lost:Shop': 'Crazy Cap Store',
+  'zone:Lost:Klepto': 'Klepto 2 - Lava Boogaloo',
+  'zone:Metro:Yellow Shop': 'Crazy Cap Store',
+  'zone:Metro:Purple Shop': 'Crazy Cap Store',
+  'zone:Metro:Dino': 'Scooter Escape!',
+  'zone:Metro:Bullet Billding': 'Bullet Billding',
+  'zone:Metro:Taxi': 'Shards Under Siege',
+  'zone:Metro:Notes': 'Rainbow Notes',
+  'zone:Metro:2D': 'On the Big Screen',
+  'zone:Metro:Slots': 'Metro Kingdom Slots',
+  'zone:Metro:People': 'Crowded Alleyway',
+  'zone:Metro:Outfit': 'Rewiring the Neighborhood',
+  'zone:Metro:Rocket': 'Swinging Along the High-Rises',
+  'zone:Metro:Dark': 'Pitchblack Mountain',
+  'zone:Metro:Scaffolding': 'Swinging Scaffolding',
+  'zone:Metro:Scooter': 'Scooter Daredevil',
+  'zone:Metro:Rotating Maze': 'Rotating Maze Shards',
+  'zone:Metro:RC Car': 'RC Race',
+  'zone:Snow:Puzzle': 'Ty-Foo Sliding Puzzle',
+  'zone:Snow:Capless': 'Freezing Water',
+  'zone:Snow:Rocket Flower': 'Dashing Over Cold Water',
+  'zone:Snow:Iceburn Circuit': 'Iceburn Circuit',
+  'zone:Snow:Flower Road': 'Wintery Flower Road',
+  'zone:Snow:Tracewalking': 'Shards in the Cold Room',
+  'zone:Snow:Clouds': 'Spinning Above the Clouds',
+  'zone:Snow:Outfit': 'Cold Room',
+  'zone:Snow:Shop': 'Crazy Cap Store',
+  'zone:Seaside:Well Enter': 'Underwater Tunnel',
+  'zone:Seaside:Well Exit': 'Seaside Kingdom',
+  'zone:Seaside:Rumble': 'Rumbling Floor Cave',
+  'zone:Seaside:Rocket': 'A Sea of Clouds',
+  'zone:Seaside:Outfit': 'Costume Room',
+  'zone:Seaside:Gushen': 'Flying Through the Narrow Valley',
+  'zone:Seaside:Sphynx': 'Sphynx Treasure Vault',
+  'zone:Seaside:Pokio': 'Stop, Poke, and Roll',
+  'zone:Seaside:Lava Rising': 'Stretching Up the Sinking Island',
+  'zone:Seaside:Sandy Bottom': 'Wriggling Power Moon',
+  'zone:Seaside:Spinning Maze': 'Spinning Maze',
+  'zone:Luncheon:Magma Swamp': 'Magma Swamp',
+  'zone:Luncheon:Forks': 'Fork-Flickin to the Summit',
+  'zone:Luncheon:Cheese Rocks': 'Shards in the Cheese Rocks',
+  'zone:Luncheon:Veggie Room': 'Luncheon Treasure Vault(?)',
+  'zone:Luncheon:Slots': 'Luncheon Kingdom Slots(?)',
+  'zone:Luncheon:Shop': 'Crazy Cap Store(?)',
+  'zone:Luncheon:Outfit': 'Simmering in the Kitchen',
+  'zone:Luncheon:Spinning Athletics': 'Spinning Athletics',
+  'zone:Luncheon:Lava Islands': 'Lava Island Fly-By',
+  'zone:Luncheon:Volcano Cave': 'Volcano Cave Cruising',
+  'zone:Luncheon:Gears': 'Blazing Above the Gears',
+  'zone:Luncheon:Magma Path': 'Narrow Magma Path',
+  'zone:Ruined:Chargin\' Chuck': 'Mummy Army',
+  'zone:Ruined:Rocket': 'Roulette Tower',
+  'zone:Bowser\'s:Jizo': 'Jizo\'s Great Adventure',
+  'zone:Bowser\'s:Shop': 'Crazy Cap Store',
+  'zone:Bowser\'s:Outfit': 'Scene in the Folding Screen',
+  'zone:Bowser\'s:Treasure Room': 'Bowser\'s Kingdom Treasure Vault',
+  'zone:Bowser\'s:Spinning Tower': 'Spinning Tower',
+  'zone:Bowser\'s:Vine Clouds': 'Dashing Above the Clouds',
+  'zone:Bowser\'s:Hexagon Tower': 'Hexagon Tower',
+  'zone:Bowser\'s:Wooden Tower': 'Wooden Tower',
+  'zone:Mushroom:Shop': 'Crazy Cap Store',
+  'zone:Mushroom:Castle Door': 'Peach\'s Castle',
+  'zone:Mushroom:Outfit': 'Castle Courtyard 64',
+  'zone:Mushroom:Cloud Sea': 'Yoshi in the Sea of Clouds',
+  'zone:Mushroom:Well': '8-Bit Bullet Bills',
+  'zone:Mushroom:Knucklotec': 'Knucklotec Boss Re-fight',
+  'zone:Mushroom:Torkdrift': 'Torkdrift Boss Re-fight',
+  'zone:Mushroom:Mechawiggler': 'Mechawiggler Boss Re-fight',
+  'zone:Mushroom:Octopus': 'Mollusque-Lanceur Boss Re-fight',
+  'zone:Mushroom:Cookatiel': 'Cookatiel Boss Re-fight',
+  'zone:Mushroom:Dragon': 'Lord of Lightning Boss Re-fight',
+  'zone:Mushroom:Rocket': 'Picture Match',
+  'zone:Darkside:Breakdown': 'Breakdown Road Capless',
+  'zone:Darkside:Invisible': 'Invisible Road Capless',
+  'zone:Darkside:Vanishing': 'Vanishing Road Capless',
+  'zone:Darkside:Yoshi Siege': 'Yoshi Under Siege',
+  'zone:Darkside:Lava Rising': 'Yoshi\'s Magma Swamp',
+  'zone:Darkside:Magma Swamp': 'Yoshi\'s Magma Swamp',
+  'zone:Darkerside:End': 'Darker Side',
+  'zone:Moon:2D Snowman': '8-Bit Galaxy',
+  'zone:Moon:Shop': 'Crazy Cap Store',
+  'zone:Moon:Swings': 'Giant Swings',
+  'zone:Moon:Sphynx': 'Moon Kingdom Treasure Vault',
+  'zone:Cloud:2D Cube': '2D Cube',
+  'zone:Cloud:Picture Match': 'Picture Match',
+};
+
 
 // ─────────────────────────────────────────────────────────────────
 // Chain color palette
@@ -1915,6 +2495,7 @@ const STORAGE_NOTES       = 'smo_map_notes';
 const STORAGE_NODE_POS    = 'smo_map_node_positions';
 const STORAGE_NODE_COLORS = 'smo_map_node_colors';
 const STORAGE_PANEL_NOTES = 'smo_map_panel_notes';
+const STORAGE_MOONS       = 'smo_map_moon_icons';
 
 // ─────────────────────────────────────────────────────────────────
 // Zone name overrides (from the main tracker's tracker_state)
@@ -1964,6 +2545,38 @@ const CLUSTER_PAD = 14;
 const CLUSTER_GAP_X = 46, CLUSTER_GAP_Y = 46;
 const KINGDOM_NODE_W = 150, KINGDOM_NODE_H = 36;
 const CLUSTER_MIN_W = 140;
+// Extra vertical room reserved above each zone row for the tiny moon icons
+// (only while Moon Tracking is on).
+const MOON_ICON_ROW = 18;
+function moonSpace() { return moonTracking ? MOON_ICON_ROW : 0; }
+
+// ── Moon-icon helpers ─────────────────────────────────────────────
+function moonCountFor(id) { return ZONE_MOON_COUNT[id] || 0; }
+function nodeHasMoonSlots(id) { return moonTracking && moonCountFor(id) > 0; }
+/** The moon-icon slot array for a node, normalized to that zone's slot count. */
+function getNodeMoons(id) {
+  const num = moonCountFor(id);
+  let arr = Array.isArray(moonIcons[id]) ? moonIcons[id].slice(0, num) : [];
+  while (arr.length < num) arr.push(null);
+  return arr;
+}
+function setNodeMoon(id, i, icon) {
+  const num = moonCountFor(id);
+  let arr = Array.isArray(moonIcons[id]) ? moonIcons[id].slice(0, num) : [];
+  while (arr.length < num) arr.push(null);
+  arr[i] = icon;
+  moonIcons[id] = arr;
+  saveMoonIcons();
+}
+/** Only the slots the user actually chose (non-null), in order for above-node icons. */
+function chosenMoonIcons(id) {
+  const arr = Array.isArray(moonIcons[id]) ? moonIcons[id] : [];
+  return arr.slice(0, moonCountFor(id)).filter(Boolean);
+}
+/** True when a ctrl-click / long-press should open a popup for this node. */
+function canOpenStagePopup(id) {
+  return (showImages && !isPaintingNode(id)) || nodeHasMoonSlots(id);
+}
 
 // ─────────────────────────────────────────────────────────────────
 // State
@@ -2010,6 +2623,12 @@ let displayPosition = 'top';
 let displaySize = 150;
 let displayVisible = true;      // toggled by the Hide/Show Display button
 let paintingTracker = false; // Painting section shown on the map (default off)
+let moonTracking = false;    // Moon tracking: per-node moon icons + above-node icons (default off)
+
+// Per-node moon-icon choices, keyed by node id -> array of icon filenames (or
+// null for an empty slot). Length is capped by that zone's ZONE_MOON_COUNT.
+// Shared by both popup modes (full preview + moon-only) and the above-node icons.
+let moonIcons = {};
 
 // ── Notes panel ───────────────────────────────────────────────────
 // A docked panel of numbered notes (separate from the freeform sticky notes on
@@ -2120,7 +2739,7 @@ function zoneCols(clusterW) {
 function clusterHeight(clusterW, numZones) {
   const cols = zoneCols(clusterW);
   const rows = Math.ceil(numZones / cols);
-  return KINGDOM_NODE_H + 10 + rows * NODE_H + Math.max(0, rows - 1) * ZONE_GAP_Y + CLUSTER_PAD * 2;
+  return KINGDOM_NODE_H + 10 + moonSpace() + rows * NODE_H + Math.max(0, rows - 1) * (ZONE_GAP_Y + moonSpace()) + CLUSTER_PAD * 2;
 }
 
 /** Default cluster width = 3 zone columns */
@@ -2231,7 +2850,7 @@ function buildLayout() {
         id: zoneId, label: zone, kingdomKey: key, type: 'zone',
         painting: isPaintings,
         x: cx + CLUSTER_PAD + c * (NODE_W + ZONE_GAP_X),
-        y: cy + CLUSTER_PAD + KINGDOM_NODE_H + 10 + r * (NODE_H + ZONE_GAP_Y),
+        y: cy + CLUSTER_PAD + KINGDOM_NODE_H + 10 + moonSpace() + r * (NODE_H + ZONE_GAP_Y + moonSpace()),
         w: NODE_W, h: NODE_H, color: zoneColor,
         clusterX: cx, clusterY: cy,
       };
@@ -2350,6 +2969,7 @@ function loadAll() {
       displaySize       = s.displaySize     || displaySize;
       if (s.displayVisible !== undefined) displayVisible = !!s.displayVisible;
       paintingTracker   = !!s.paintingTracker;
+      moonTracking      = !!s.moonTracking;
       segmentedNodes    = !!s.segmentedNodes;
       if (s.segmentStyle && SEGMENT_LABELS[s.segmentStyle]) segmentStyle = s.segmentStyle;
       decoupled         = !!s.decoupled;
@@ -2435,6 +3055,8 @@ function loadAll() {
       }
     }
   } catch (e) {}
+
+  loadMoonIcons();
 }
 
 function saveState()    { localStorage.setItem(STORAGE_KEY, JSON.stringify({ outgoing, marks, edgeList })); }
@@ -2445,10 +3067,19 @@ function saveSettings() {
   localStorage.setItem(STORAGE_SETTINGS, JSON.stringify({
     showImages, arrowColor, highlightColor, highlightEnabled,
     randomChainColors, arrowColorMode, displayPosition, displaySize, displayVisible, kingdomVisible,
-    paintingTracker, segmentedNodes, segmentStyle, decoupled,
+    paintingTracker, moonTracking, segmentedNodes, segmentStyle, decoupled,
     colorPalette, fillColorsOn, frameColorsOn,
     notesPanelOn, notesPosition, notesSize, comboSplit
   }));
+}
+function saveMoonIcons() {
+  localStorage.setItem(STORAGE_MOONS, JSON.stringify(moonIcons));
+}
+function loadMoonIcons() {
+  try {
+    const raw = localStorage.getItem(STORAGE_MOONS);
+    moonIcons = raw ? (JSON.parse(raw) || {}) : {};
+  } catch (e) { moonIcons = {}; }
 }
 function saveNodeColors() {
   localStorage.setItem(STORAGE_NODE_COLORS, JSON.stringify({ nodeColors, segColors }));
@@ -3087,7 +3718,7 @@ function moveCluster(key, nx, ny, div) {
     if (!zn) return;
     zn.clusterX = nx; zn.clusterY = ny;
     zn.x = nx + CLUSTER_PAD + c * (NODE_W + ZONE_GAP_X);
-    zn.y = ny + CLUSTER_PAD + KINGDOM_NODE_H + 10 + r * (NODE_H + ZONE_GAP_Y);
+    zn.y = ny + CLUSTER_PAD + KINGDOM_NODE_H + 10 + moonSpace() + r * (NODE_H + ZONE_GAP_Y + moonSpace());
     const znEl = canvasEl.querySelector(`.map-node[data-id="${cssEscape(zid)}"]`);
     if (znEl) { znEl.style.left = zn.x + 'px'; znEl.style.top = zn.y + 'px'; }
   });
@@ -3208,7 +3839,7 @@ function resizeCluster(key, newW) {
     const zn = nodes[zid];
     if (!zn) return;
     zn.x = cx + CLUSTER_PAD + c * (NODE_W + ZONE_GAP_X);
-    zn.y = cy + CLUSTER_PAD + KINGDOM_NODE_H + 10 + r * (NODE_H + ZONE_GAP_Y);
+    zn.y = cy + CLUSTER_PAD + KINGDOM_NODE_H + 10 + moonSpace() + r * (NODE_H + ZONE_GAP_Y + moonSpace());
     const znEl = canvasEl.querySelector(`.map-node[data-id="${cssEscape(zid)}"]`);
     if (znEl) { znEl.style.left = zn.x + 'px'; znEl.style.top = zn.y + 'px'; }
   });
@@ -3286,6 +3917,24 @@ function renderNodes() {
       }
     } else {
       el.appendChild(label);
+    }
+
+    // ── Tiny moon icons above the node (Moon Tracking on) ───────
+    if (nodeHasMoonSlots(n.id)) {
+      const chosen = chosenMoonIcons(n.id);
+      if (chosen.length) {
+        el.classList.add('has-moons');
+        const strip = document.createElement('div');
+        strip.className = 'node-moon-strip';
+        chosen.forEach(f => {
+          const mi = document.createElement('img');
+          mi.src = 'assets/' + f;
+          mi.alt = '';
+          mi.onerror = () => { mi.style.display = 'none'; };
+          strip.appendChild(mi);
+        });
+        el.appendChild(strip);
+      }
     }
 
     // ── Decouple move handle ────────────────────────────────────
@@ -3923,6 +4572,182 @@ function closeImageViewer() {
   imageViewer.classList.remove('visible');
 }
 
+// ─────────────────────────────────────────────────────────────────
+// Stage-preview popup (zones.html style): entrance/inside screenshots
+// plus per-node moon slots. Opened by Ctrl+click (desktop) / long-press
+// (mobile). Replaces the old draggable image viewer as the preview UI.
+// ─────────────────────────────────────────────────────────────────
+const stagePopup      = document.getElementById('stage-popup');
+const stagePopOverlay = document.getElementById('stagepop-overlay');
+const spNick     = document.getElementById('sp-nick');
+const spOfficial = document.getElementById('sp-official');
+const spMoonsRow = document.getElementById('sp-moons');
+const spTabs     = document.getElementById('sp-tabs');
+const spImgWrap  = document.getElementById('sp-img-wrap');
+const spImg      = document.getElementById('sp-img');
+const spNoImg    = document.getElementById('sp-noimg');
+
+let spNodeId = null;         // node currently shown in the popup
+let spTab = 'entrance';
+let spShowImages = false;    // whether the image section is shown this open
+
+function entSrc(f)    { return f ? (EXT_IMG + f)  : ''; }
+function insideSrc(f) { return f ? (BASE_IMG + f) : ''; }
+
+function openStagePopup(nodeId) {
+  const n = nodes[nodeId];
+  if (!n) return;
+
+  spShowImages = showImages && !isPaintingNode(nodeId);
+  const showMoons = nodeHasMoonSlots(nodeId);
+  if (!spShowImages && !showMoons) return; // nothing to show
+
+  spNodeId = nodeId;
+
+  spNick.textContent = n.type === 'kingdom' ? (n.label + ' Kingdom') : zoneDisplayLabel(n);
+  spNick.style.color = n.color || 'var(--text)';
+  const ig = ZONE_INGAME[nodeId] || '';
+  spOfficial.textContent = ig;
+  spOfficial.style.display = ig ? '' : 'none';
+
+  // Moon slots
+  if (showMoons) { spMoonsRow.style.display = ''; spBuildMoonSlots(nodeId); }
+  else { spMoonsRow.style.display = 'none'; spMoonsRow.innerHTML = ''; }
+
+  // Image section. Kingdoms have a single connected photo (no entrance), so we
+  // hide the Entrance/Inside tabs and just show it. Zones keep both tabs.
+  if (spShowImages) {
+    spImgWrap.style.display = '';
+    if (n.type === 'kingdom') {
+      spTabs.style.display = 'none';
+      spSetImg('inside');
+    } else {
+      spTabs.style.display = '';
+      const hasEnt = !!ZONE_ENT[nodeId];
+      spTab = hasEnt ? 'entrance' : 'inside';
+      spTabs.querySelectorAll('.sp-img-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === spTab));
+      spSetImg(spTab);
+    }
+  } else {
+    spTabs.style.display = 'none';
+    spImgWrap.style.display = 'none';
+  }
+
+  stagePopup.classList.add('visible');
+  stagePopOverlay.classList.add('visible');
+}
+
+function spSetImg(tab) {
+  if (!spNodeId) return;
+  spTab = tab;
+  const src = tab === 'entrance'
+    ? entSrc(ZONE_ENT[spNodeId] || '')
+    : insideSrc(ZONE_IMAGES[spNodeId] || '');
+  if (src) {
+    spImg.onerror = () => { spImg.style.display = 'none'; spNoImg.style.display = ''; spNoImg.textContent = 'Image not found.'; };
+    spImg.src = src;
+    spImg.style.display = '';
+    spNoImg.style.display = 'none';
+  } else {
+    spImg.removeAttribute('src');
+    spImg.style.display = 'none';
+    spNoImg.style.display = '';
+    spNoImg.textContent = 'No image available';
+  }
+}
+
+function spBuildMoonSlots(nodeId) {
+  const num = moonCountFor(nodeId);
+  spMoonsRow.innerHTML = '';
+  if (!num) { spMoonsRow.style.display = 'none'; return; }
+  const icons = getNodeMoons(nodeId);
+  for (let i = 0; i < num; i++) {
+    const slot = document.createElement('div');
+    slot.className = 'sp-moon-slot';
+    slot.title = `Moon ${i + 1}`;
+    const icon = icons[i];
+    slot.innerHTML = icon
+      ? `<img src="assets/${icon}" alt="">`
+      : `<img class="slot-empty-icon" src="assets/Moon.png" alt="">`;
+    slot.addEventListener('click', ev => {
+      ev.stopPropagation();
+      spOpenIconPicker(ev, chosen => {
+        setNodeMoon(nodeId, i, chosen);
+        spBuildMoonSlots(nodeId);
+        refreshNodeMoonStrip(nodeId);
+      });
+    });
+    spMoonsRow.appendChild(slot);
+  }
+}
+
+function spOpenIconPicker(e, onSelect) {
+  document.querySelectorAll('.sp-icon-picker').forEach(p => p.remove());
+  const div = document.createElement('div');
+  div.className = 'sp-icon-picker';
+  MOON_PICKER_ICONS.forEach(f => {
+    const img = document.createElement('img');
+    img.src = `assets/${f}`;
+    img.title = f.replace('.png', '');
+    img.addEventListener('click', ev => { ev.stopPropagation(); onSelect(f); div.remove(); });
+    div.appendChild(img);
+  });
+  document.body.appendChild(div);
+  const pw = 210, ph = 130;
+  let x = e.clientX, y = e.clientY;
+  if (x + pw > window.innerWidth)  x = window.innerWidth  - pw - 8;
+  if (y + ph > window.innerHeight) y = window.innerHeight - ph - 8;
+  div.style.left = Math.max(8, x) + 'px';
+  div.style.top  = Math.max(8, y) + 'px';
+  setTimeout(() => {
+    document.addEventListener('click', function cl(ev) {
+      if (!div.contains(ev.target)) { div.remove(); document.removeEventListener('click', cl); }
+    });
+  }, 10);
+}
+
+function closeStagePopup() {
+  stagePopup.classList.remove('visible');
+  stagePopOverlay.classList.remove('visible');
+  document.querySelectorAll('.sp-icon-picker').forEach(p => p.remove());
+  spNodeId = null;
+}
+
+/** Rebuild one node's above-map moon strip after an icon change (no full render). */
+function refreshNodeMoonStrip(nodeId) {
+  const el = canvasEl.querySelector(`.map-node[data-id="${cssEscape(nodeId)}"]`);
+  if (!el) return;
+  const old = el.querySelector('.node-moon-strip');
+  if (old) old.remove();
+  el.classList.remove('has-moons');
+  if (!nodeHasMoonSlots(nodeId)) return;
+  const chosen = chosenMoonIcons(nodeId);
+  if (!chosen.length) return;
+  el.classList.add('has-moons');
+  const strip = document.createElement('div');
+  strip.className = 'node-moon-strip';
+  chosen.forEach(f => {
+    const mi = document.createElement('img');
+    mi.src = 'assets/' + f; mi.alt = '';
+    mi.onerror = () => { mi.style.display = 'none'; };
+    strip.appendChild(mi);
+  });
+  el.appendChild(strip);
+}
+
+spTabs.querySelectorAll('.sp-img-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    spTabs.querySelectorAll('.sp-img-tab').forEach(b => b.classList.toggle('active', b === btn));
+    spSetImg(btn.dataset.tab);
+  });
+});
+document.getElementById('sp-close').addEventListener('click', closeStagePopup);
+stagePopOverlay.addEventListener('click', closeStagePopup);
+stagePopup.addEventListener('click', e => e.stopPropagation());
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && stagePopup.classList.contains('visible')) closeStagePopup();
+});
+
 document.getElementById('image-viewer-close').addEventListener('click', closeImageViewer);
 
 // Close when clicking outside the viewer
@@ -4232,12 +5057,13 @@ function updateDropHighlight(clientX, clientY, srcId) {
 function wireNodeEvents(el, id) {
   el.addEventListener('mousedown', (e) => {
     if (e.button === 0) {
-      // Ctrl-click (or Cmd-click) opens the stage preview on desktop, replacing
-      // the old press-and-hold. It never starts a connection drag.
-      if ((e.ctrlKey || e.metaKey) && showImages && !isPaintingNode(id)) {
+      // Ctrl-click (or Cmd-click) opens the stage-preview / moon popup on desktop.
+      // It never starts a connection drag. Available when Stage Previews is on,
+      // or when Moon Tracking is on and this node has moons (moon-only mode).
+      if ((e.ctrlKey || e.metaKey) && canOpenStagePopup(id)) {
         e.preventDefault(); e.stopPropagation();
         nodePressFired = true; // swallow the following mouseup click
-        openImageViewer(id);
+        openStagePopup(id);
         return;
       }
       e.stopPropagation();
@@ -4355,20 +5181,20 @@ function handleNodeTouchStart(e, id) {
   const startPart = normalizePart(id, nodeEl ? partAtPoint(nodeEl, startX) : PART_MID);
   let moved = false, dragStarted = false;
 
-  // ── Long-press → open stage preview (1 s, only when Stage Previews is on) ──
-  // Timer is cancelled the moment the finger moves past the movement threshold,
-  // so it can never fire during an intentional connection drag.
+  // ── Long-press → open stage-preview / moon popup (1 s) ──
+  // Available when Stage Previews is on, or Moon Tracking is on and this node has
+  // moons. Timer is cancelled the moment the finger moves past the threshold.
   let longPressTimer = null;
-  if (showImages) {
+  if (canOpenStagePopup(id)) {
     longPressTimer = setTimeout(() => {
       longPressTimer = null;
       if (!moved) {
-        // Consume the touch gesture. Remove all listeners before opening the viewer
+        // Consume the touch gesture. Remove all listeners before opening the popup
         document.removeEventListener('touchmove', onMove);
         document.removeEventListener('touchend', onEnd);
         document.removeEventListener('touchcancel', onCancel);
         connecting = null;
-        openImageViewer(id);
+        openStagePopup(id);
       }
     }, 1000);
   }
@@ -5073,11 +5899,12 @@ document.getElementById('btn-display').addEventListener('click', (e) => {
 });
 
 document.getElementById('btn-clear').addEventListener('click', () => {
-  if (!confirm('Clear all connections, colors, and notes on the map?')) return;
+  if (!confirm('Clear all connections, colors, notes, and moon icons on the map?')) return;
   pushUndoSnapshot();
   edgeList=[]; outgoing={}; incoming={}; marks={};
   edgeChains={}; chainColors={}; nextChainId=0;
   nodeColors={}; segColors={};
+  moonIcons={}; saveMoonIcons();
   hoverHighlightChainId = null; pinnedHighlightChainId = null; pinnedHighlightNodeId = null;
   clearNodeNav();
   closeActiveChainPicker();
@@ -5149,6 +5976,18 @@ togglePainting.addEventListener('change', () => {
   paintingTracker = togglePainting.checked;
   togglePaintingLabel.textContent = paintingTracker ? 'On' : 'Off';
   saveSettings();
+  fullRender();
+});
+
+// Settings: moon tracking toggle
+const toggleMoons = document.getElementById('toggle-moons');
+const toggleMoonsLabel = document.getElementById('toggle-moons-label');
+toggleMoons.addEventListener('change', () => {
+  moonTracking = toggleMoons.checked;
+  toggleMoonsLabel.textContent = moonTracking ? 'On' : 'Off';
+  saveSettings();
+  // Spacing above rows changes with the toggle, so rebuild the whole layout.
+  if (stagePopup.classList.contains('visible')) closeStagePopup();
   fullRender();
 });
 
@@ -6045,6 +6884,8 @@ function init() {
   toggleHighlightLabel.textContent = highlightEnabled ? 'On' : 'Off';
   togglePainting.checked = paintingTracker;
   togglePaintingLabel.textContent = paintingTracker ? 'On' : 'Off';
+  toggleMoons.checked = moonTracking;
+  toggleMoonsLabel.textContent = moonTracking ? 'On' : 'Off';
   toggleSegmented.checked = segmentedNodes;
   toggleSegmentedLabel.textContent = segmentedNodes ? 'On' : 'Off';
   segmentStyleSelect.value = segmentStyle;
