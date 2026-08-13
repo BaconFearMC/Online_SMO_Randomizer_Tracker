@@ -134,6 +134,7 @@ const DEFAULT_SETTINGS = {
   notes_columns: 2,            // kingdoms side-by-side in vertical mode (1 | 2 | 3)
   notes_compact: false,        // tighter spacing + shorter note boxes
   show_painting_notes: false,  // Paintings notes column (before Cascade); default off
+  merge_deep_woods_vines: false, // Merge the 4 Deep Woods "Vine" zones into one "Vines" zone
   kingdom_order: null,         // custom moon-row display order (array of KINGDOMS indices) or null
 };
 
@@ -146,7 +147,7 @@ const LOADING_ZONES_TEMPLATE = {
   'Cascade': { color: '#ff9900', icon: 'Cascade.png', zones: { 'Dino': { num: 2 }, '2D': { num: 2 }, 'Chain Chomp': { num: 2 }, 'Swings': { num: 2 }, 'Windy': { num: 2 } } },
   'Sand': { color: '#8bf12c', icon: 'Sand.png', zones: { "Icy Cave": { num: 1 }, "Moe-eye": { num: 2 }, "Shop": { num: 1 }, "Employees": { num: 1 }, "Slots": { num: 1 }, "Rumble": { num: 1 }, "Outfit": { num: 1 }, "Jaxi Ruins": { num: 2 }, "Bullet Bill": { num: 2 }, "Gushen": { num: 2 }, "Sphynx": { num: 1 }, "Moving Platform": { num: 2 }, "Rocket": { num: 2 }, "Colossal Ruins": { num: 2 } } },
   'Lake': { color: '#e46cab', icon: 'Lake.png', zones: { "Poison Waves": { num: 2 }, "Zipper": { num: 2 }, "Grab Climb": { num: 2 }, "Shop": { num: 1 }, "Puzzle": { num: 1 } } },
-  'Wooded': { color: '#1e65e7', icon: 'Wooded.png', zones: { "DW Odyssey": { num: 0 }, "DW Red Maze": { num: 0 }, "DW Pond": { num: 0 }, "DW Treasure": { num: 1 }, "DW Outfit": { num: 1 }, "Rocket": { num: 2 }, "Sheep": { num: 2 }, "Tank": { num: 2 }, "Vine Clouds": { num: 2 }, "Breakdown": { num: 2 }, "Invisible": { num: 2 }, "Flooded Pipes": { num: 2 }, "Flower Road": { num: 2 }, "Treasure Room": { num: 1 } } },
+  'Wooded': { color: '#1e65e7', icon: 'Wooded.png', zones: { "Deep Woods Fall": { num: 0 }, "Rocket": { num: 2 }, "Sheep": { num: 2 }, "Tank": { num: 2 }, "Vine Clouds": { num: 2 }, "Breakdown": { num: 2 }, "Invisible": { num: 2 }, "Flooded Pipes": { num: 2 }, "Flower Road": { num: 2 }, "Treasure Room": { num: 1 } } },
   'Lost': { color: '#e71edd', icon: 'Lost.png', zones: { 'Wiggler': { num: 2 }, 'Shop': { num: 1 }, 'Klepto': { num: 2 } } },
   'Metro': { color: '#de7d5e', icon: 'Metro.png', zones: { "Yellow Shop": { num: 1 }, "Purple Shop": { num: 1 }, "Dino": { num: 2 }, "Bullet Billding": { num: 2 }, "Taxi": { num: 2 }, "Notes": { num: 1 }, "2D": { num: 2 }, "Slots": { num: 1 }, "People": { num: 2 }, "Outfit": { num: 2 }, "Rocket": { num: 2 }, "Dark": { num: 2 }, "Scaffolding": { num: 2 }, "Scooter": { num: 2 }, "Rotating Maze": { num: 2 }, "RC Car": { num: 2 } } },
   'Snow': { color: '#e7930a', icon: 'Snow.png', zones: { "Puzzle": { num: 1 }, "Capless": { num: 2 }, "Rocket Flower": { num: 2 }, "Iceburn Circuit": { num: 2 }, "Flower Road": { num: 2 }, "Tracewalking": { num: 1 }, "Clouds": { num: 2 }, "Outfit": { num: 2 }, "Shop": { num: 1 } } },
@@ -159,6 +160,7 @@ const LOADING_ZONES_TEMPLATE = {
   'Darkerside': { color: '#fff2c6', icon: 'Dark.png', zones: { 'End': { num: 1 } } },
   'Moon':       { color:'#b5c1cb', icon:'MoonK.png',    zones:{ '2D Snowman': {num:2},'Shop': {num:1},'Swings': {num:2},'Sphynx': {num:1}} },
   'Cloud':      { color:'#65ceff', icon:'Cloud.png',    zones:{ '2D Cube': {num:2},'Picture Match': {num:2} } },
+  'Deep Woods': { color: '#1e65e7', icon: 'Wooded.png', zones: { "Vine #1 (Dino)": { num: 0 }, "Vine #2 (Peculiar Pipes)": { num: 0 }, "Vine #3 (Babbling Brook)": { num: 0 }, "Vine #4 (Creek)": { num: 0 }, "Treasure": { num: 1 }, "Outfit": { num: 1 } } },
 };
 
 // Number of zones above which a kingdom column auto-splits into two side-by-side columns
@@ -319,7 +321,33 @@ const TOGGLE_SETTINGS = [
   { id: 'toggle-cap-obs', key: 'show_cap_obs' },
   { id: 'toggle-moon-updater', key: 'show_moon_updater' },
   { id: 'toggle-painting-notes', key: 'show_painting_notes' },
+  { id: 'toggle-merge-vines', key: 'merge_deep_woods_vines' },
 ];
+
+// ── Deep Woods "Vines" merge ────────────────────────────────────────────────
+// The 4 Deep Woods vine zones (Vine #1-4) can optionally be collapsed into a
+// single "Vines" zone via Settings. Since this changes the *set* of zone keys
+// (not just a display flag), it has to actually add/remove entries in
+// state.loading_zones['Deep Woods'].zones rather than just toggle a class.
+const DEEP_WOODS_VINE_KEYS = ['Vine #1 (Dino)', 'Vine #2 (Peculiar Pipes)', 'Vine #3 (Babbling Brook)', 'Vine #4 (Creek)'];
+const DEEP_WOODS_MERGED_KEY = 'Vines';
+
+function applyVinesMergeSetting() {
+  const dw = state.loading_zones && state.loading_zones['Deep Woods'];
+  if (!dw) return;
+  const merged = !!state.settings.merge_deep_woods_vines;
+  if (merged) {
+    if (!dw.zones[DEEP_WOODS_MERGED_KEY]) {
+      dw.zones[DEEP_WOODS_MERGED_KEY] = { note: '', icon: 'Moon.png', icon2: 'Moon.png', collapsed: false, num: 0 };
+    }
+    for (const k of DEEP_WOODS_VINE_KEYS) delete dw.zones[k];
+  } else {
+    delete dw.zones[DEEP_WOODS_MERGED_KEY];
+    for (const k of DEEP_WOODS_VINE_KEYS) {
+      if (!dw.zones[k]) dw.zones[k] = { note: '', icon: 'Moon.png', icon2: 'Moon.png', collapsed: false, num: 0 };
+    }
+  }
+}
 
 // Maps a LOADING_ZONES_TEMPLATE kingdom name to the settings key that controls
 // whether it's shown (in the Notes columns and, if applicable, as a moon-count
@@ -445,6 +473,7 @@ function loadState() {
     console.error('Failed to load state:', e);
     state = getDefaultState();
   }
+  applyVinesMergeSetting();
 }
 
 // Set while the tracker is deliberately overwriting the panel's data (Clear
@@ -1386,6 +1415,58 @@ function getPanelMode() {
   return PANEL_MODES.includes(m) ? m : 'none';
 }
 
+// ── Top-left main tabs (Tracker / Notes / Connection Map / Abilities & Captures) ──
+// 'tracker' just means panel_mode 'none' (tracker shown alone). Any other tab
+// hides the tracker entirely and shows that panel full-width, replacing the
+// old side-panel/popup/modal split with a single tabbed main view.
+function activateMainTab(tab) {
+  const app = document.getElementById('app');
+  const panel = document.getElementById('side-panel');
+  const frame = document.getElementById('side-panel-frame');
+  const title = document.getElementById('side-panel-title');
+  const layoutRow = document.getElementById('layout-row');
+  const isTracker = tab === 'tracker';
+
+  state.settings.panel_mode = isTracker ? 'none' : tab;
+  syncLegacyPanelFlags();
+  saveState();
+
+  document.querySelectorAll('.main-tab').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.mainTab === tab);
+  });
+
+  if (app) app.classList.toggle('hidden', !isTracker);
+  if (layoutRow) {
+    layoutRow.classList.toggle('full-tab', !isTracker);
+    layoutRow.classList.remove('location-horizontal', 'location-vertical', 'panel-open');
+  }
+  document.body.classList.toggle('panel-edges', !isTracker);
+
+  if (isTracker) {
+    if (panel) panel.classList.add('hidden');
+    if (frame && frame.dataset.src) { frame.src = ''; delete frame.dataset.src; }
+    return;
+  }
+
+  const SRC_BY_TAB = { notes: 'notes.html', map: 'map.html', apc: 'apc.html?v=2' };
+  const TITLE_BY_TAB = { notes: 'Loading Zone Notes', map: 'Connection Map', apc: 'Abilities & Captures' };
+  const src = SRC_BY_TAB[tab];
+  if (title) title.textContent = TITLE_BY_TAB[tab] || '';
+  if (frame && src && frame.dataset.src !== src) {
+    frame.src = src;
+    frame.dataset.src = src;
+  }
+  if (panel) panel.classList.remove('hidden');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.main-tab').forEach(btn => {
+    btn.addEventListener('click', () => activateMainTab(btn.dataset.mainTab));
+  });
+  const initialTab = getPanelMode() === 'none' ? 'tracker' : getPanelMode();
+  activateMainTab(initialTab);
+});
+
 // panel_mode is the real setting; these two older booleans are kept aligned
 // with it so any code (or saved file) that still reads them stays correct.
 function syncLegacyPanelFlags() {
@@ -2127,11 +2208,7 @@ const IN_GAME_ZONE_NAMES = {
     'Puzzle': 'Stone Block Puzzle Stage',
   },
   'Wooded': {
-    'DW Odyssey': 'Deep Woods: Odyssey Area',
-    'DW Red Maze': 'Deep Woods: Red Leaf Maze',
-    'DW Pond': 'Deep Woods: Pond Area',
-    'DW Treasure': 'Deep Woods: Treasure Chest',
-    'DW Outfit': 'Deep Woods: Costume',
+    'Deep Woods Fall': 'Deep Woods: Pond Area',
     'Rocket': 'In the Fog',
     'Sheep': 'Herding Sheep Bridge',
     'Tank': 'Tank Elevator',
@@ -2248,6 +2325,14 @@ const IN_GAME_ZONE_NAMES = {
   'Cloud': {
     '2D Cube': 'The Cube',
     'Picture Match': 'Goomba Picture Match',
+  },
+  'Deep Woods': {
+    'Vine #1 (Dino)': 'Deep Woods: Odyssey Area',
+    'Vine #2 (Peculiar Pipes)': 'Deep Woods: Red Leaf Maze',
+    'Vine #3 (Babbling Brook)': 'Deep Woods: Babbling Brook',
+    'Vine #4 (Creek)': 'Deep Woods: Creek',
+    'Treasure': 'Deep Woods: Treasure Chest',
+    'Outfit': 'Deep Woods: Costume',
   },
 };
 
@@ -2948,6 +3033,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Painting notes column is added/removed, so rebuild the notes if open.
       if (key === 'show_painting_notes') {
+        const lzModal = document.getElementById('lz-modal');
+        if (lzModal && !lzModal.classList.contains('hidden')) buildLoadingZonesContent();
+      }
+
+      // Deep Woods Vines merge adds/removes zone keys, so rebuild the notes/map if open.
+      if (key === 'merge_deep_woods_vines') {
+        applyVinesMergeSetting();
+        saveState();
         const lzModal = document.getElementById('lz-modal');
         if (lzModal && !lzModal.classList.contains('hidden')) buildLoadingZonesContent();
       }
