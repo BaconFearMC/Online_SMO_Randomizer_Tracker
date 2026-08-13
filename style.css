@@ -36,6 +36,47 @@ body {
   gap: 7px;
 }
 
+/* ── Top-Left Main Tabs (Tracker / Notes / Connection Map / Abilities) ── */
+#main-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-self: flex-start;
+  margin-bottom: 4px;
+}
+.main-tab {
+  background: var(--btn-bg);
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px 12px;
+  font-family: var(--font);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.main-tab:hover { background: var(--btn-hover); color: var(--text); }
+.main-tab.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+/* When a non-Tracker tab is active, #app is hidden and #side-panel takes
+   over the full width/height of #layout-row in place of the tracker. */
+#layout-row.full-tab {
+  flex-direction: column;
+}
+#layout-row.full-tab #side-panel {
+  width: 100%;
+  flex: 1 1 auto;
+  min-width: 0;
+  position: static;
+  max-height: none;
+}
+#layout-row.full-tab #side-panel-frame {
+  min-height: 80vh;
+}
+
 /* ── App wrapper ─────────────────────────────────────────────────── */
 /* #layout-row holds #app and, optionally, #side-panel. With no panel
    active, #app centers itself exactly as before. With a panel active,
