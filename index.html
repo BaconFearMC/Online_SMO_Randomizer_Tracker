@@ -11,6 +11,17 @@
 </head>
 
 <body>
+  <!-- ── Top-Left Main Tabs ─────────────────────────────────────────
+       Switches the main view between the Tracker, Notes, Connection Map,
+       and Abilities & Captures. Settings stays consolidated in the single
+       gear-icon Settings modal. See activateMainTab() in app.js. -->
+  <div id="main-tabs" role="tablist">
+    <button class="main-tab active" data-main-tab="tracker" role="tab">Tracker</button>
+    <button class="main-tab" data-main-tab="notes" role="tab">Notes</button>
+    <button class="main-tab" data-main-tab="map" role="tab">Connection Map</button>
+    <button class="main-tab" data-main-tab="apc" role="tab">Abilities &amp; Captures</button>
+  </div>
+
   <div id="layout-row">
   <div id="app">
     <h1 class="header">
@@ -412,6 +423,14 @@
               <input type="number" id="input-notes-scroll" placeholder="100" min="10" max="2000">
               <button class="save-inline-btn" id="save-notes-scroll">Save</button>
             </div>
+          </div>
+
+          <div class="settings-row">
+            <span>Merge Deep Woods Vines into "Vines"</span>
+            <label class="toggle-switch">
+              <input type="checkbox" id="toggle-merge-vines">
+              <span class="toggle-track"></span>
+            </label>
           </div>
 
           <div class="settings-row">
