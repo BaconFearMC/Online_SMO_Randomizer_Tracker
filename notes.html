@@ -30,6 +30,60 @@
     }
     .notes-page-header h2 { font-size: 1.1rem; }
     #lz-content { padding: 16px; }
+
+    /* ── Dark Side map thumbnail ──────────────────────────────────── */
+    .lz-darkside-map-wrap {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px dashed var(--border);
+      text-align: center;
+    }
+    .lz-darkside-map-wrap img {
+      max-width: 100%;
+      border-radius: 8px;
+      cursor: zoom-in;
+      display: block;
+      margin: 0 auto;
+      box-shadow: 0 2px 10px rgba(0,0,0,.4);
+      transition: transform .25s ease, box-shadow .25s ease;
+    }
+    .lz-darkside-map-wrap img:hover {
+      transform: scale(1.03);
+      box-shadow: 0 4px 18px rgba(0,0,0,.55);
+    }
+
+    /* ── Fullscreen lightbox ──────────────────────────────────────── */
+    #lz-lightbox {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,0);
+      opacity: 0;
+      pointer-events: none;
+      transition: background .35s ease, opacity .3s ease;
+    }
+    #lz-lightbox.active {
+      background: rgba(0,0,0,.86);
+      opacity: 1;
+      pointer-events: auto;
+    }
+    #lz-lightbox img {
+      max-width: 92vw;
+      max-height: 92vh;
+      border-radius: 10px;
+      box-shadow: 0 10px 60px rgba(0,0,0,.65);
+      cursor: zoom-out;
+      transform: scale(.6) rotate(-2deg);
+      opacity: 0;
+      transition: transform .4s cubic-bezier(.34,1.56,.64,1), opacity .3s ease;
+    }
+    #lz-lightbox.active img {
+      transform: scale(1) rotate(0deg);
+      opacity: 1;
+    }
   </style>
 </head>
 <body class="notes-page">
@@ -95,7 +149,7 @@
       'Lost':       { color:'#e71edd', icon:'Lost.png',     zones:{ 'Wiggler':{num:2},'Shop':{num:1},'Klepto':{num:2} }},
       'Metro':      { color:'#de7d5e', icon:'Metro.png',    zones:{ "Yellow Shop":{num:1},"Purple Shop":{num:1},"Dino":{num:2},"Bullet Billding":{num:2},"Taxi":{num:2},"Notes":{num:1},"2D":{num:2},"Slots":{num:1},"People":{num:2},"Outfit":{num:2},"Rocket":{num:2},"Dark":{num:2},"Scaffolding":{num:2},"Scooter":{num:2},"Rotating Maze":{num:2},"RC Car":{num:2}}},
       'Snow':       { color:'#e7930a', icon:'Snow.png',     zones:{ "Puzzle":{num:1},"Capless":{num:2},"Rocket Flower":{num:2},"Iceburn":{num:2},"Flower Road":{num:2},"Tracewalking":{num:1},"Clouds":{num:2},"Outfit":{num:2},"Shop":{num:1}}},
-      'Seaside':    { color:'#b36fe9', icon:'Seaside.png',  zones:{ "Well Enter":{num:1},"Well Exit":{num:1},"Rumble":{num:1},"Rocket":{num:2},"Outfit":{num:1},"Gushen":{num:2},"Sphynx":{num:1},"Pokio":{num:2},"Lava Rising":{num:2},"Sandy Bottom":{num:1},"Spinning Maze":{num:2}}},
+      'Seaside':    { color:'#b36fe9', icon:'Seaside.png',  zones:{ "Rumble":{num:1},"Rocket":{num:2},"Outfit":{num:1},"Gushen":{num:2},"Sphynx":{num:1},"Pokio":{num:2},"Lava Rising":{num:2},"Sandy Bottom":{num:1},"Spinning Maze":{num:2}}},
       'Luncheon':   { color:'#3fddbb', icon:'Luncheon.png', zones:{ "Magma Swamp":{num:2},"Forks":{num:2},"Cheese Rocks":{num:2},"Veggie Room":{num:1},"Slots":{num:1},"Shop":{num:1},"Outfit":{num:2},"Spinning Athletics":{num:2},"Lava Islands":{num:2},"Volcano Cave":{num:2},"Gears":{num:2},"Magma Path":{num:2}}},
       'Ruined':     { color:'#ffd7e2', icon:'Ruin.png',     zones:{ "Chargin' Chuck":{num:2},'Rocket':{num:2} }},
       "Bowser's":   { color:'#d3304c', icon:'Bowser.png',   zones:{ "Jizo":{num:2},"Shop":{num:1},"Outfit":{num:2},"Treasure Room":{num:1},"Spinning Tower":{num:2},"Vine Clouds":{num:2},"Hexagon Tower":{num:2},"Wooden Tower":{num:2}}},
@@ -162,6 +216,14 @@
             }
           }
         }
+      }
+
+      // Seaside no longer has separate Well Enter/Exit zones - drop them from
+      // any state saved before this change.
+      const seaside = fullState.loading_zones['Seaside'];
+      if (seaside) {
+        delete seaside.zones['Well Enter'];
+        delete seaside.zones['Well Exit'];
       }
 
       // Deep Woods "Vines" merge (mirrors app.js applyVinesMergeSetting).
@@ -463,6 +525,24 @@
           zonesRoot.appendChild(buildZoneRow(kingdom, zone, zd, data.color)));
       }
 
+      // Dark Side gets a map thumbnail under its zones. It lives inside
+      // zonesRoot so it collapses/expands right along with the zone notes
+      // above it - "opening" the kingdom is what reveals it. Click it to
+      // blow it up fullscreen; click (or Esc) to shrink it back down.
+      if (kingdom === 'Darkside') {
+        const mapWrap = document.createElement('div');
+        mapWrap.className = 'lz-darkside-map-wrap';
+        const mapImg = document.createElement('img');
+        mapImg.src = 'assets/darksidemap.png';
+        mapImg.alt = 'Dark Side Map';
+        mapImg.addEventListener('click', (e) => {
+          e.stopPropagation();
+          openLightbox(mapImg.src, mapImg.alt);
+        });
+        mapWrap.appendChild(mapImg);
+        zonesRoot.appendChild(mapWrap);
+      }
+
       if (fullState.kingdom_collapsed[kingdom]) {
         zonesRoot.style.display = 'none';
         header.classList.add('collapsed');
@@ -546,6 +626,34 @@
 
       row.appendChild(noteArea);
       return row;
+    }
+
+    // ── Fullscreen image lightbox (used by the Dark Side map) ────────
+    function ensureLightbox() {
+      let lb = document.getElementById('lz-lightbox');
+      if (lb) return lb;
+      lb = document.createElement('div');
+      lb.id = 'lz-lightbox';
+      const img = document.createElement('img');
+      lb.appendChild(img);
+      lb.addEventListener('click', () => lb.classList.remove('active'));
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') lb.classList.remove('active');
+      });
+      document.body.appendChild(lb);
+      return lb;
+    }
+
+    function openLightbox(src, alt) {
+      const lb = ensureLightbox();
+      const img = lb.querySelector('img');
+      img.src = src;
+      img.alt = alt || '';
+      // Force a reflow so the transition re-triggers even if the same
+      // image is reopened right after being closed.
+      lb.classList.remove('active');
+      void lb.offsetWidth;
+      requestAnimationFrame(() => lb.classList.add('active'));
     }
 
     // ── Icon Picker ─────────────────────────────────────────────────
