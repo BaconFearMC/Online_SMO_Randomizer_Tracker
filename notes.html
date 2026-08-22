@@ -839,11 +839,13 @@
 
       const toolbar = document.createElement('div');
       toolbar.className = 'req-picker-toolbar';
+      const TOK_CLASS = { AND: 'req-picker-tok--and', OR: 'req-picker-tok--or' };
       ['AND', 'OR', '(', ')'].forEach(tok => {
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.textContent = tok;
         btn.title = 'Insert ' + tok + ' into the note';
+        if (TOK_CLASS[tok]) btn.classList.add(TOK_CLASS[tok]);
         btn.addEventListener('click', () => insertNoteToken(noteArea, tok));
         toolbar.appendChild(btn);
       });
