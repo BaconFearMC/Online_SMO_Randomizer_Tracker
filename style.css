@@ -1489,14 +1489,21 @@ h1 {
   transition: background .35s ease, opacity .3s ease;
 }
 .req-picker-overlay.active {
-  background: rgba(0,0,0,.86);
+  /* Lighter dim (was .86) so the loading-zone note being edited stays
+     visible behind the popup rather than being blacked out. */
+  background: rgba(0,0,0,.45);
   opacity: 1;
   pointer-events: auto;
 }
 
 .req-picker-popup {
   position: relative;
-  background: linear-gradient(160deg, #262626, #1a1a1a);
+  /* Translucent + blurred "frosted glass" so whatever's underneath (the
+     note, the requirement icons already added) stays visible through it
+     while the popup's own content stays readable. */
+  background: linear-gradient(160deg, rgba(38,38,38,.82), rgba(26,26,26,.82));
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 18px;
