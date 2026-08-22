@@ -839,7 +839,7 @@
 
       const toolbar = document.createElement('div');
       toolbar.className = 'req-picker-toolbar';
-      const TOK_CLASS = { AND: 'req-picker-tok--and', OR: 'req-picker-tok--or' };
+      const TOK_CLASS = { AND: 'req-picker-tok--and', OR: 'req-picker-tok--or', '(': 'req-picker-tok--paren', ')': 'req-picker-tok--paren' };
       ['AND', 'OR', '(', ')'].forEach(tok => {
         const btn = document.createElement('button');
         btn.type = 'button';
@@ -877,20 +877,36 @@
 
       let activeKind = 'captures';
 
-      // Picks a row count so the grid always fills the available box with
-      // no leftover dead space, however many items exist. Works out the
-      // columns auto-fill will actually produce at the grid's current
-      // width, then sizes rows so item count / columns rounds up cleanly -
-      // adding more captures/abilities later just changes this number,
-      // nothing else needs touching.
-      function updateRowCount(itemCount) {
-        const gridWidth = grid.clientWidth || 1;
-        const styles = getComputedStyle(grid);
-        const gap = parseFloat(styles.columnGap) || 8;
-        const minColPx = 76;
-        const cols = Math.max(1, Math.floor((gridWidth + gap) / (minColPx + gap)));
-        const rows = Math.max(1, Math.ceil(itemCount / cols));
-        grid.style.setProperty('--req-picker-rows', rows);
+      // Computes a rows x cols grid that (a) has at least itemCount cells,
+      // (b) fills the box's actual width/height with no leftover gap, and
+      // (c) keeps cells reasonably icon-shaped rather than very long
+      // slivers. Re-run whenever the item count or box size changes, so
+      // adding more captures/abilities later never requires a manual tweak.
+      function updateGridFit(itemCount) {
+        if (!itemCount) itemCount = 1;
+        const w = grid.clientWidth || 1;
+        const h = grid.clientHeight || 1;
+        const gap = 8;
+        const minCell = 70; // smallest an icon+label cell should shrink to
+        const maxCols = Math.max(1, Math.floor((w + gap) / (minCell + gap)));
+
+        let best = null;
+        for (let cols = 1; cols <= maxCols; cols++) {
+          const rows = Math.ceil(itemCount / cols);
+          const cellW = (w - gap * (cols - 1)) / cols;
+          const cellH = (h - gap * (rows - 1)) / rows;
+          if (cellW < minCell || cellH < minCell * 0.75) continue;
+          // Prefer the layout that wastes the least area on empty cells,
+          // then the one with the least distorted (closest to square) cell.
+          const emptyCells = rows * cols - itemCount;
+          const aspect = Math.max(cellW / cellH, cellH / cellW);
+          const score = emptyCells * 1000 + aspect;
+          if (!best || score < best.score) best = { cols, rows, score };
+        }
+        if (!best) best = { cols: maxCols, rows: Math.ceil(itemCount / maxCols) };
+
+        grid.style.setProperty('--req-picker-cols', best.cols);
+        grid.style.setProperty('--req-picker-rows', best.rows);
       }
 
       function renderGrid() {
@@ -899,7 +915,7 @@
         const kindClass = activeKind === 'captures' ? 'req-picker-item--capture' : 'req-picker-item--ability';
         const q = search.value.trim().toLowerCase();
         const filtered = q ? list.filter(i => i.name.toLowerCase().includes(q)) : list;
-        updateRowCount(filtered.length);
+        updateGridFit(filtered.length);
         if (!filtered.length) {
           const empty = document.createElement('div');
           empty.className = 'req-picker-empty';
@@ -948,7 +964,7 @@
       // clientWidth is 0 before the popup is in the DOM/laid out, so redo
       // the row math once it actually has real dimensions.
       requestAnimationFrame(renderGrid);
-      const onResize = () => updateRowCount(grid.children.length);
+      const onResize = () => updateGridFit(grid.children.length);
       window.addEventListener('resize', onResize);
 
       function onKeyDown(e) {

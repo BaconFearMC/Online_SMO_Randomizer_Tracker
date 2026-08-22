@@ -1594,6 +1594,18 @@ h1 {
   color: var(--red);
 }
 
+/* Brackets get a faint dark-blue tint to match AND/OR's treatment. */
+.req-picker-toolbar button.req-picker-tok--paren {
+  background: rgba(59,90,196,.10);
+  border-color: rgba(59,90,196,.35);
+  color: #6c8bef;
+}
+.req-picker-toolbar button.req-picker-tok--paren:hover {
+  background: rgba(59,90,196,.22);
+  border-color: #3b5ac4;
+  color: #a9bcf7;
+}
+
 .req-picker-tabs {
   display: flex;
   gap: 6px;
@@ -1641,19 +1653,16 @@ h1 {
 
 .req-picker-grid {
   display: grid;
-  /* Fixed row count (not auto-fill) so items grow/shrink to fill the box
-     completely instead of leaving dead space - and adding more entries
-     later just adds more rows within the same scroll-safe area rather
-     than breaking the layout. Columns are still auto-fill so width is
-     flexible; rows are computed in JS via --req-picker-rows below. */
-  grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
+  /* Both rows and columns are computed in JS (updateGridFit) from the
+     actual box size and item count, so the grid always exactly fills
+     the available area - no dead space, and no re-tuning needed if more
+     captures/abilities get added later. */
+  grid-template-columns: repeat(var(--req-picker-cols, 6), 1fr);
   grid-template-rows: repeat(var(--req-picker-rows, 4), 1fr);
-  grid-auto-flow: column;
   gap: 8px;
   flex: 1;
   min-height: 0;
   overflow-y: auto; /* safety fallback only, e.g. very small windows or lots of new entries */
-  align-content: stretch;
   padding: 4px 6px 4px 2px;
 }
 
