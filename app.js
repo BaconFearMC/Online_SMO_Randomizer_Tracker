@@ -3013,7 +3013,7 @@ function openRequirementPicker(event, zs, noteArea, onChange) {
 
   function renderGrid() {
     grid.innerHTML = '';
-    const list = activeKind === 'captures' ? APC.CAPTURES : APC.ABILITIES;
+    const list = activeKind === 'captures' ? APC.NOTES_CAPTURES : APC.NOTES_ABILITIES;
     const q = search.value.trim().toLowerCase();
     const filtered = q ? list.filter(i => i.name.toLowerCase().includes(q)) : list;
     if (!filtered.length) {
@@ -3063,7 +3063,7 @@ function openRequirementPicker(event, zs, noteArea, onChange) {
   document.body.appendChild(popup);
 
   // Position clamp to viewport
-  const pw = 300, ph = 380;
+  const pw = 460, ph = 480;
   let x = event.clientX, y = event.clientY;
   if (x + pw > window.innerWidth) x = window.innerWidth - pw - 8;
   if (y + ph > window.innerHeight) y = window.innerHeight - ph - 8;

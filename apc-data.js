@@ -104,7 +104,8 @@
     'Spark_pylon_Capture': 'Spark Pylon',
     'RC_Car_Capture': 'RC Car',
     'Chargin_Chuck_Capture': "Chargin' Chuck",
-    'Knucklotec_Fist_Capture': 'Knucklotec Fist',
+    'Knucklotec_Fist_Capture': "Knucklotec's Fist",
+    'Rocket_Capture': 'Mini Rocket',
   };
 
   function labelFor(key) {
@@ -119,6 +120,58 @@
   const ABILITIES = ABILITY_KEYS.map((key, i) => ({
     key, order: i, name: labelFor(key), src: `assets/ability/${key}.png`,
   }));
+
+  // ── Loading Zone Notes requirement picker: fixed, trimmed capture list ────
+  // The full CAPTURES list above (52 entries) stays intact everywhere else
+  // (main tracker, apc.html progress panel, save files). The Notes Tab
+  // requirement picker only needs the captures that actually gate a specific
+  // location, in a fixed order chosen for that picker - so it gets its own
+  // shorter, explicitly-ordered list here instead of reusing CAPTURE_KEYS.
+  // Anything left out can still appear as a requirement icon if it was picked
+  // before being trimmed (APC.findItem still looks it up in the full list);
+  // it just won't be selectable from the picker going forward.
+  const NOTES_CAPTURE_KEYS = [
+    'Frog_Capture',
+    'Spark_pylon_Capture',
+    'Paragoomba_Capture',
+    'Chain_Chomp_Capture',
+    'T-Rex_Capture',
+    'Bullet_Bill_Capture',
+    'Goomba_Capture',
+    'Knucklotec_Fist_Capture',
+    'Rocket_Capture',
+    'Glydon_Capture',
+    'Zipper_Capture',
+    'Cheep_Cheep_Capture',
+    'Uproot_Capture',
+    'Fire_Bro_Capture',
+    'Sherm_Capture',
+    'Picture_Match_Part_(Goomba)_Capture',
+    'Taxi_Capture',
+    'Ty-foo_Capture',
+    'Shiverian_Racer_Capture',
+    'Gushen_Capture',
+    'Lava_Bubble_Capture',
+    'Volbonan_Capture',
+    'Hammer_Bro_Capture',
+    'Pokio_Capture',
+    'Jizo_Capture',
+    'Parabones_Capture',
+    'Banzai_Bill_Capture',
+    'Picture_Match_Part_(Mario)_Capture',
+    'Yoshi_Capture',
+  ];
+
+  const NOTES_CAPTURES = NOTES_CAPTURE_KEYS
+    .map((key, i) => {
+      const master = CAPTURES.find((c) => c.key === key);
+      return master ? Object.assign({}, master, { order: i }) : null;
+    })
+    .filter(Boolean);
+
+  // Abilities aren't trimmed, but are exposed under the same name so the
+  // Notes Tab picker code can treat both groups identically.
+  const NOTES_ABILITIES = ABILITIES;
 
   // ── Links to the main tracker's icon row ───────────────────────────────────
   // The main tracker keeps its own 4 captures / 3 abilities in state.captures
@@ -247,6 +300,7 @@
 
   global.APC = {
     CAPTURES, ABILITIES,
+    NOTES_CAPTURES, NOTES_ABILITIES,
     CAPTURE_LINKS, ABILITY_LINKS,
     linkedTrackerKey, findItem,
     ensure, isUnlocked, setUnlocked, countUnlocked,

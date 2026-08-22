@@ -1455,8 +1455,11 @@ h1 {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  width: 300px;
-  max-height: 380px;
+  width: min(94vw, 460px);
+  /* Sized so all 29 Notes-Tab captures (or all 22 abilities) lay out without
+     an inner scrollbar on typical screens; still capped + scrollable as a
+     fallback on very short viewports (see .req-picker-grid). */
+  max-height: min(92vh, 560px);
   z-index: 9999;
   box-shadow: 0 4px 20px rgba(0,0,0,0.6);
 }
@@ -1523,8 +1526,11 @@ h1 {
 
 .req-picker-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
+  grid-template-columns: repeat(auto-fill, minmax(62px, 1fr));
+  gap: 5px;
+  /* Fallback only - the fixed Notes-Tab capture/ability lists are sized to
+     fit inside .req-picker-popup's max-height without needing this on
+     ordinary screens. */
   overflow-y: auto;
   padding-right: 2px;
 }
@@ -1533,8 +1539,8 @@ h1 {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
-  padding: 6px 4px;
+  gap: 2px;
+  padding: 5px 3px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);
   background: var(--bg-card2);
@@ -1547,15 +1553,15 @@ h1 {
   background: rgba(88, 101, 242, 0.18);
 }
 .req-picker-item img {
-  height: 28px;
-  width: 28px;
+  height: 24px;
+  width: 24px;
   object-fit: contain;
 }
 .req-picker-item span {
-  font-size: 0.65rem;
+  font-size: 0.6rem;
   color: var(--text-dim);
   text-align: center;
-  line-height: 1.15;
+  line-height: 1.12;
 }
 .req-picker-item.selected span { color: var(--text); }
 
