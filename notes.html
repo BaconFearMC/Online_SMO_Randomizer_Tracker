@@ -877,12 +877,29 @@
 
       let activeKind = 'captures';
 
+      // Picks a row count so the grid always fills the available box with
+      // no leftover dead space, however many items exist. Works out the
+      // columns auto-fill will actually produce at the grid's current
+      // width, then sizes rows so item count / columns rounds up cleanly -
+      // adding more captures/abilities later just changes this number,
+      // nothing else needs touching.
+      function updateRowCount(itemCount) {
+        const gridWidth = grid.clientWidth || 1;
+        const styles = getComputedStyle(grid);
+        const gap = parseFloat(styles.columnGap) || 8;
+        const minColPx = 76;
+        const cols = Math.max(1, Math.floor((gridWidth + gap) / (minColPx + gap)));
+        const rows = Math.max(1, Math.ceil(itemCount / cols));
+        grid.style.setProperty('--req-picker-rows', rows);
+      }
+
       function renderGrid() {
         grid.innerHTML = '';
         const list = activeKind === 'captures' ? APC.NOTES_CAPTURES : APC.NOTES_ABILITIES;
         const kindClass = activeKind === 'captures' ? 'req-picker-item--capture' : 'req-picker-item--ability';
         const q = search.value.trim().toLowerCase();
         const filtered = q ? list.filter(i => i.name.toLowerCase().includes(q)) : list;
+        updateRowCount(filtered.length);
         if (!filtered.length) {
           const empty = document.createElement('div');
           empty.className = 'req-picker-empty';
@@ -928,6 +945,11 @@
 
       renderGrid();
       document.body.appendChild(overlay);
+      // clientWidth is 0 before the popup is in the DOM/laid out, so redo
+      // the row math once it actually has real dimensions.
+      requestAnimationFrame(renderGrid);
+      const onResize = () => updateRowCount(grid.children.length);
+      window.addEventListener('resize', onResize);
 
       function onKeyDown(e) {
         if (e.key === 'Escape') closePicker();
@@ -935,6 +957,7 @@
       function closePicker() {
         overlay.classList.remove('active');
         document.removeEventListener('keydown', onKeyDown);
+        window.removeEventListener('resize', onResize);
         setTimeout(() => overlay.remove(), 320);
       }
       overlay.addEventListener('click', (e) => {
