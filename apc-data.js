@@ -150,6 +150,14 @@
     return kind === 'captures' ? CAPTURE_LINKS_REV[key] : ABILITY_LINKS_REV[key];
   }
 
+  // Look up a single {key, name, src} entry by kind + key. Used by the
+  // Loading Zone Notes requirement picker (notes.html / app.js) so it can
+  // reuse this same Captures/Abilities list instead of keeping its own copy.
+  function findItem(kind, key) {
+    const list = kind === 'captures' ? CAPTURES : ABILITIES;
+    return list.find((item) => item.key === key) || null;
+  }
+
   // ── Read / write against a tracker state object ────────────────────────────
   // `kind` is 'captures' or 'abilities'. Linked entries live in state.captures /
   // state.abilities; everything else lives in state.apc.<kind>.
@@ -240,7 +248,7 @@
   global.APC = {
     CAPTURES, ABILITIES,
     CAPTURE_LINKS, ABILITY_LINKS,
-    linkedTrackerKey,
+    linkedTrackerKey, findItem,
     ensure, isUnlocked, setUnlocked, countUnlocked,
     makeChannel,
   };

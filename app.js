@@ -65,12 +65,6 @@ const ABILITY_ICONS = [
 // hide behavior.
 const BOWSER_ABILITY_ICON = { key: 'bowser', locked: 'assets/Bowser_Capture_Locked.png', unlocked: 'assets/Bowser_Capture.png' };
 
-const PICKER_ICONS = [
-  'Cascade.png', 'Sand.png', 'Lake.png', 'Wooded.png', 'Lost.png', 'Metro.png',
-  'Snow.png', 'Seaside.png', 'Luncheon.png', 'Ruin.png', 'Bowser.png',
-  'Cap.png', 'Dark.png', 'Star.png','Cloud.png','MoonK.png', "Moon.png", "Moon_Dark.png", "checkmark.png", "xmark.png",
-];
-
 const DEFAULT_SETTINGS = {
   show_moon_total: true,
   show_tracker_moon_total: false, // On-tracker "counted / requirement : left" box (default off)
@@ -338,13 +332,13 @@ function applyVinesMergeSetting() {
   const merged = !!state.settings.merge_deep_woods_vines;
   if (merged) {
     if (!dw.zones[DEEP_WOODS_MERGED_KEY]) {
-      dw.zones[DEEP_WOODS_MERGED_KEY] = { note: '', icon: 'Moon.png', icon2: 'Moon.png', collapsed: false, num: 0 };
+      dw.zones[DEEP_WOODS_MERGED_KEY] = { note: '', requirements: [], collapsed: false, num: 0 };
     }
     for (const k of DEEP_WOODS_VINE_KEYS) delete dw.zones[k];
   } else {
     delete dw.zones[DEEP_WOODS_MERGED_KEY];
     for (const k of DEEP_WOODS_VINE_KEYS) {
-      if (!dw.zones[k]) dw.zones[k] = { note: '', icon: 'Moon.png', icon2: 'Moon.png', collapsed: false, num: 0 };
+      if (!dw.zones[k]) dw.zones[k] = { note: '', requirements: [], collapsed: false, num: 0 };
     }
   }
 }
@@ -383,7 +377,11 @@ function buildDefaultLoadingZones() {
   for (const [kingdom, data] of Object.entries(LOADING_ZONES_TEMPLATE)) {
     result[kingdom] = { color: data.color, icon: data.icon, zones: {} };
     for (const [zone, zd] of Object.entries(data.zones)) {
-      result[kingdom].zones[zone] = { note: '', icon: 'Moon.png', icon2: 'Moon.png', collapsed: false, num: zd.num };
+      // requirements: ordered list of { kind: 'captures'|'abilities', key }
+      // entries picked from the Abilities & Captures list (apc-data.js).
+      // Their icons render above the location; their names are copied into
+      // the note text but the text stays freely editable afterward.
+      result[kingdom].zones[zone] = { note: '', requirements: [], collapsed: false, num: zd.num };
     }
   }
   return result;
@@ -455,6 +453,16 @@ function loadState() {
             Object.assign(state.loading_zones[kingdom].zones[zone], savedKingdom.zones[zone]);
           }
         }
+      }
+    }
+    // Migrate any zone saved before the Captures/Abilities requirement
+    // system existed: drop the old Kingdom Moon icon fields and make sure
+    // every zone has a requirements array to work with.
+    for (const kingdom of Object.values(state.loading_zones)) {
+      for (const zone of Object.values(kingdom.zones)) {
+        if (!Array.isArray(zone.requirements)) zone.requirements = [];
+        delete zone.icon;
+        delete zone.icon2;
       }
     }
     // Per-kingdom collapsed state (Notes window)
@@ -2144,15 +2152,14 @@ function ensureNotesToolbar() {
   scrollWrap.parentElement.insertBefore(bar, scrollWrap);
 }
 
-// Clears the note text and resets icons back to default in every zone,
-// leaving collapsed/expanded state untouched.
+// Clears the note text and the selected Captures/Abilities requirements in
+// every zone, leaving collapsed/expanded state untouched.
 function clearAllNotes() {
   if (!confirm('Clear all loading zone notes? This cannot be undone.')) return;
   for (const kingdom of Object.values(state.loading_zones)) {
     for (const zone of Object.values(kingdom.zones)) {
       zone.note = '';
-      zone.icon = 'Moon.png';
-      zone.icon2 = 'Moon.png';
+      zone.requirements = [];
     }
   }
   if (state.painting_notes) {
@@ -2569,41 +2576,19 @@ function buildKingdomColumn(kingdom, data) {
 
 function buildZoneRow(kingdom, zone, zoneData, color) {
   const zs = state.loading_zones[kingdom].zones[zone];
+  if (!Array.isArray(zs.requirements)) zs.requirements = [];
   const row = document.createElement('div');
   row.className = 'zone-row';
 
-  // Top row: icon(s) + name
+  // Top row: requirement icon(s) + name
   const top = document.createElement('div');
   top.className = 'zone-row-top';
 
-  function makeZoneIcon(iconKey) {
-    const img = document.createElement('img');
-    img.className = 'zone-icon';
-    img.src = `assets/${zs[iconKey] || 'Moon.png'}`;
-    img.alt = 'zone icon';
-    img.addEventListener('click', (e) => {
-      openIconPicker(e, (chosen) => {
-        zs[iconKey] = chosen;
-        img.src = `assets/${chosen}`;
-        saveState();
-      });
-      e.stopPropagation();
-    });
-    return img;
-  }
+  const reqsWrap = document.createElement('div');
+  reqsWrap.className = 'zone-reqs';
 
-  top.appendChild(makeZoneIcon('icon'));
-  if (zoneData.num > 1) top.appendChild(makeZoneIcon('icon2'));
-
-  const nameLabel = document.createElement('span');
-  nameLabel.className = 'zone-name';
-  nameLabel.textContent = zoneDisplayName(kingdom, zone);
-  nameLabel.style.color = zs.collapsed ? '#888' : color;
-
-  top.appendChild(nameLabel);
-  row.appendChild(top);
-
-  // Note textarea (hidden when collapsed)
+  // Note textarea is built first (but appended later) so the requirement
+  // icons/picker above can read from and write into it.
   const noteArea = document.createElement('textarea');
   noteArea.className = 'zone-note';
   noteArea.value = zs.note || '';
@@ -2622,6 +2607,51 @@ function buildZoneRow(kingdom, zone, zoneData, color) {
       noteArea.style.height = noteArea.scrollHeight + 'px';
     });
   });
+
+  function renderReqIcons() {
+    reqsWrap.innerHTML = '';
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.className = 'zone-req-add';
+    addBtn.title = 'Add a Capture or Ability requirement';
+    addBtn.textContent = '+';
+    addBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openRequirementPicker(e, zs, noteArea, () => {
+        renderReqIcons();
+        saveState();
+      });
+    });
+    reqsWrap.appendChild(addBtn);
+
+    zs.requirements.forEach((req) => {
+      const item = APC.findItem(req.kind, req.key);
+      if (!item) return;
+      const img = document.createElement('img');
+      img.className = 'zone-req-icon';
+      img.src = item.src;
+      img.alt = item.name;
+      img.title = item.name + ' (click to remove)';
+      img.addEventListener('click', (e) => {
+        e.stopPropagation();
+        zs.requirements = zs.requirements.filter(r => !(r.kind === req.kind && r.key === req.key));
+        renderReqIcons();
+        saveState();
+      });
+      reqsWrap.appendChild(img);
+    });
+  }
+  renderReqIcons();
+
+  top.appendChild(reqsWrap);
+
+  const nameLabel = document.createElement('span');
+  nameLabel.className = 'zone-name';
+  nameLabel.textContent = zoneDisplayName(kingdom, zone);
+  nameLabel.style.color = zs.collapsed ? '#888' : color;
+
+  top.appendChild(nameLabel);
+  row.appendChild(top);
 
   // Click name to collapse/expand
   nameLabel.addEventListener('click', () => {
@@ -2874,46 +2904,183 @@ function openHotkeys() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Icon Picker
+// Requirement (Captures & Abilities) note helpers
 // ─────────────────────────────────────────────────────────────────────────────
-function openIconPicker(event, onSelect) {
-  document.querySelectorAll('.icon-picker-popup').forEach(p => p.remove());
+// Appends `text` to the note textarea, joining onto whatever's already there
+// with " AND " unless the tail already ends in an open paren or a dangling
+// AND/OR (from the quick-insert buttons below), in which case it's just
+// added with a single separating space. The textarea stays a normal freeform
+// field the rest of the time - this only shapes what gets inserted at the
+// moment a Capture/Ability is picked.
+function appendRequirementText(noteArea, text) {
+  const trimmedEnd = noteArea.value.replace(/\s+$/, '');
+  let next;
+  if (!trimmedEnd) {
+    next = text;
+  } else if (/\($/.test(trimmedEnd) || /\b(AND|OR)$/i.test(trimmedEnd)) {
+    next = trimmedEnd + ' ' + text;
+  } else {
+    next = trimmedEnd + ' AND ' + text;
+  }
+  noteArea.value = next;
+  noteArea.dispatchEvent(new Event('input', { bubbles: true }));
+  noteArea.focus();
+  noteArea.setSelectionRange(noteArea.value.length, noteArea.value.length);
+}
 
-  const picker = document.createElement('div');
-  picker.className = 'icon-picker-popup';
+// Inserts a bare AND / OR / ( / ) token at the end of the note text, for
+// building grouped combinations like "(Vault AND Goomba) OR Long Jump" or
+// "Vault AND (Goomba OR Long Jump)" by hand around the picked names.
+function insertNoteToken(noteArea, token) {
+  const trimmedEnd = noteArea.value.replace(/\s+$/, '');
+  let next;
+  if (token === '(') {
+    next = trimmedEnd ? trimmedEnd + ' (' : '(';
+  } else if (token === ')') {
+    next = trimmedEnd + ')';
+  } else {
+    next = trimmedEnd ? trimmedEnd + ' ' + token + ' ' : '';
+  }
+  noteArea.value = next;
+  noteArea.dispatchEvent(new Event('input', { bubbles: true }));
+  noteArea.focus();
+  noteArea.setSelectionRange(noteArea.value.length, noteArea.value.length);
+}
 
-  PICKER_ICONS.forEach(iconFile => {
-    const img = document.createElement('img');
-    img.src = `assets/${iconFile}`;
-    img.alt = iconFile;
-    img.title = iconFile.replace('.png', '');
-    img.addEventListener('click', (e) => {
-      onSelect(iconFile);
-      picker.remove();
-      e.stopPropagation();
-    });
-    picker.appendChild(img);
+function toggleRequirement(zs, kind, key, noteArea) {
+  if (!Array.isArray(zs.requirements)) zs.requirements = [];
+  const idx = zs.requirements.findIndex(r => r.kind === kind && r.key === key);
+  if (idx >= 0) {
+    zs.requirements.splice(idx, 1);
+    return false;
+  }
+  zs.requirements.push({ kind, key });
+  const item = APC.findItem(kind, key);
+  if (item) appendRequirementText(noteArea, item.name);
+  return true;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Requirement Picker (replaces the old Kingdom Moon icon picker)
+// ─────────────────────────────────────────────────────────────────────────────
+// Two tabbed groups - Captures and Abilities, sourced from apc-data.js - plus
+// a quick-insert AND/OR/() toolbar for grouping. Picking an entry adds its
+// icon above the location and its name into the note text.
+function openRequirementPicker(event, zs, noteArea, onChange) {
+  document.querySelectorAll('.req-picker-popup').forEach(p => p.remove());
+
+  const popup = document.createElement('div');
+  popup.className = 'req-picker-popup';
+  popup.addEventListener('click', (e) => e.stopPropagation());
+
+  const toolbar = document.createElement('div');
+  toolbar.className = 'req-picker-toolbar';
+  ['AND', 'OR', '(', ')'].forEach(tok => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = tok;
+    btn.title = 'Insert ' + tok + ' into the note';
+    btn.addEventListener('click', () => insertNoteToken(noteArea, tok));
+    toolbar.appendChild(btn);
   });
+  popup.appendChild(toolbar);
 
-  document.body.appendChild(picker);
+  const tabs = document.createElement('div');
+  tabs.className = 'req-picker-tabs';
+  const tabCaptures = document.createElement('button');
+  tabCaptures.type = 'button';
+  tabCaptures.className = 'req-picker-tab active';
+  tabCaptures.textContent = 'Captures';
+  const tabAbilities = document.createElement('button');
+  tabAbilities.type = 'button';
+  tabAbilities.className = 'req-picker-tab';
+  tabAbilities.textContent = 'Abilities';
+  tabs.appendChild(tabCaptures);
+  tabs.appendChild(tabAbilities);
+  popup.appendChild(tabs);
+
+  const search = document.createElement('input');
+  search.type = 'text';
+  search.className = 'req-picker-search';
+  search.placeholder = 'Search…';
+  popup.appendChild(search);
+
+  const grid = document.createElement('div');
+  grid.className = 'req-picker-grid';
+  popup.appendChild(grid);
+
+  let activeKind = 'captures';
+
+  function renderGrid() {
+    grid.innerHTML = '';
+    const list = activeKind === 'captures' ? APC.CAPTURES : APC.ABILITIES;
+    const q = search.value.trim().toLowerCase();
+    const filtered = q ? list.filter(i => i.name.toLowerCase().includes(q)) : list;
+    if (!filtered.length) {
+      const empty = document.createElement('div');
+      empty.className = 'req-picker-empty';
+      empty.textContent = 'No matches';
+      grid.appendChild(empty);
+      return;
+    }
+    filtered.forEach(item => {
+      const cell = document.createElement('button');
+      cell.type = 'button';
+      cell.className = 'req-picker-item';
+      const selected = zs.requirements.some(r => r.kind === activeKind && r.key === item.key);
+      cell.classList.toggle('selected', selected);
+      const img = document.createElement('img');
+      img.src = item.src;
+      img.alt = item.name;
+      const label = document.createElement('span');
+      label.textContent = item.name;
+      cell.appendChild(img);
+      cell.appendChild(label);
+      cell.addEventListener('click', () => {
+        const nowSelected = toggleRequirement(zs, activeKind, item.key, noteArea);
+        cell.classList.toggle('selected', nowSelected);
+        onChange();
+      });
+      grid.appendChild(cell);
+    });
+  }
+
+  tabCaptures.addEventListener('click', () => {
+    activeKind = 'captures';
+    tabCaptures.classList.add('active');
+    tabAbilities.classList.remove('active');
+    renderGrid();
+  });
+  tabAbilities.addEventListener('click', () => {
+    activeKind = 'abilities';
+    tabAbilities.classList.add('active');
+    tabCaptures.classList.remove('active');
+    renderGrid();
+  });
+  search.addEventListener('input', renderGrid);
+
+  renderGrid();
+  document.body.appendChild(popup);
 
   // Position clamp to viewport
-  const pw = 170, ph = 90;
+  const pw = 300, ph = 380;
   let x = event.clientX, y = event.clientY;
   if (x + pw > window.innerWidth) x = window.innerWidth - pw - 8;
   if (y + ph > window.innerHeight) y = window.innerHeight - ph - 8;
-  picker.style.left = `${Math.max(8, x)}px`;
-  picker.style.top = `${Math.max(8, y)}px`;
+  popup.style.left = `${Math.max(8, x)}px`;
+  popup.style.top = `${Math.max(8, y)}px`;
 
   // Close on outside click
   setTimeout(() => {
     document.addEventListener('click', function closePicker(e) {
-      if (!picker.contains(e.target)) {
-        picker.remove();
+      if (!popup.contains(e.target)) {
+        popup.remove();
         document.removeEventListener('click', closePicker);
       }
     });
   }, 10);
+
+  search.focus();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
