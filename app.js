@@ -2628,13 +2628,13 @@ function buildZoneRow(kingdom, zone, zoneData, color) {
       const item = APC.findItem(req.kind, req.key);
       if (!item) return;
       const img = document.createElement('img');
-      img.className = 'zone-req-icon';
+      img.className = 'zone-req-icon ' + (req.kind === 'abilities' ? 'zone-req-icon--ability' : 'zone-req-icon--capture');
       img.src = item.src;
       img.alt = item.name;
       img.title = item.name + ' (click to remove)';
       img.addEventListener('click', (e) => {
         e.stopPropagation();
-        zs.requirements = zs.requirements.filter(r => !(r.kind === req.kind && r.key === req.key));
+        toggleRequirement(zs, req.kind, req.key, noteArea);
         renderReqIcons();
         saveState();
       });
@@ -2947,15 +2947,77 @@ function insertNoteToken(noteArea, token) {
   noteArea.setSelectionRange(noteArea.value.length, noteArea.value.length);
 }
 
+// Removes one requirement's name back out of the note textarea, plus any
+// AND/OR/brackets that only existed to connect or group it. Mirrors
+// appendRequirementText's insertion logic in reverse:
+//  1. Find the exact name as a standalone token (not part of a longer word).
+//  2. Prefer eating a *trailing* " AND "/" OR " with it (that's the connector
+//     appendRequirementText would have added after it); fall back to a
+//     *leading* one if there's no trailing connector (name was first, or
+//     last in the box).
+//  3. Clean up whatever that leaves behind: empty "()" pairs, an AND/OR left
+//     dangling right inside a bracket or at either end of the string, and
+//     brackets that no longer wrap more than one bare term (no longer
+//     "needed", per the grouping they used to do).
+// If the name isn't found verbatim (the user hand-edited the note), this is
+// a no-op - the icon still gets removed from the requirements list either way.
+function removeRequirementText(noteArea, name) {
+  let text = noteArea.value;
+  if (!text) return;
+
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  // Captures the char just before/after the name (or '' at a string edge) so
+  // we can confirm it's a standalone token without relying on \b, since
+  // names like "RC Car" or "Chargin' Chuck" mix word and non-word chars.
+  const nameRe = new RegExp('(^|[^A-Za-z0-9])(' + escaped + ')($|[^A-Za-z0-9])', 'i');
+  const m = nameRe.exec(text);
+  if (!m) return;
+
+  let start = m.index + m[1].length;
+  let end = start + m[2].length;
+
+  const afterConnector = /^(\s*)(AND|OR)\b(\s*)/i.exec(text.slice(end));
+  if (afterConnector) {
+    end += afterConnector[0].length;
+  } else {
+    const beforeConnector = /(\s*)\b(AND|OR)(\s*)$/i.exec(text.slice(0, start));
+    if (beforeConnector) start -= beforeConnector[0].length;
+  }
+
+  text = text.slice(0, start) + text.slice(end);
+
+  // Fixed-point cleanup: keep sweeping until nothing changes, since each
+  // pass can expose a new dangling connector or redundant bracket pair
+  // (e.g. removing the last item inside "(A AND B)" needs two sweeps: one
+  // to drop the trailing "AND", another to unwrap the now-single "(A)").
+  let prev;
+  do {
+    prev = text;
+    text = text.replace(/\(\s*\)/g, '');                  // ()
+    text = text.replace(/\(\s*(AND|OR)\b\s*/gi, '(');       // ( AND x -> (x
+    text = text.replace(/\s*\b(AND|OR)\s*\)/gi, ')');       // x AND ) -> x)
+    text = text.replace(/^\s*(AND|OR)\b\s*/i, '');          // leading AND/OR
+    text = text.replace(/\s*\b(AND|OR)\s*$/i, '');          // trailing AND/OR
+    text = text.replace(/\(([^()]+)\)/g, (whole, inner) => (
+      /\b(AND|OR)\b/i.test(inner) ? whole : inner.trim()    // (X) -> X
+    ));
+    text = text.replace(/[ \t]{2,}/g, ' ').trim();
+  } while (text !== prev);
+
+  noteArea.value = text;
+  noteArea.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
 function toggleRequirement(zs, kind, key, noteArea) {
   if (!Array.isArray(zs.requirements)) zs.requirements = [];
   const idx = zs.requirements.findIndex(r => r.kind === kind && r.key === key);
+  const item = APC.findItem(kind, key);
   if (idx >= 0) {
     zs.requirements.splice(idx, 1);
+    if (item) removeRequirementText(noteArea, item.name);
     return false;
   }
   zs.requirements.push({ kind, key });
-  const item = APC.findItem(kind, key);
   if (item) appendRequirementText(noteArea, item.name);
   return true;
 }
@@ -2965,13 +3027,34 @@ function toggleRequirement(zs, kind, key, noteArea) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Two tabbed groups - Captures and Abilities, sourced from apc-data.js - plus
 // a quick-insert AND/OR/() toolbar for grouping. Picking an entry adds its
-// icon above the location and its name into the note text.
+// icon above the location and its name into the note text. Presented as a
+// fullscreen overlay (same fade+pop-in language as the Dark Side map
+// lightbox in notes.html) with a big, easy-to-click icon grid.
 function openRequirementPicker(event, zs, noteArea, onChange) {
-  document.querySelectorAll('.req-picker-popup').forEach(p => p.remove());
+  document.querySelectorAll('.req-picker-overlay').forEach(p => p.remove());
+
+  const overlay = document.createElement('div');
+  overlay.className = 'req-picker-overlay';
 
   const popup = document.createElement('div');
   popup.className = 'req-picker-popup';
   popup.addEventListener('click', (e) => e.stopPropagation());
+  overlay.appendChild(popup);
+
+  const header = document.createElement('div');
+  header.className = 'req-picker-header';
+  const title = document.createElement('div');
+  title.className = 'req-picker-title';
+  title.textContent = 'Add a Requirement';
+  const closeBtn = document.createElement('button');
+  closeBtn.type = 'button';
+  closeBtn.className = 'req-picker-close';
+  closeBtn.textContent = '✕';
+  closeBtn.title = 'Close';
+  closeBtn.addEventListener('click', () => closePicker());
+  header.appendChild(title);
+  header.appendChild(closeBtn);
+  popup.appendChild(header);
 
   const toolbar = document.createElement('div');
   toolbar.className = 'req-picker-toolbar';
@@ -2989,11 +3072,11 @@ function openRequirementPicker(event, zs, noteArea, onChange) {
   tabs.className = 'req-picker-tabs';
   const tabCaptures = document.createElement('button');
   tabCaptures.type = 'button';
-  tabCaptures.className = 'req-picker-tab active';
+  tabCaptures.className = 'req-picker-tab req-picker-tab--capture active';
   tabCaptures.textContent = 'Captures';
   const tabAbilities = document.createElement('button');
   tabAbilities.type = 'button';
-  tabAbilities.className = 'req-picker-tab';
+  tabAbilities.className = 'req-picker-tab req-picker-tab--ability';
   tabAbilities.textContent = 'Abilities';
   tabs.appendChild(tabCaptures);
   tabs.appendChild(tabAbilities);
@@ -3014,6 +3097,7 @@ function openRequirementPicker(event, zs, noteArea, onChange) {
   function renderGrid() {
     grid.innerHTML = '';
     const list = activeKind === 'captures' ? APC.NOTES_CAPTURES : APC.NOTES_ABILITIES;
+    const kindClass = activeKind === 'captures' ? 'req-picker-item--capture' : 'req-picker-item--ability';
     const q = search.value.trim().toLowerCase();
     const filtered = q ? list.filter(i => i.name.toLowerCase().includes(q)) : list;
     if (!filtered.length) {
@@ -3026,7 +3110,7 @@ function openRequirementPicker(event, zs, noteArea, onChange) {
     filtered.forEach(item => {
       const cell = document.createElement('button');
       cell.type = 'button';
-      cell.className = 'req-picker-item';
+      cell.className = 'req-picker-item ' + kindClass;
       const selected = zs.requirements.some(r => r.kind === activeKind && r.key === item.key);
       cell.classList.toggle('selected', selected);
       const img = document.createElement('img');
@@ -3060,25 +3144,24 @@ function openRequirementPicker(event, zs, noteArea, onChange) {
   search.addEventListener('input', renderGrid);
 
   renderGrid();
-  document.body.appendChild(popup);
+  document.body.appendChild(overlay);
 
-  // Position clamp to viewport
-  const pw = 460, ph = 480;
-  let x = event.clientX, y = event.clientY;
-  if (x + pw > window.innerWidth) x = window.innerWidth - pw - 8;
-  if (y + ph > window.innerHeight) y = window.innerHeight - ph - 8;
-  popup.style.left = `${Math.max(8, x)}px`;
-  popup.style.top = `${Math.max(8, y)}px`;
+  function onKeyDown(e) {
+    if (e.key === 'Escape') closePicker();
+  }
+  function closePicker() {
+    overlay.classList.remove('active');
+    document.removeEventListener('keydown', onKeyDown);
+    setTimeout(() => overlay.remove(), 320);
+  }
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) closePicker();
+  });
+  document.addEventListener('keydown', onKeyDown);
 
-  // Close on outside click
-  setTimeout(() => {
-    document.addEventListener('click', function closePicker(e) {
-      if (!popup.contains(e.target)) {
-        popup.remove();
-        document.removeEventListener('click', closePicker);
-      }
-    });
-  }, 10);
+  // Force a reflow so the enter transition reliably triggers, then animate in.
+  void overlay.offsetWidth;
+  requestAnimationFrame(() => overlay.classList.add('active'));
 
   search.focus();
 }

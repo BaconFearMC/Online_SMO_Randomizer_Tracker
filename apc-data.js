@@ -74,25 +74,29 @@
     'Zipper_Capture',
   ];
 
+  // Fixed display order for Abilities everywhere they're listed (the Notes
+  // Tab requirement picker and, since NOTES_ABILITIES === ABILITIES, the
+  // apc.html progress panel too). 'Jump' has been removed entirely - it's
+  // not a distinct pickable ability (the main tracker's "High Jump" button
+  // is linked to Long_Jump - see ABILITY_LINKS below).
   const ABILITY_KEYS = [
-    'Roll',
-    'Side_Flip',
+    'Neutral_Throw',
     'Up_Throw',
-    'Backflip',
-    'Crouch',
-    'Dive',
-    'Double_Jump',
     'Down_Throw',
+    'Spin_Throw',
+    'Vault',
+    'Crouch',
+    'Backflip',
+    'Long_Jump',
+    'Roll',
+    'Roll_Boost',
     'Ground_Pound',
     'Ground_Pound_Jump',
-    'Jump',
-    'Long_Jump',
-    'Neutral_Throw',
-    'Roll_Boost',
-    'Spin',
-    'Spin_Throw',
+    'Dive',
+    'Double_Jump',
     'Triple_Jump',
-    'Vault',
+    'Side_Flip',
+    'Spin',
     'Wall_Jump',
     'Ledge_Grab',
     'Climb',
