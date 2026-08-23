@@ -1817,6 +1817,7 @@ h1 {
   border-style: solid;
   border-color: transparent;
   border-radius: 10px;
+  overflow: hidden;
   background:
     linear-gradient(160deg, color-mix(in srgb, var(--refight-c1, var(--refight-color)) 16%, transparent), color-mix(in srgb, var(--refight-c2, var(--refight-color)) 6%, transparent)) padding-box,
     linear-gradient(135deg, var(--refight-c1, var(--refight-color)), var(--refight-c2, var(--refight-color))) border-box;
