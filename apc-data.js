@@ -109,10 +109,10 @@
   // as a second icon riding alongside the refight's own icon.
   // Images live at assets/refight/<filename>.png (new folder).
   const REFIGHT_ENTRIES = [
-    { key: 'Knucklotec_Refight',    name: 'Knucklotec Refight',  src: 'assets/refight/refightknucklotec.png',   pair: { kind: 'captures',  key: 'Knucklotec_Fist_Capture' } },
-    { key: 'Torkdrift_Refight',     name: 'Torkdrift Refight',    src: 'assets/refight/refighttorkdrift.png',    pair: { kind: 'captures',  key: 'Uproot_Capture' } },
-    { key: 'Mechawiggler_Refight',  name: 'Mechawiggler Refight', src: 'assets/refight/refightmechawiggler.png', pair: { kind: 'captures',  key: 'Sherm_Capture' } },
-    { key: 'Mollesque_Refight',     name: 'Mollesque Refight',    src: 'assets/refight/refightmollesque.png',    pair: { kind: 'captures',  key: 'Gushen_Capture' } },
+    { key: 'Knucklotec_Refight',    name: 'Knucklotec Refight',   src: 'assets/refight/refightknucklotec.png',        pair: { kind: 'captures',  key: 'Knucklotec_Fist_Capture' } },
+    { key: 'Torkdrift_Refight',     name: 'Torkdrift Refight',    src: 'assets/refight/refighttorkdrift.png',         pair: { kind: 'captures',  key: 'Uproot_Capture' } },
+    { key: 'Mechawiggler_Refight',  name: 'Mechawiggler Refight', src: 'assets/refight/refightmechawiggler.png',      pair: { kind: 'captures',  key: 'Sherm_Capture' } },
+    { key: 'Mollesque_Refight',     name: 'Mollesque Refight',    src: 'assets/refight/refightmollesquelanceur.png',  pair: { kind: 'captures',  key: 'Gushen_Capture' } },
     { key: 'Cookatiel_Refight',     name: 'Cookatiel Refight',    src: 'assets/refight/refightcookatiel.png',    pair: { kind: 'captures',  key: 'Lava_Bubble_Capture' } },
     { key: 'Dragon_Refight',        name: 'Dragon Refight',       src: 'assets/refight/refightdragon.png',       pair: { kind: 'abilities', key: 'Ground_Pound' } },
   ];

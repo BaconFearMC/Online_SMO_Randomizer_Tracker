@@ -644,20 +644,28 @@
       }
 
       // Builds one clickable icon chip for an explicitly-picked requirement.
-      function buildReqIconEl(kind, key, item) {
+      // `onRemove`, if given, overrides what a click removes (used by
+      // Refights so either half of the pair deletes the whole thing).
+      // `extraClass`, if given, is added on top of the kind-based class
+      // (used for the smaller "paired" icon riding next to a refight icon).
+      function buildReqIconEl(kind, key, item, onRemove, extraClass) {
         const img = document.createElement('img');
         const kindClass =
           kind === 'abilities' ? 'zone-req-icon--ability' :
           kind === 'kingdoms'  ? 'zone-req-icon--kingdom'  :
           kind === 'refights'  ? 'zone-req-icon--refight'  : 'zone-req-icon--capture';
-        img.className = 'zone-req-icon ' + kindClass;
+        img.className = 'zone-req-icon ' + kindClass + (extraClass ? ' ' + extraClass : '');
         img.src = item.src;
         img.alt = item.name;
         img.title = item.name + ' (click to remove)';
         if (kind === 'kingdoms' && item.color) img.style.setProperty('--kingdom-color', item.color);
         img.addEventListener('click', (e) => {
           e.stopPropagation();
-          toggleRequirement(zs, kind, key, noteArea);
+          if (onRemove) {
+            onRemove();
+          } else {
+            toggleRequirement(zs, kind, key, noteArea);
+          }
           renderReqIcons();
           saveFullState();
         });
@@ -687,18 +695,16 @@
           if (req.kind === 'refights') {
             // A refight shows its own icon plus the paired Capture/Ability
             // icon riding right beside it, matching the "(Name)" text pair.
+            // Either icon removes the whole pair (icons + text) - they
+            // represent one requirement, not two.
+            const removeBoth = () => toggleRequirement(zs, 'refights', req.key, noteArea);
             const group = document.createElement('span');
             group.className = 'zone-req-pair';
-            group.appendChild(buildReqIconEl('refights', req.key, item));
+            group.appendChild(buildReqIconEl('refights', req.key, item, removeBoth));
             if (item.pair) {
               const pairItem = APC.findItem(item.pair.kind, item.pair.key);
               if (pairItem) {
-                const pimg = document.createElement('img');
-                pimg.className = 'zone-req-icon zone-req-icon--pair';
-                pimg.src = pairItem.src;
-                pimg.alt = pairItem.name;
-                pimg.title = pairItem.name;
-                group.appendChild(pimg);
+                group.appendChild(buildReqIconEl(item.pair.kind, item.pair.key, pairItem, removeBoth, 'zone-req-icon--pair'));
               }
             }
             reqsWrap.appendChild(group);

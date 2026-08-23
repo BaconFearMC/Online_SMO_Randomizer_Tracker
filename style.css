@@ -1859,16 +1859,15 @@ h1 {
 .zone-req-icon--kingdom {
   box-shadow: 0 0 0 2px var(--kingdom-color, var(--kingdomtab-color));
 }
-/* Auto-detected (typed, not explicitly picked) icons: shown faded so they
-   read as a hint rather than a committed pick; full opacity + a small pop
-   on hover invites the click that "pins" them for real. */
+/* Auto-detected (typed, not explicitly picked) icons: full color/opacity,
+   same as a clicked pick - only a dashed ring marks them as "not pinned
+   yet" rather than any graying/desaturation of the artwork itself. */
 .zone-req-icon--auto {
-  opacity: 0.5;
-  filter: grayscale(0.25);
+  outline: 2px dashed rgba(255,255,255,.35);
+  outline-offset: -2px;
 }
 .zone-req-icon--auto:hover {
-  opacity: 1;
-  filter: none;
+  outline-color: rgba(255,255,255,.7);
 }
 
 /* ── Utility ─────────────────────────────────────────────────────── */
