@@ -1883,7 +1883,7 @@ h1 {
   border-radius: 8px;
   border: 2px solid transparent;
   background:
-    linear-gradient(var(--bg-card), var(--bg-card)) padding-box,
+    linear-gradient(160deg, color-mix(in srgb, var(--refight-c1, var(--refight-color)) 55%, var(--bg-card)), color-mix(in srgb, var(--refight-c2, var(--refight-color)) 45%, var(--bg-card))) padding-box,
     linear-gradient(135deg, var(--refight-c1, var(--refight-color)), var(--refight-c2, var(--refight-color))) border-box;
 }
 /* Active refight requirement: the refight's own icon and its paired
@@ -1894,7 +1894,7 @@ h1 {
   border-radius: 8px;
   box-shadow: none;
   background:
-    linear-gradient(var(--bg-card), var(--bg-card)) padding-box,
+    linear-gradient(160deg, color-mix(in srgb, var(--refight-c1, var(--refight-color)) 55%, var(--bg-card)), color-mix(in srgb, var(--refight-c2, var(--refight-color)) 45%, var(--bg-card))) padding-box,
     linear-gradient(135deg, var(--refight-c1, var(--refight-color)), var(--refight-c2, var(--refight-color))) border-box;
   border: 2px solid transparent;
   transform: scale(1.33);
