@@ -648,7 +648,7 @@
       // Refights so either half of the pair deletes the whole thing).
       // `extraClass`, if given, is added on top of the kind-based class
       // (used for the smaller "paired" icon riding next to a refight icon).
-      function buildReqIconEl(kind, key, item, onRemove, extraClass) {
+      function buildReqIconEl(kind, key, item, onRemove, extraClass, refightColors) {
         const img = document.createElement('img');
         const kindClass =
           kind === 'abilities' ? 'zone-req-icon--ability' :
@@ -659,6 +659,11 @@
         img.alt = item.name;
         img.title = item.name + ' (click to remove)';
         if (kind === 'kingdoms' && item.color) img.style.setProperty('--kingdom-color', item.color);
+        if (refightColors) {
+          img.classList.add('zone-req-icon--refight-active');
+          img.style.setProperty('--refight-c1', refightColors[0]);
+          img.style.setProperty('--refight-c2', refightColors[1]);
+        }
         img.addEventListener('click', (e) => {
           e.stopPropagation();
           if (onRemove) {
@@ -700,11 +705,11 @@
             const removeBoth = () => toggleRequirement(zs, 'refights', req.key, noteArea);
             const group = document.createElement('span');
             group.className = 'zone-req-pair';
-            group.appendChild(buildReqIconEl('refights', req.key, item, removeBoth));
+            group.appendChild(buildReqIconEl('refights', req.key, item, removeBoth, null, item.colors));
             if (item.pair) {
               const pairItem = APC.findItem(item.pair.kind, item.pair.key);
               if (pairItem) {
-                group.appendChild(buildReqIconEl(item.pair.kind, item.pair.key, pairItem, removeBoth, 'zone-req-icon--pair'));
+                group.appendChild(buildReqIconEl(item.pair.kind, item.pair.key, pairItem, removeBoth, 'zone-req-icon--pair', item.colors));
               }
             }
             reqsWrap.appendChild(group);
@@ -1078,6 +1083,10 @@
         const selected = zs.requirements.some(r => r.kind === kind && r.key === item.key);
         cell.classList.toggle('selected', selected);
         if (kind === 'kingdoms' && item.color) cell.style.setProperty('--kingdom-color', item.color);
+        if (kind === 'refights' && item.colors) {
+          cell.style.setProperty('--refight-c1', item.colors[0]);
+          cell.style.setProperty('--refight-c2', item.colors[1]);
+        }
         const img = document.createElement('img');
         img.src = item.src;
         img.alt = item.name;

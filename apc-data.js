@@ -109,12 +109,12 @@
   // as a second icon riding alongside the refight's own icon.
   // Images live at assets/refight/<filename>.png (new folder).
   const REFIGHT_ENTRIES = [
-    { key: 'Knucklotec_Refight',    name: 'Knucklotec Refight',   src: 'assets/refight/refightknucklotec.png',        pair: { kind: 'captures',  key: 'Knucklotec_Fist_Capture' } },
-    { key: 'Torkdrift_Refight',     name: 'Torkdrift Refight',    src: 'assets/refight/refighttorkdrift.png',         pair: { kind: 'captures',  key: 'Uproot_Capture' } },
-    { key: 'Mechawiggler_Refight',  name: 'Mechawiggler Refight', src: 'assets/refight/refightmechawiggler.png',      pair: { kind: 'captures',  key: 'Sherm_Capture' } },
-    { key: 'Mollesque_Refight',     name: 'Mollesque Refight',    src: 'assets/refight/refightmollusquelanceur.png',  pair: { kind: 'captures',  key: 'Gushen_Capture' } },
-    { key: 'Cookatiel_Refight',     name: 'Cookatiel Refight',    src: 'assets/refight/refightcookatiel.png',    pair: { kind: 'captures',  key: 'Lava_Bubble_Capture' } },
-    { key: 'Dragon_Refight',        name: 'Dragon Refight',       src: 'assets/refight/refightdragon.png',       pair: { kind: 'abilities', key: 'Ground_Pound' } },
+    { key: 'Knucklotec_Refight',    name: 'Knucklotec Refight',   src: 'assets/refight/refightknucklotec.png',        pair: { kind: 'captures',  key: 'Knucklotec_Fist_Capture' }, colors: ['#7FB9D1', '#D6B65E'] },
+    { key: 'Torkdrift_Refight',     name: 'Torkdrift Refight',    src: 'assets/refight/refighttorkdrift.png',         pair: { kind: 'captures',  key: 'Uproot_Capture' },           colors: ['#DAD6CA', '#7981B2'] },
+    { key: 'Mechawiggler_Refight',  name: 'Mechawiggler Refight', src: 'assets/refight/refightmechawiggler.png',      pair: { kind: 'captures',  key: 'Sherm_Capture' },            colors: ['#2E3B3C', '#E8893F'] },
+    { key: 'Mollesque_Refight',     name: 'Mollesque Refight',    src: 'assets/refight/refightmollusquelanceur.png',  pair: { kind: 'captures',  key: 'Gushen_Capture' },           colors: ['#526DAF', '#DEAF38'] },
+    { key: 'Cookatiel_Refight',     name: 'Cookatiel Refight',    src: 'assets/refight/refightcookatiel.png',    pair: { kind: 'captures',  key: 'Lava_Bubble_Capture' },          colors: ['#AB8AC1', '#DF3770'] },
+    { key: 'Dragon_Refight',        name: 'Dragon Refight',       src: 'assets/refight/refightdragon.png',       pair: { kind: 'abilities', key: 'Ground_Pound' },                 colors: ['#2C3B4D', '#765C83'] },
   ];
 
   // ── Kingdoms (Notes Tab: Kingdom tab, "Reaching Kingdoms" side) ─────────
