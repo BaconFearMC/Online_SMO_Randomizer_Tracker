@@ -1497,9 +1497,26 @@ h1 {
   pointer-events: auto;
 }
 
+/* ── Shared click-bounce feedback (notes menu) ──────────────────────── */
+@keyframes click-bounce {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(0.9); }
+  65%  { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+.click-bounce { animation: click-bounce 0.32s cubic-bezier(.34,1.56,.64,1); }
+
+@keyframes tab-slide-in {
+  0%   { transform: translateX(var(--tab-slide-from, 16px)) scale(0.96); opacity: 0; }
+  60%  { transform: translateX(calc(var(--tab-slide-from, 16px) * -0.15)) scale(1.02); opacity: 1; }
+  100% { transform: translateX(0) scale(1); opacity: 1; }
+}
+.tab-slide-in { animation: tab-slide-in 0.34s cubic-bezier(.34,1.56,.64,1); }
+
 .req-picker-popup {
   position: relative;
   /* Translucent + blurred "frosted glass" so whatever's underneath (the
+
      note, the requirement icons already added) stays visible through it
      while the popup's own content stays readable. */
   background: linear-gradient(160deg, rgba(38,38,38,.62), rgba(26,26,26,.62));

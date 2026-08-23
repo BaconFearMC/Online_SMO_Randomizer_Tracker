@@ -32,6 +32,7 @@
     'Cheep_Cheep_(Snow)_Capture',
     'Cheep_Cheep_Capture',
     'Coin_Coffer_Capture',
+    'Coin_Grind_Capture',
     'Fire_Bro_Capture',
     'Fire_Piranha_Plant_Capture',
     'Frog_Capture',
@@ -153,13 +154,19 @@
     'Rocket_Capture': 'Mini Rocket',
   };
 
+  // Captures whose image file doesn't follow the assets/capture/<key>.png
+  // convention (e.g. reusing an existing icon under a different filename).
+  const SRC_OVERRIDES = {
+    'Coin_Grind_Capture': 'assets/capture/Coin.png',
+  };
+
   function labelFor(key) {
     if (NAME_OVERRIDES[key]) return NAME_OVERRIDES[key];
     return key.replace(/_Capture$/, '').replace(/_/g, ' ');
   }
 
   const CAPTURES = CAPTURE_KEYS.map((key, i) => ({
-    key, order: i, name: labelFor(key), src: `assets/capture/${key}.png`,
+    key, order: i, name: labelFor(key), src: SRC_OVERRIDES[key] || `assets/capture/${key}.png`,
   }));
 
   const ABILITIES = ABILITY_KEYS.map((key, i) => ({

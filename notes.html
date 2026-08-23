@@ -101,6 +101,17 @@
   <script>
     'use strict';
 
+    // Re-triggers the .click-bounce CSS animation on an element. Removing
+    // the class first (and forcing a reflow) means rapid repeat clicks each
+    // get their own fresh bounce instead of the animation silently no-op'ing
+    // because the class was already present.
+    function bounce(el) {
+      if (!el) return;
+      el.classList.remove('click-bounce');
+      void el.offsetWidth;
+      el.classList.add('click-bounce');
+    }
+
     // ── Shared constants (mirrors app.js) ──────────────────────────
     const STATE_KEY = 'tracker_state';
     const MOBILE_BREAKPOINT  = 540;
@@ -666,6 +677,7 @@
         }
         img.addEventListener('click', (e) => {
           e.stopPropagation();
+          bounce(img);
           if (onRemove) {
             onRemove();
           } else {
@@ -686,6 +698,7 @@
         addBtn.textContent = '+';
         addBtn.addEventListener('click', (e) => {
           e.stopPropagation();
+          bounce(addBtn);
           openRequirementPicker(e, zs, noteArea, () => {
             renderReqIcons();
             saveFullState();
@@ -745,6 +758,7 @@
           if (item.kind === 'kingdoms' && item.color) img.style.setProperty('--kingdom-color', item.color);
           img.addEventListener('click', (e) => {
             e.stopPropagation();
+            bounce(img);
             zs.requirements.push({ kind: item.kind, key: item.key });
             renderReqIcons();
             saveFullState();
@@ -1095,6 +1109,7 @@
         cell.appendChild(img);
         cell.appendChild(label);
         cell.addEventListener('click', () => {
+          bounce(cell);
           const nowSelected = toggleRequirement(zs, kind, item.key, noteArea);
           cell.classList.toggle('selected', nowSelected);
           onChange();
@@ -1154,16 +1169,26 @@
         filtered.forEach(item => grid.appendChild(buildPickerCell(item, activeKind, kindClass)));
       }
 
+      const TAB_ORDER = ['captures', 'abilities', 'kingdom'];
+
       function setActiveTab(kind) {
+        const fromIdx = TAB_ORDER.indexOf(activeKind);
+        const toIdx = TAB_ORDER.indexOf(kind);
+        const dir = toIdx > fromIdx ? 1 : -1;
         activeKind = kind;
         tabCaptures.classList.toggle('active', kind === 'captures');
         tabAbilities.classList.toggle('active', kind === 'abilities');
         tabKingdom.classList.toggle('active', kind === 'kingdom');
         renderGrid();
+        const slideTarget = kind === 'kingdom' ? kingdomWrap : grid;
+        slideTarget.style.setProperty('--tab-slide-from', (dir * 24) + 'px');
+        slideTarget.classList.remove('tab-slide-in');
+        void slideTarget.offsetWidth;
+        slideTarget.classList.add('tab-slide-in');
       }
-      tabCaptures.addEventListener('click', () => setActiveTab('captures'));
-      tabAbilities.addEventListener('click', () => setActiveTab('abilities'));
-      tabKingdom.addEventListener('click', () => setActiveTab('kingdom'));
+      tabCaptures.addEventListener('click', () => { bounce(tabCaptures); setActiveTab('captures'); });
+      tabAbilities.addEventListener('click', () => { bounce(tabAbilities); setActiveTab('abilities'); });
+      tabKingdom.addEventListener('click', () => { bounce(tabKingdom); setActiveTab('kingdom'); });
       search.addEventListener('input', renderGrid);
 
       renderGrid();
