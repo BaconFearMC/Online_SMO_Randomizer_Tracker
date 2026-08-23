@@ -1879,10 +1879,15 @@ h1 {
   flex-shrink: 0;
 }
 .zone-req-icon--refight {
-  box-shadow: 0 0 0 2px rgba(255,138,76,.5);
+  padding: 3px;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background:
+    linear-gradient(var(--bg-card), var(--bg-card)) padding-box,
+    linear-gradient(135deg, var(--refight-c1, var(--refight-color)), var(--refight-c2, var(--refight-color))) border-box;
 }
 /* Active refight requirement: the refight's own icon and its paired
-   Capture/Ability icon both get a gradient outline in that boss's two
+   Capture/Ability icon both get the gradient outline in that boss's two
    named colors, and both grow 33% - the pair reads as one unit. */
 .zone-req-icon--refight-active {
   padding: 3px;
