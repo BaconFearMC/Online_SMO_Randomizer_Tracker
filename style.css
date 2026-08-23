@@ -1813,13 +1813,16 @@ h1 {
 }
 
 .req-picker-item--refight {
-  border: 2px solid transparent;
+  border-width: 2px;
+  border-style: solid;
+  border-color: transparent;
   border-radius: 10px;
   background:
     linear-gradient(160deg, color-mix(in srgb, var(--refight-c1, var(--refight-color)) 16%, transparent), color-mix(in srgb, var(--refight-c2, var(--refight-color)) 6%, transparent)) padding-box,
     linear-gradient(135deg, var(--refight-c1, var(--refight-color)), var(--refight-c2, var(--refight-color))) border-box;
 }
 .req-picker-item--refight:hover {
+  transform: none;
   box-shadow: 0 6px 18px color-mix(in srgb, var(--refight-c1, var(--refight-color)) 25%, transparent),
               0 6px 18px color-mix(in srgb, var(--refight-c2, var(--refight-color)) 25%, transparent);
 }
