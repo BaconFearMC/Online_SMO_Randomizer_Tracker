@@ -103,6 +103,47 @@
     'Swing',
   ];
 
+  // ── Kingdom Boss Refights (Notes Tab: Kingdom tab, "Refights" side) ────
+  // Each refight is paired with the Capture/Ability needed to beat it again;
+  // that pairing is what shows in parentheses after the refight's name and
+  // as a second icon riding alongside the refight's own icon.
+  // Images live at assets/refight/<filename>.png (new folder).
+  const REFIGHT_ENTRIES = [
+    { key: 'Knucklotec_Refight',    name: 'Knucklotec Refight',  src: 'assets/refight/refightknucklotec.png',   pair: { kind: 'captures',  key: 'Knucklotec_Fist_Capture' } },
+    { key: 'Torkdrift_Refight',     name: 'Torkdrift Refight',    src: 'assets/refight/refighttorkdrift.png',    pair: { kind: 'captures',  key: 'Uproot_Capture' } },
+    { key: 'Mechawiggler_Refight',  name: 'Mechawiggler Refight', src: 'assets/refight/refightmechawiggler.png', pair: { kind: 'captures',  key: 'Sherm_Capture' } },
+    { key: 'Mollesque_Refight',     name: 'Mollesque Refight',    src: 'assets/refight/refightmollesque.png',    pair: { kind: 'captures',  key: 'Gushen_Capture' } },
+    { key: 'Cookatiel_Refight',     name: 'Cookatiel Refight',    src: 'assets/refight/refightcookatiel.png',    pair: { kind: 'captures',  key: 'Lava_Bubble_Capture' } },
+    { key: 'Dragon_Refight',        name: 'Dragon Refight',       src: 'assets/refight/refightdragon.png',       pair: { kind: 'abilities', key: 'Ground_Pound' } },
+  ];
+
+  // ── Kingdoms (Notes Tab: Kingdom tab, "Reaching Kingdoms" side) ─────────
+  // Reuses the same icon files already used for the loading-zone kingdom
+  // headers (assets/<icon>.png) - nothing new needed on disk for these.
+  const KINGDOM_ENTRIES = [
+    { key: 'Cap',        name: 'Cap',         src: 'assets/Cap.png',      color: '#fff500' },
+    { key: 'Cascade',    name: 'Cascade',     src: 'assets/Cascade.png',  color: '#ff9900' },
+    { key: 'Sand',       name: 'Sand',        src: 'assets/Sand.png',     color: '#8bf12c' },
+    { key: 'Lake',       name: 'Lake',        src: 'assets/Lake.png',     color: '#e46cab' },
+    { key: 'Wooded',     name: 'Wooded',      src: 'assets/Wooded.png',   color: '#1e65e7' },
+    { key: 'Cloud',      name: 'Cloud',       src: 'assets/Cloud.png',    color: '#65ceff' },
+    { key: 'Lost',       name: 'Lost',        src: 'assets/Lost.png',     color: '#e71edd' },
+    { key: 'Metro',      name: 'Metro',       src: 'assets/Metro.png',    color: '#de7d5e' },
+    { key: 'Snow',       name: 'Snow',        src: 'assets/Snow.png',     color: '#e7930a' },
+    { key: 'Seaside',    name: 'Seaside',     src: 'assets/Seaside.png',  color: '#b36fe9' },
+    { key: 'Luncheon',   name: 'Luncheon',    src: 'assets/Luncheon.png', color: '#3fddbb' },
+    { key: 'Ruined',     name: 'Ruined',      src: 'assets/Ruin.png',     color: '#ffd7e2' },
+    { key: "Bowser's",   name: "Bowser's",    src: 'assets/Bowser.png',   color: '#d3304c' },
+    { key: 'Moon',       name: 'Moon',        src: 'assets/MoonK.png',    color: '#b5c1cb' },
+    { key: 'Mushroom',   name: 'Mushroom',    src: 'assets/Star.png',     color: '#fff672' },
+    { key: 'Darkside',   name: 'Dark Side',   src: 'assets/Dark.png',     color: '#fff2c6' },
+    { key: 'Darkerside', name: 'Darker Side', src: 'assets/Dark.png',     color: '#fff2c6' },
+    { key: 'Deep Woods', name: 'Deep Woods',  src: 'assets/Wooded.png',   color: '#1e65e7' },
+  ];
+
+  const REFIGHTS = REFIGHT_ENTRIES.map((r, i) => Object.assign({}, r, { order: i }));
+  const KINGDOMS = KINGDOM_ENTRIES.map((k, i) => Object.assign({}, k, { order: i }));
+
   // Only needed where the auto-generated label would be wrong.
   const NAME_OVERRIDES = {
     'Spark_pylon_Capture': 'Spark Pylon',
@@ -207,12 +248,54 @@
     return kind === 'captures' ? CAPTURE_LINKS_REV[key] : ABILITY_LINKS_REV[key];
   }
 
-  // Look up a single {key, name, src} entry by kind + key. Used by the
+  // Look up a single {key, name, src, ...} entry by kind + key. Used by the
   // Loading Zone Notes requirement picker (notes.html / app.js) so it can
-  // reuse this same Captures/Abilities list instead of keeping its own copy.
+  // reuse this same Captures/Abilities/Refights/Kingdoms list instead of
+  // keeping its own copy.
   function findItem(kind, key) {
-    const list = kind === 'captures' ? CAPTURES : ABILITIES;
-    return list.find((item) => item.key === key) || null;
+    const list = kind === 'captures'  ? CAPTURES
+      :          kind === 'abilities' ? ABILITIES
+      :          kind === 'refights'  ? REFIGHTS
+      :          kind === 'kingdoms'  ? KINGDOMS
+      :          null;
+    return list ? (list.find((item) => item.key === key) || null) : null;
+  }
+
+  // Every pickable item across all four groups, tagged with its `kind` and
+  // sorted longest-name-first (so e.g. "Knucklotec's Fist" is matched before
+  // any shorter overlapping name would be). Built once at load.
+  const ALL_ITEMS = [
+    ...CAPTURES.map((i) => Object.assign({ kind: 'captures' }, i)),
+    ...ABILITIES.map((i) => Object.assign({ kind: 'abilities' }, i)),
+    ...REFIGHTS.map((i) => Object.assign({ kind: 'refights' }, i)),
+    ...KINGDOMS.map((i) => Object.assign({ kind: 'kingdoms' }, i)),
+  ].sort((a, b) => b.name.length - a.name.length);
+
+  // Scans free-form note text and returns every Capture/Ability/Refight/
+  // Kingdom whose name appears in it as a standalone token (case-insensitive,
+  // not glued onto a longer word - same boundary rule the picker's own
+  // remove-text logic uses). Powers the Notes Tab's "auto icon while typing"
+  // behavior: it's re-run on every keystroke and its results are rendered
+  // as icon chips even when nothing was explicitly picked from a grid.
+  function detectItemsInText(text) {
+    if (!text) return [];
+    const found = [];
+    const seen = new Set();
+    for (const item of ALL_ITEMS) {
+      const escaped = item.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const re = new RegExp('(^|[^A-Za-z0-9])(' + escaped + ')($|[^A-Za-z0-9])', 'i');
+      if (re.test(text)) {
+        const id = item.kind + ':' + item.key;
+        if (!seen.has(id)) { seen.add(id); found.push(item); }
+      }
+    }
+    // Drop a shorter match whose name is wholly contained in a longer match
+    // already found (e.g. "Cheep Cheep" inside "Cheep Cheep (Snow)") - it's
+    // almost certainly the same mention, not two separate ones.
+    return found.filter((item) => !found.some((other) =>
+      other !== item && other.name.length > item.name.length &&
+      other.name.toLowerCase().includes(item.name.toLowerCase())
+    ));
   }
 
   // ── Read / write against a tracker state object ────────────────────────────
@@ -300,13 +383,13 @@
     };
   }
 
-  console.log('SMO tracker apc-data.js v2');
+  console.log('SMO tracker apc-data.js v3');
 
   global.APC = {
-    CAPTURES, ABILITIES,
+    CAPTURES, ABILITIES, REFIGHTS, KINGDOMS,
     NOTES_CAPTURES, NOTES_ABILITIES,
     CAPTURE_LINKS, ABILITY_LINKS,
-    linkedTrackerKey, findItem,
+    linkedTrackerKey, findItem, detectItemsInText,
     ensure, isUnlocked, setUnlocked, countUnlocked,
     makeChannel,
   };
