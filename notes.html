@@ -717,7 +717,14 @@
         // Auto-detected items: anything typed in the note text that matches
         // a Capture/Ability/Refight/Kingdom name, but wasn't explicitly
         // picked. Shown faded; clicking pins it as a real requirement.
-        const explicitIds = new Set(zs.requirements.map(r => r.kind + ':' + r.key));
+        const explicitIds = new Set();
+        zs.requirements.forEach((r) => {
+          explicitIds.add(r.kind + ':' + r.key);
+          if (r.kind === 'refights') {
+            const item = APC.findItem('refights', r.key);
+            if (item && item.pair) explicitIds.add(item.pair.kind + ':' + item.pair.key);
+          }
+        });
         APC.detectItemsInText(noteArea.value).forEach((item) => {
           const id = item.kind + ':' + item.key;
           if (explicitIds.has(id)) return;
