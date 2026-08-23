@@ -1813,16 +1813,17 @@ h1 {
 }
 
 .req-picker-item--refight {
-  background: linear-gradient(160deg, rgba(255,138,76,.16), rgba(255,138,76,.05));
-  border-color: rgba(255,138,76,.35);
-}
-.req-picker-item--refight:hover {
-  border-color: var(--refight-color);
-  box-shadow: 0 6px 18px rgba(255,138,76,.25);
-}
-.req-picker-item--refight.selected {
   border: 2px solid transparent;
   border-radius: 10px;
+  background:
+    linear-gradient(160deg, color-mix(in srgb, var(--refight-c1, var(--refight-color)) 16%, transparent), color-mix(in srgb, var(--refight-c2, var(--refight-color)) 6%, transparent)) padding-box,
+    linear-gradient(135deg, var(--refight-c1, var(--refight-color)), var(--refight-c2, var(--refight-color))) border-box;
+}
+.req-picker-item--refight:hover {
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--refight-c1, var(--refight-color)) 25%, transparent),
+              0 6px 18px color-mix(in srgb, var(--refight-c2, var(--refight-color)) 25%, transparent);
+}
+.req-picker-item--refight.selected {
   background:
     linear-gradient(var(--bg-card2), var(--bg-card2)) padding-box,
     linear-gradient(135deg, var(--refight-c1, var(--refight-color)), var(--refight-c2, var(--refight-color))) border-box;
