@@ -165,59 +165,42 @@
       opacity: .7;
     }
     .req-picker-reach-close:hover { opacity: 1; }
-
-    .req-picker-reach-connections { margin-bottom: 8px; }
-    .req-picker-reach-connection {
-      font-size: .82rem;
-      padding: 4px 8px;
-      margin-bottom: 4px;
-      border-radius: 6px;
-      background: rgba(255,255,255,.06);
+    .req-picker-reach-body {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
     }
-    .req-picker-reach-connection--empty {
-      opacity: .65;
-      font-style: italic;
-      background: none;
-      padding: 0 0 4px;
-    }
-    .req-picker-reach-notes-label {
-      font-size: .75rem;
-      opacity: .7;
-      margin-bottom: 4px;
-    }
-
-    /* Optional "→ leads to <Kingdom>" picker on each loading-zone row -
-       feeds the auto-generated Reaching Kingdoms panel above. */
-    .zone-leads-to {
-      font-size: .75rem;
-      max-width: 120px;
-      padding: 2px 4px;
-      border-radius: 6px;
-      border: 1px solid var(--border, #444);
-      background: rgba(0,0,0,.3);
-      color: inherit;
-      opacity: .55;
-    }
-    .zone-leads-to:hover,
-    .zone-leads-to:focus { opacity: 1; }
-    .zone-leads-to.zone-leads-to--set {
-      opacity: 1;
-      border-color: #8bf12c;
-      background: rgba(139,241,44,.15);
-    }
-    .req-picker-reach-text {
-      width: 100%;
-      min-height: 60px;
-      resize: vertical;
-      font-family: inherit;
+    .req-picker-reach-line {
       font-size: .85rem;
       padding: 6px 8px;
       border-radius: 6px;
       border: 1px solid var(--border, #444);
       background: rgba(0,0,0,.3);
       color: inherit;
-      box-sizing: border-box;
     }
+    .req-picker-reach-empty {
+      font-size: .8rem;
+      font-style: italic;
+      opacity: .75;
+      padding: 4px 2px;
+    }
+
+    /* "→ leads to <Kingdom>" picker on each loading-zone row (main Notes
+       view). Feeds the generated Reaching Kingdoms text above. */
+    .zone-leads-to {
+      width: 100%;
+      margin-top: 4px;
+      font-family: inherit;
+      font-size: .8rem;
+      padding: 4px 6px;
+      border-radius: 6px;
+      border: 1px solid var(--border, #444);
+      background: rgba(0,0,0,.3);
+      color: inherit;
+      box-sizing: border-box;
+      cursor: pointer;
+    }
+    .zone-leads-to:not([value=""]) { border-color: rgba(255,255,255,.35); }
   </style>
 </head>
 <body class="notes-page">
@@ -279,21 +262,21 @@
       return (custom && String(custom).trim()) ? custom : zone;
     }
 
-    // "How do I reach <Kingdom>?" - auto-generated from loading zones that
-    // have their `leadsTo` set to that kingdom. One line per connection,
-    // e.g. "Klepto in Lost goes to Cap". Scans every kingdom's zones, so a
-    // side-kingdom warp discovered anywhere shows up under its destination
-    // automatically - nothing to keep in sync by hand.
-    function computeReachConnections(targetKey) {
-      const targetItem = APC.findItem('kingdoms', targetKey);
-      const targetName = targetItem ? targetItem.name : targetKey;
+    function kingdomDisplayName(key) {
+      const item = APC.findItem('kingdoms', key);
+      return item ? item.name : key;
+    }
+
+    // "How do I reach <Kingdom>?" (Kingdom tab -> Reaching Kingdoms) is
+    // generated straight from every zone's "→ leads to" pick: one line per
+    // zone that points at `kingdomKey`, e.g. "Klepto in Lost goes to Cap".
+    function buildReachLines(kingdomKey) {
       const lines = [];
-      for (const [kingdom, data] of Object.entries(fullState.loading_zones || {})) {
-        for (const [zone, zs] of Object.entries(data.zones || {})) {
-          if (zs.leadsTo !== targetKey) continue;
-          const kingdomItem = APC.findItem('kingdoms', kingdom);
-          const kingdomName = kingdomItem ? kingdomItem.name : kingdom;
-          lines.push(zoneDisplayName(kingdom, zone) + ' in ' + kingdomName + ' goes to ' + targetName);
+      for (const [kingdom, data] of Object.entries(fullState.loading_zones)) {
+        for (const [zone, zs] of Object.entries(data.zones)) {
+          if (zs.leadsTo === kingdomKey) {
+            lines.push(zoneDisplayName(kingdom, zone) + ' in ' + kingdomDisplayName(kingdom) + ' goes to ' + kingdomDisplayName(kingdomKey));
+          }
         }
       }
       return lines;
@@ -342,7 +325,7 @@
           // entries picked from the Abilities & Captures list (apc-data.js).
           // Their icons render above the location; their names are copied
           // into the note text but the text stays freely editable afterward.
-          result[kingdom].zones[zone] = { note:'', requirements:[], collapsed:false, num: zd.num, leadsTo: null };
+          result[kingdom].zones[zone] = { note:'', requirements:[], collapsed:false, num: zd.num, leadsTo:'' };
         }
       }
       return result;
@@ -409,7 +392,7 @@
       for (const kingdom of Object.values(fullState.loading_zones)) {
         for (const zone of Object.values(kingdom.zones)) {
           if (!Array.isArray(zone.requirements)) zone.requirements = [];
-          if (!('leadsTo' in zone)) zone.leadsTo = null;
+          if (typeof zone.leadsTo !== 'string') zone.leadsTo = '';
           delete zone.icon;
           delete zone.icon2;
         }
@@ -426,15 +409,11 @@
         if (!(k in fullState.painting_notes)) fullState.painting_notes[k] = '';
       });
 
-      // "How do I reach <Kingdom>?" notes (Kingdom tab -> Reaching Kingdoms).
-      // Seeded once from each kingdom's reachDefault, then fully user-owned -
-      // an edit here is never overwritten by the default again.
-      if (!fullState.kingdom_reach) fullState.kingdom_reach = {};
-      APC.KINGDOMS.forEach(k => {
-        if (!(k.key in fullState.kingdom_reach)) {
-          fullState.kingdom_reach[k.key] = k.reachDefault || '';
-        }
-      });
+      // "How do I reach <Kingdom>?" (Kingdom tab -> Reaching Kingdoms) is
+      // generated from each zone's "→ leads to" pick below, so there's no
+      // separate note state to seed here anymore. Drop any leftover data
+      // from the old free-text version of this feature.
+      delete fullState.kingdom_reach;
     }
 
     function saveFullState() {
@@ -946,15 +925,15 @@
       nameLabel.style.color = zs.collapsed ? '#888' : color;
 
       top.appendChild(nameLabel);
+      row.appendChild(top);
 
-      // Optional "this loading zone leads to <Kingdom>" link, used to
-      // auto-generate that kingdom's "How do I reach X Kingdom?" panel
-      // (Kingdom tab -> Reaching Kingdoms) as e.g. "Klepto in Lost goes to
-      // Cap". Most zones won't set this - it's only for the specific
-      // zone/room that actually contains the warp/pipe.
+      // "→ leads to <Kingdom>" picker: marks which kingdom this loading
+      // zone actually drops you into. Purely structured data (not part of
+      // the freeform note) so the Kingdom tab's "How do I reach <Kingdom>?"
+      // panel can generate lines like "Klepto in Lost goes to Cap" from it.
       const leadsToSelect = document.createElement('select');
       leadsToSelect.className = 'zone-leads-to';
-      leadsToSelect.title = 'Does this loading zone lead to another kingdom?';
+      leadsToSelect.title = 'Which kingdom does this loading zone lead to?';
       const noneOpt = document.createElement('option');
       noneOpt.value = '';
       noneOpt.textContent = '→ leads to…';
@@ -966,21 +945,19 @@
         leadsToSelect.appendChild(opt);
       });
       leadsToSelect.value = zs.leadsTo || '';
-      leadsToSelect.classList.toggle('zone-leads-to--set', !!zs.leadsTo);
+      if (zs.collapsed) leadsToSelect.style.display = 'none';
       leadsToSelect.addEventListener('click', (e) => e.stopPropagation());
       leadsToSelect.addEventListener('change', () => {
-        zs.leadsTo = leadsToSelect.value || null;
-        leadsToSelect.classList.toggle('zone-leads-to--set', !!zs.leadsTo);
+        zs.leadsTo = leadsToSelect.value;
         saveFullState();
       });
-      top.appendChild(leadsToSelect);
-
-      row.appendChild(top);
+      row.appendChild(leadsToSelect);
 
       nameLabel.addEventListener('click', () => {
         zs.collapsed = !zs.collapsed;
         nameLabel.style.color = zs.collapsed ? '#888' : color;
         noteArea.style.display = zs.collapsed ? 'none' : '';
+        leadsToSelect.style.display = zs.collapsed ? 'none' : '';
         saveFullState();
       });
 
@@ -1262,8 +1239,8 @@
       kingdomCol.appendChild(kingdomGrid);
 
       // "How do I reach <Kingdom>?" panel - hidden until a kingdom's ⓘ badge
-      // is clicked, then shows an editable note (fullState.kingdom_reach)
-      // for that kingdom right under the grid.
+      // is clicked, then shows the generated list of zones whose "→ leads
+      // to" points at that kingdom, right under the grid.
       const reachPanel = document.createElement('div');
       reachPanel.className = 'req-picker-reach-panel';
       reachPanel.style.display = 'none';
@@ -1289,42 +1266,23 @@
         head.appendChild(closeBtn);
         reachPanel.appendChild(head);
 
-        // Auto-generated from every zone whose "leads to" is set to this
-        // kingdom (set on the zone itself in the main Loading Zone Notes
-        // view) - e.g. "Klepto in Lost goes to Cap". Read-only here; set
-        // leadsTo on the zone to add/change a connection.
-        const connections = computeReachConnections(key);
-        const connBox = document.createElement('div');
-        connBox.className = 'req-picker-reach-connections';
-        if (connections.length) {
-          connections.forEach(line => {
+        const lines = buildReachLines(key);
+        const body = document.createElement('div');
+        body.className = 'req-picker-reach-body';
+        if (lines.length) {
+          lines.forEach(line => {
             const p = document.createElement('div');
-            p.className = 'req-picker-reach-connection';
+            p.className = 'req-picker-reach-line';
             p.textContent = line;
-            connBox.appendChild(p);
+            body.appendChild(p);
           });
         } else {
-          const p = document.createElement('div');
-          p.className = 'req-picker-reach-connection req-picker-reach-connection--empty';
-          p.textContent = 'No loading zone is marked as leading here yet. Set "→ leads to" on a zone in the main notes view to add one.';
-          connBox.appendChild(p);
+          const empty = document.createElement('div');
+          empty.className = 'req-picker-reach-empty';
+          empty.textContent = 'No loading zone is marked as leading here yet. Set "→ leads to" on a zone in the main Notes view to add one.';
+          body.appendChild(empty);
         }
-        reachPanel.appendChild(connBox);
-
-        const notesLabel = document.createElement('div');
-        notesLabel.className = 'req-picker-reach-notes-label';
-        notesLabel.textContent = 'Notes';
-        reachPanel.appendChild(notesLabel);
-
-        const ta = document.createElement('textarea');
-        ta.className = 'req-picker-reach-text';
-        ta.placeholder = 'Anything else worth noting (e.g. story requirements)…';
-        ta.value = fullState.kingdom_reach[key] || '';
-        ta.addEventListener('input', () => {
-          fullState.kingdom_reach[key] = ta.value;
-          saveFullState();
-        });
-        reachPanel.appendChild(ta);
+        reachPanel.appendChild(body);
       }
 
       kingdomWrap.appendChild(refightCol);
