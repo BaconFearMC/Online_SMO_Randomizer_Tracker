@@ -120,30 +120,67 @@
 
   // ── Kingdoms (Notes Tab: Kingdom tab, "Reaching Kingdoms" side) ─────────
   // Reuses the same icon files already used for the loading-zone kingdom
-  // headers (assets/<icon>.png) - nothing new needed on disk for these.
+  // headers (assets/<icon>.png) - nothing new needed on disk for these,
+  // except Deep Woods, which gets its own icon (deepwoods.png) so it's no
+  // longer visually identical to the Wooded Kingdom entry above it.
+  //
+  // `reachDefault` seeds the editable "How do I reach <Kingdom>?" note the
+  // Notes Tab shows/generates for each kingdom (fullState.kingdom_reach).
+  // It's a starting point only - high-level and intentionally light on
+  // precise routes/moon counts, since that's exactly the kind of detail the
+  // user will want to fill in/correct for their own route. Edits made in
+  // the UI persist in state and are never overwritten by this default again.
   const KINGDOM_ENTRIES = [
-    { key: 'Cap',        name: 'Cap',         src: 'assets/Cap.png',      color: '#fff500' },
-    { key: 'Cascade',    name: 'Cascade',     src: 'assets/Cascade.png',  color: '#ff9900' },
-    { key: 'Sand',       name: 'Sand',        src: 'assets/Sand.png',     color: '#8bf12c' },
-    { key: 'Lake',       name: 'Lake',        src: 'assets/Lake.png',     color: '#e46cab' },
-    { key: 'Wooded',     name: 'Wooded',      src: 'assets/Wooded.png',   color: '#1e65e7' },
-    { key: 'Cloud',      name: 'Cloud',       src: 'assets/Cloud.png',    color: '#65ceff' },
-    { key: 'Lost',       name: 'Lost',        src: 'assets/Lost.png',     color: '#e71edd' },
-    { key: 'Metro',      name: 'Metro',       src: 'assets/Metro.png',    color: '#de7d5e' },
-    { key: 'Snow',       name: 'Snow',        src: 'assets/Snow.png',     color: '#e7930a' },
-    { key: 'Seaside',    name: 'Seaside',     src: 'assets/Seaside.png',  color: '#b36fe9' },
-    { key: 'Luncheon',   name: 'Luncheon',    src: 'assets/Luncheon.png', color: '#3fddbb' },
-    { key: 'Ruined',     name: 'Ruined',      src: 'assets/Ruin.png',     color: '#ffd7e2' },
-    { key: "Bowser's",   name: "Bowser's",    src: 'assets/Bowser.png',   color: '#d3304c' },
-    { key: 'Moon',       name: 'Moon',        src: 'assets/MoonK.png',    color: '#b5c1cb' },
-    { key: 'Mushroom',   name: 'Mushroom',    src: 'assets/Star.png',     color: '#fff672' },
-    { key: 'Darkside',   name: 'Dark Side',   src: 'assets/Dark.png',     color: '#fff2c6' },
-    { key: 'Darkerside', name: 'Darker Side', src: 'assets/Dark.png',     color: '#fff2c6' },
-    { key: 'Deep Woods', name: 'Deep Woods',  src: 'assets/Wooded.png',   color: '#1e65e7' },
+    { key: 'Cap',        name: 'Cap',         src: 'assets/Cap.png',      color: '#fff500', reachDefault: 'Starting kingdom - begins automatically after the intro.' },
+    { key: 'Cascade',    name: 'Cascade',     src: 'assets/Cascade.png',  color: '#ff9900', reachDefault: 'Reached automatically after leaving Cap Kingdom, once the Odyssey is powered up.' },
+    { key: 'Sand',       name: 'Sand',        src: 'assets/Sand.png',     color: '#8bf12c', reachDefault: 'Unlocked after clearing Cascade Kingdom\'s boss fight.' },
+    { key: 'Lake',       name: 'Lake',        src: 'assets/Lake.png',     color: '#e46cab', reachDefault: 'Optional kingdom - reached via a hidden pipe found while exploring Sand Kingdom.' },
+    { key: 'Wooded',     name: 'Wooded',      src: 'assets/Wooded.png',   color: '#1e65e7', reachDefault: 'Unlocked after clearing Sand Kingdom\'s boss fight.' },
+    { key: 'Cloud',      name: 'Cloud',       src: 'assets/Cloud.png',    color: '#65ceff', reachDefault: 'Optional kingdom - reached via a hidden pipe found while exploring Wooded Kingdom.' },
+    { key: 'Lost',       name: 'Lost',        src: 'assets/Lost.png',     color: '#e71edd', reachDefault: 'Unlocked after clearing Wooded Kingdom\'s boss fight.' },
+    { key: 'Metro',      name: 'Metro',       src: 'assets/Metro.png',    color: '#de7d5e', reachDefault: 'Unlocked after clearing Lost Kingdom\'s boss fight.' },
+    { key: 'Snow',       name: 'Snow',        src: 'assets/Snow.png',     color: '#e7930a', reachDefault: 'Optional kingdom - reached via a hidden pipe found while exploring Metro Kingdom.' },
+    { key: 'Seaside',    name: 'Seaside',     src: 'assets/Seaside.png',  color: '#b36fe9', reachDefault: 'Optional kingdom - reached via a hidden pipe found while exploring Metro or Snow Kingdom.' },
+    { key: 'Luncheon',   name: 'Luncheon',    src: 'assets/Luncheon.png', color: '#3fddbb', reachDefault: 'Unlocked after clearing Metro Kingdom\'s boss fight.' },
+    { key: 'Ruined',     name: 'Ruined',      src: 'assets/Ruin.png',     color: '#ffd7e2', reachDefault: 'Unlocked after clearing Luncheon Kingdom\'s boss fight.' },
+    { key: "Bowser's",   name: "Bowser's",    src: 'assets/Bowser.png',   color: '#d3304c', reachDefault: 'Unlocked after clearing Ruined Kingdom\'s boss fight.' },
+    { key: 'Moon',       name: 'Moon',        src: 'assets/MoonK.png',    color: '#b5c1cb', reachDefault: 'Unlocked after clearing Bowser\'s Kingdom\'s boss fight.' },
+    { key: 'Mushroom',   name: 'Mushroom',    src: 'assets/Star.png',     color: '#fff672', reachDefault: 'Unlocked after clearing the final boss and finishing the story.' },
+    { key: 'Darkside',   name: 'Dark Side',   src: 'assets/Dark.png',     color: '#fff2c6', reachDefault: 'Post-game kingdom - reached from Mushroom Kingdom after collecting enough Multi Moons.' },
+    { key: 'Darkerside', name: 'Darker Side', src: 'assets/Dark.png',     color: '#fff2c6', reachDefault: 'Post-game kingdom - reached from Dark Side after collecting enough Multi Moons there.' },
+    { key: 'Deep Woods', name: 'Deep Woods',  src: 'assets/deepwoods.png', color: '#1e65e7', reachDefault: 'Post-game area - reached from inside Wooded Kingdom after finishing the story.' },
   ];
+
+  // ── Kingdom Shops (Notes Tab: Kingdom tab, "Shops" side) ────────────────
+  // One entry per Crazy Cap shop in the game (Metro has two). All share the
+  // same generic assets/shop.png icon; the paired kingdom icon rides
+  // alongside it in the picker/requirement chips, exactly like a Refight
+  // rides alongside its paired Capture/Ability. Kept as its own `kind`
+  // ('shops') so a shop is never confused with - or matched as - the
+  // kingdom it belongs to (see SHOPS/ALL_ITEMS below and detectItemsInText).
+  const SHOP_ENTRIES = [
+    { key: 'Sand_Shop',          name: 'Sand Shop',          kingdom: 'Sand' },
+    { key: 'Lake_Shop',          name: 'Lake Shop',          kingdom: 'Lake' },
+    { key: 'Lost_Shop',          name: 'Lost Shop',          kingdom: 'Lost' },
+    { key: 'Metro_Yellow_Shop',  name: 'Metro Yellow Shop',  kingdom: 'Metro' },
+    { key: 'Metro_Purple_Shop',  name: 'Metro Purple Shop',  kingdom: 'Metro' },
+    { key: 'Snow_Shop',          name: 'Snow Shop',          kingdom: 'Snow' },
+    { key: 'Luncheon_Shop',      name: 'Luncheon Shop',      kingdom: 'Luncheon' },
+    { key: "Bowsers_Shop",       name: "Bowser's Shop",      kingdom: "Bowser's" },
+    { key: 'Mushroom_Shop',      name: 'Mushroom Shop',      kingdom: 'Mushroom' },
+    { key: 'Moon_Shop',          name: 'Moon Shop',          kingdom: 'Moon' },
+  ].map((s) => {
+    const kingdom = KINGDOM_ENTRIES.find((k) => k.key === s.kingdom);
+    return Object.assign({}, s, {
+      src: 'assets/shop.png',
+      pair: { kind: 'kingdoms', key: s.kingdom },
+      colors: kingdom ? [kingdom.color, '#ffd700'] : ['#ffd700', '#ffd700'],
+    });
+  });
 
   const REFIGHTS = REFIGHT_ENTRIES.map((r, i) => Object.assign({}, r, { order: i }));
   const KINGDOMS = KINGDOM_ENTRIES.map((k, i) => Object.assign({}, k, { order: i }));
+  const SHOPS = SHOP_ENTRIES.map((s, i) => Object.assign({}, s, { order: i }));
 
   // Only needed where the auto-generated label would be wrong.
   const NAME_OVERRIDES = {
@@ -212,6 +249,7 @@
     'Banzai_Bill_Capture',
     'Picture_Match_Part_(Mario)_Capture',
     'Yoshi_Capture',
+    'Puzzle_Part_(Lake)_Capture',
   ];
 
   const NOTES_CAPTURES = NOTES_CAPTURE_KEYS
@@ -264,6 +302,7 @@
       :          kind === 'abilities' ? ABILITIES
       :          kind === 'refights'  ? REFIGHTS
       :          kind === 'kingdoms'  ? KINGDOMS
+      :          kind === 'shops'     ? SHOPS
       :          null;
     return list ? (list.find((item) => item.key === key) || null) : null;
   }
@@ -276,6 +315,7 @@
     ...ABILITIES.map((i) => Object.assign({ kind: 'abilities' }, i)),
     ...REFIGHTS.map((i) => Object.assign({ kind: 'refights' }, i)),
     ...KINGDOMS.map((i) => Object.assign({ kind: 'kingdoms' }, i)),
+    ...SHOPS.map((i) => Object.assign({ kind: 'shops' }, i)),
   ].sort((a, b) => b.name.length - a.name.length);
 
   // Scans free-form note text and returns every Capture/Ability/Refight/
@@ -390,10 +430,10 @@
     };
   }
 
-  console.log('SMO tracker apc-data.js v3');
+  console.log('SMO tracker apc-data.js v4');
 
   global.APC = {
-    CAPTURES, ABILITIES, REFIGHTS, KINGDOMS,
+    CAPTURES, ABILITIES, REFIGHTS, KINGDOMS, SHOPS,
     NOTES_CAPTURES, NOTES_ABILITIES,
     CAPTURE_LINKS, ABILITY_LINKS,
     linkedTrackerKey, findItem, detectItemsInText,

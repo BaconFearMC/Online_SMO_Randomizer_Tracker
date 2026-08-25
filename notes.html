@@ -84,6 +84,100 @@
       transform: scale(1) rotate(0deg);
       opacity: 1;
     }
+
+    /* Fallback so a 3rd kingdom-tab column (Shops, added alongside the
+       existing Refights / Reaching Kingdoms) still wraps sanely if
+       style.css's flex rules were tuned for exactly two columns. */
+    .req-picker-kingdom-wrap { flex-wrap: wrap; }
+    .req-picker-kingdom-col { min-width: 180px; }
+
+    /* Fallback in case style.css doesn't already position these relatively -
+       needed so the shop's paired-kingdom icon and the kingdom's reach
+       badge (both position:absolute) stay anchored to their own cell. */
+    .req-picker-item { position: relative; }
+
+    /* ── Shops (Kingdom tab, "Shops" column) ─────────────────────────
+       Reuses the refight-style gradient ring via --refight-c1/--refight-c2
+       (set per-item in JS: [kingdom color, gold]) so a Shop reads as its
+       own distinct pickable thing rather than the kingdom itself. */
+    .req-picker-item--shop {
+      position: relative;
+      border-color: color-mix(in srgb, var(--refight-c1, #ffd700) 55%, transparent);
+      background: linear-gradient(135deg,
+        color-mix(in srgb, var(--refight-c1, #ffd700) 22%, transparent),
+        color-mix(in srgb, var(--refight-c2, #ffd700) 22%, transparent));
+    }
+    .req-picker-item-pair-icon {
+      position: absolute;
+      right: -4px;
+      bottom: -4px;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 1px solid rgba(0,0,0,.5);
+      background: #1a1a22;
+      object-fit: contain;
+      pointer-events: none;
+    }
+    .zone-req-icon--shop { border-radius: 6px; }
+
+    /* Small "how do I reach this kingdom" info badge on each kingdom cell
+       in the Reaching Kingdoms column. Stops propagation so clicking it
+       opens the reach panel instead of toggling the kingdom requirement. */
+    .req-picker-reach-badge {
+      position: absolute;
+      top: 2px;
+      right: 2px;
+      width: 16px;
+      height: 16px;
+      line-height: 16px;
+      font-size: 11px;
+      text-align: center;
+      border-radius: 50%;
+      background: rgba(0,0,0,.55);
+      color: #e6e6ee;
+      cursor: pointer;
+    }
+    .req-picker-reach-badge:hover { background: rgba(0,0,0,.8); }
+
+    .req-picker-reach-panel {
+      grid-column: 1 / -1;
+      margin-top: 10px;
+      padding: 10px;
+      border: 1px solid var(--border, #444);
+      border-radius: 8px;
+      background: rgba(0,0,0,.25);
+    }
+    .req-picker-reach-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: .85rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+    .req-picker-reach-close {
+      background: none;
+      border: none;
+      color: inherit;
+      cursor: pointer;
+      font-size: .8rem;
+      opacity: .7;
+    }
+    .req-picker-reach-close:hover { opacity: 1; }
+    .req-picker-reach-text {
+      width: 100%;
+      min-height: 60px;
+      resize: vertical;
+      font-family: inherit;
+      font-size: .85rem;
+      padding: 6px 8px;
+      border-radius: 6px;
+      border: 1px solid var(--border, #444);
+      background: rgba(0,0,0,.3);
+      color: inherit;
+      box-sizing: border-box;
+    }
   </style>
 </head>
 <body class="notes-page">
@@ -163,7 +257,7 @@
       'Darkerside': { color:'#fff2c6', icon:'Dark.png',     zones:{ 'End':{num:1} }},
       'Moon':       { color:'#b5c1cb', icon:'MoonK.png',    zones:{ '2D Snowman': {num:2},'Shop': {num:1},'Swings': {num:2},'Sphynx': {num:1}} },
       'Cloud':      { color:'#65ceff', icon:'Cloud.png',    zones:{ '2D Cube': {num:2},'Picture Match': {num:2} } },
-      'Deep Woods': { color:'#1e65e7', icon:'Wooded.png',   zones:{ "Vine #1 (Dino)":{num:0},"Vine #2 (Peculiar Pipes)":{num:0},"Vine #3 (Babbling Brook)":{num:0},"Vine #4 (Creek)":{num:0},"Treasure":{num:1},"Outfit":{num:1}}},
+      'Deep Woods': { color:'#1e65e7', icon:'deepwoods.png', zones:{ "Vine #1 (Dino)":{num:0},"Vine #2 (Peculiar Pipes)":{num:0},"Vine #3 (Babbling Brook)":{num:0},"Vine #4 (Creek)":{num:0},"Treasure":{num:1},"Outfit":{num:1}}},
     };
 
     // Mirrors the map in app.js keep them in sync when adding a new
@@ -269,6 +363,16 @@
       if (!fullState.painting_notes) fullState.painting_notes = {};
       PAINTING_NOTE_KINGDOMS.forEach(k => {
         if (!(k in fullState.painting_notes)) fullState.painting_notes[k] = '';
+      });
+
+      // "How do I reach <Kingdom>?" notes (Kingdom tab -> Reaching Kingdoms).
+      // Seeded once from each kingdom's reachDefault, then fully user-owned -
+      // an edit here is never overwritten by the default again.
+      if (!fullState.kingdom_reach) fullState.kingdom_reach = {};
+      APC.KINGDOMS.forEach(k => {
+        if (!(k.key in fullState.kingdom_reach)) {
+          fullState.kingdom_reach[k.key] = k.reachDefault || '';
+        }
       });
     }
 
@@ -664,7 +768,8 @@
         const kindClass =
           kind === 'abilities' ? 'zone-req-icon--ability' :
           kind === 'kingdoms'  ? 'zone-req-icon--kingdom'  :
-          kind === 'refights'  ? 'zone-req-icon--refight'  : 'zone-req-icon--capture';
+          kind === 'refights'  ? 'zone-req-icon--refight'  :
+          kind === 'shops'     ? 'zone-req-icon--shop'     : 'zone-req-icon--capture';
         img.className = 'zone-req-icon ' + kindClass + (extraClass ? ' ' + extraClass : '');
         img.src = item.src;
         img.alt = item.name;
@@ -694,7 +799,7 @@
         const addBtn = document.createElement('button');
         addBtn.type = 'button';
         addBtn.className = 'zone-req-add';
-        addBtn.title = 'Add a Capture, Ability, Refight, or Kingdom requirement';
+        addBtn.title = 'Add a Capture, Ability, Refight, Shop, or Kingdom requirement';
         addBtn.textContent = '+';
         addBtn.addEventListener('click', (e) => {
           e.stopPropagation();
@@ -710,15 +815,16 @@
           const item = APC.findItem(req.kind, req.key);
           if (!item) return;
 
-          if (req.kind === 'refights') {
-            // A refight shows its own icon plus the paired Capture/Ability
-            // icon riding right beside it, matching the "(Name)" text pair.
-            // Either icon removes the whole pair (icons + text) - they
-            // represent one requirement, not two.
-            const removeBoth = () => toggleRequirement(zs, 'refights', req.key, noteArea);
+          if (req.kind === 'refights' || req.kind === 'shops') {
+            // A Refight shows its own icon plus the paired Capture/Ability
+            // icon riding right beside it (matching the "(Name)" text pair);
+            // a Shop shows its shop.png icon plus its kingdom's icon the
+            // same way. Either icon removes the whole pair (icons + text) -
+            // they represent one requirement, not two.
+            const removeBoth = () => toggleRequirement(zs, req.kind, req.key, noteArea);
             const group = document.createElement('span');
             group.className = 'zone-req-pair';
-            group.appendChild(buildReqIconEl('refights', req.key, item, removeBoth, null, item.colors));
+            group.appendChild(buildReqIconEl(req.kind, req.key, item, removeBoth, null, item.colors));
             if (item.pair) {
               const pairItem = APC.findItem(item.pair.kind, item.pair.key);
               if (pairItem) {
@@ -750,7 +856,8 @@
           const kindClass =
             item.kind === 'abilities' ? 'zone-req-icon--ability' :
             item.kind === 'kingdoms'  ? 'zone-req-icon--kingdom'  :
-            item.kind === 'refights'  ? 'zone-req-icon--refight'  : 'zone-req-icon--capture';
+            item.kind === 'refights'  ? 'zone-req-icon--refight'  :
+            item.kind === 'shops'     ? 'zone-req-icon--shop'     : 'zone-req-icon--capture';
           img.className = 'zone-req-icon zone-req-icon--auto ' + kindClass;
           img.src = item.src;
           img.alt = item.name;
@@ -1024,8 +1131,8 @@
       grid.className = 'req-picker-grid';
       popup.appendChild(grid);
 
-      // Kingdom tab: two side-by-side sections instead of the single grid -
-      // Refights on the left, Reaching Kingdoms on the right.
+      // Kingdom tab: three side-by-side sections instead of the single grid -
+      // Refights, Shops, and Reaching Kingdoms.
       const kingdomWrap = document.createElement('div');
       kingdomWrap.className = 'req-picker-kingdom-wrap';
       kingdomWrap.style.display = 'none';
@@ -1040,6 +1147,20 @@
       refightCol.appendChild(refightTitle);
       refightCol.appendChild(refightGrid);
 
+      // Each kingdom's shop, its own kind ('shops') distinct from the
+      // kingdom itself - so searching "Lake Shop" only ever matches the
+      // Lake Shop button here, never the Lake kingdom button over in the
+      // Reaching Kingdoms column (they're separate items, separate grids).
+      const shopCol = document.createElement('div');
+      shopCol.className = 'req-picker-kingdom-col';
+      const shopTitle = document.createElement('div');
+      shopTitle.className = 'req-picker-kingdom-col-title';
+      shopTitle.textContent = 'Shops';
+      const shopGrid = document.createElement('div');
+      shopGrid.className = 'req-picker-grid req-picker-grid--sub';
+      shopCol.appendChild(shopTitle);
+      shopCol.appendChild(shopGrid);
+
       const kingdomCol = document.createElement('div');
       kingdomCol.className = 'req-picker-kingdom-col';
       const kingdomTitle = document.createElement('div');
@@ -1050,7 +1171,48 @@
       kingdomCol.appendChild(kingdomTitle);
       kingdomCol.appendChild(kingdomGrid);
 
+      // "How do I reach <Kingdom>?" panel - hidden until a kingdom's ⓘ badge
+      // is clicked, then shows an editable note (fullState.kingdom_reach)
+      // for that kingdom right under the grid.
+      const reachPanel = document.createElement('div');
+      reachPanel.className = 'req-picker-reach-panel';
+      reachPanel.style.display = 'none';
+      kingdomCol.appendChild(reachPanel);
+
+      function renderReachPanel(key) {
+        const item = APC.findItem('kingdoms', key);
+        if (!item) return;
+        reachPanel.innerHTML = '';
+        reachPanel.style.display = '';
+
+        const head = document.createElement('div');
+        head.className = 'req-picker-reach-head';
+        const label = document.createElement('span');
+        label.textContent = 'How do I reach ' + item.name + ' Kingdom?';
+        const closeBtn = document.createElement('button');
+        closeBtn.type = 'button';
+        closeBtn.className = 'req-picker-reach-close';
+        closeBtn.textContent = '✕';
+        closeBtn.title = 'Close';
+        closeBtn.addEventListener('click', () => { reachPanel.style.display = 'none'; });
+        head.appendChild(label);
+        head.appendChild(closeBtn);
+
+        const ta = document.createElement('textarea');
+        ta.className = 'req-picker-reach-text';
+        ta.placeholder = 'Write how to reach this kingdom…';
+        ta.value = fullState.kingdom_reach[key] || '';
+        ta.addEventListener('input', () => {
+          fullState.kingdom_reach[key] = ta.value;
+          saveFullState();
+        });
+
+        reachPanel.appendChild(head);
+        reachPanel.appendChild(ta);
+      }
+
       kingdomWrap.appendChild(refightCol);
+      kingdomWrap.appendChild(shopCol);
       kingdomWrap.appendChild(kingdomCol);
       popup.appendChild(kingdomWrap);
 
@@ -1097,7 +1259,7 @@
         const selected = zs.requirements.some(r => r.kind === kind && r.key === item.key);
         cell.classList.toggle('selected', selected);
         if (kind === 'kingdoms' && item.color) cell.style.setProperty('--kingdom-color', item.color);
-        if (kind === 'refights' && item.colors) {
+        if ((kind === 'refights' || kind === 'shops') && item.colors) {
           cell.style.setProperty('--refight-c1', item.colors[0]);
           cell.style.setProperty('--refight-c2', item.colors[1]);
         }
@@ -1108,6 +1270,31 @@
         label.textContent = item.name;
         cell.appendChild(img);
         cell.appendChild(label);
+        // A Shop's paired kingdom icon rides alongside its shop.png icon,
+        // exactly like a Refight's paired Capture/Ability icon.
+        if (kind === 'shops' && item.pair) {
+          const pairItem = APC.findItem(item.pair.kind, item.pair.key);
+          if (pairItem) {
+            const pairImg = document.createElement('img');
+            pairImg.className = 'req-picker-item-pair-icon';
+            pairImg.src = pairItem.src;
+            pairImg.alt = pairItem.name;
+            cell.appendChild(pairImg);
+          }
+        }
+        // Reaching Kingdoms gets a small info badge that opens/edits the
+        // "How do I reach <Kingdom>?" note instead of toggling a requirement.
+        if (kind === 'kingdoms') {
+          const infoBtn = document.createElement('span');
+          infoBtn.className = 'req-picker-reach-badge';
+          infoBtn.textContent = 'ⓘ';
+          infoBtn.title = 'How do I reach ' + item.name + ' Kingdom?';
+          infoBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            renderReachPanel(item.key);
+          });
+          cell.appendChild(infoBtn);
+        }
         cell.addEventListener('click', () => {
           bounce(cell);
           const nowSelected = toggleRequirement(zs, kind, item.key, noteArea);
@@ -1119,9 +1306,13 @@
 
       function renderKingdomSections() {
         refightGrid.innerHTML = '';
+        shopGrid.innerHTML = '';
         kingdomGrid.innerHTML = '';
         const q = search.value.trim().toLowerCase();
         const refights = q ? APC.REFIGHTS.filter(i => i.name.toLowerCase().includes(q)) : APC.REFIGHTS;
+        // Matched against each shop's own full name (e.g. "Lake Shop"), so a
+        // search never falls back to matching the kingdom it belongs to.
+        const shops = q ? APC.SHOPS.filter(i => i.name.toLowerCase().includes(q)) : APC.SHOPS;
         const kingdoms = q ? APC.KINGDOMS.filter(i => i.name.toLowerCase().includes(q)) : APC.KINGDOMS;
 
         if (!refights.length) {
@@ -1131,6 +1322,15 @@
           refightGrid.appendChild(empty);
         } else {
           refights.forEach(item => refightGrid.appendChild(buildPickerCell(item, 'refights', 'req-picker-item--refight')));
+        }
+
+        if (!shops.length) {
+          const empty = document.createElement('div');
+          empty.className = 'req-picker-empty';
+          empty.textContent = 'No matches';
+          shopGrid.appendChild(empty);
+        } else {
+          shops.forEach(item => shopGrid.appendChild(buildPickerCell(item, 'shops', 'req-picker-item--shop')));
         }
 
         if (!kingdoms.length) {
