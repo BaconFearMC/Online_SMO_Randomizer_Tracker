@@ -141,7 +141,8 @@
     .req-picker-reach-badge:hover { background: rgba(0,0,0,.8); }
 
     .req-picker-reach-panel {
-      grid-column: 1 / -1;
+      flex: 1 1 100%;
+      order: 99;
       margin-top: 10px;
       padding: 10px;
       border: 1px solid var(--border, #444);
@@ -184,23 +185,6 @@
       opacity: .75;
       padding: 4px 2px;
     }
-
-    /* "→ leads to <Kingdom>" picker on each loading-zone row (main Notes
-       view). Feeds the generated Reaching Kingdoms text above. */
-    .zone-leads-to {
-      width: 100%;
-      margin-top: 4px;
-      font-family: inherit;
-      font-size: .8rem;
-      padding: 4px 6px;
-      border-radius: 6px;
-      border: 1px solid var(--border, #444);
-      background: rgba(0,0,0,.3);
-      color: inherit;
-      box-sizing: border-box;
-      cursor: pointer;
-    }
-    .zone-leads-to:not([value=""]) { border-color: rgba(255,255,255,.35); }
   </style>
 </head>
 <body class="notes-page">
@@ -268,14 +252,27 @@
     }
 
     // "How do I reach <Kingdom>?" (Kingdom tab -> Reaching Kingdoms) is
-    // generated straight from every zone's "→ leads to" pick: one line per
-    // zone that points at `kingdomKey`, e.g. "Klepto in Lost goes to Cap".
+    // generated from the same per-zone Kingdom requirement you already pick
+    // via each zone's "+" button (Kingdom tab): tag a zone with the kingdom
+    // it leads to there, and it shows up here as e.g.
+    // "Klepto in Lost goes to Cap".
     function buildReachLines(kingdomKey) {
+      return buildRequirementLines('kingdoms', kingdomKey, ' goes to ');
+    }
+
+    // Generic reverse lookup: every zone that has {kind, key} picked as a
+    // requirement (Captures/Abilities/Refights/Shops/Kingdoms), one line
+    // each. `verb` lets Kingdoms read "goes to" while everything else
+    // defaults to "needs".
+    function buildRequirementLines(kind, key, verb) {
+      const item = APC.findItem(kind, key);
+      const targetName = item ? item.name : key;
       const lines = [];
       for (const [kingdom, data] of Object.entries(fullState.loading_zones)) {
         for (const [zone, zs] of Object.entries(data.zones)) {
-          if (zs.leadsTo === kingdomKey) {
-            lines.push(zoneDisplayName(kingdom, zone) + ' in ' + kingdomDisplayName(kingdom) + ' goes to ' + kingdomDisplayName(kingdomKey));
+          if (!Array.isArray(zs.requirements)) continue;
+          if (zs.requirements.some(r => r.kind === kind && r.key === key)) {
+            lines.push(zoneDisplayName(kingdom, zone) + ' in ' + kingdomDisplayName(kingdom) + (verb || ' needs ') + targetName);
           }
         }
       }
@@ -325,7 +322,7 @@
           // entries picked from the Abilities & Captures list (apc-data.js).
           // Their icons render above the location; their names are copied
           // into the note text but the text stays freely editable afterward.
-          result[kingdom].zones[zone] = { note:'', requirements:[], collapsed:false, num: zd.num, leadsTo:'' };
+          result[kingdom].zones[zone] = { note:'', requirements:[], collapsed:false, num: zd.num };
         }
       }
       return result;
@@ -392,7 +389,7 @@
       for (const kingdom of Object.values(fullState.loading_zones)) {
         for (const zone of Object.values(kingdom.zones)) {
           if (!Array.isArray(zone.requirements)) zone.requirements = [];
-          if (typeof zone.leadsTo !== 'string') zone.leadsTo = '';
+          delete zone.leadsTo;
           delete zone.icon;
           delete zone.icon2;
         }
@@ -927,37 +924,10 @@
       top.appendChild(nameLabel);
       row.appendChild(top);
 
-      // "→ leads to <Kingdom>" picker: marks which kingdom this loading
-      // zone actually drops you into. Purely structured data (not part of
-      // the freeform note) so the Kingdom tab's "How do I reach <Kingdom>?"
-      // panel can generate lines like "Klepto in Lost goes to Cap" from it.
-      const leadsToSelect = document.createElement('select');
-      leadsToSelect.className = 'zone-leads-to';
-      leadsToSelect.title = 'Which kingdom does this loading zone lead to?';
-      const noneOpt = document.createElement('option');
-      noneOpt.value = '';
-      noneOpt.textContent = '→ leads to…';
-      leadsToSelect.appendChild(noneOpt);
-      APC.KINGDOMS.forEach(k => {
-        const opt = document.createElement('option');
-        opt.value = k.key;
-        opt.textContent = '→ ' + k.name;
-        leadsToSelect.appendChild(opt);
-      });
-      leadsToSelect.value = zs.leadsTo || '';
-      if (zs.collapsed) leadsToSelect.style.display = 'none';
-      leadsToSelect.addEventListener('click', (e) => e.stopPropagation());
-      leadsToSelect.addEventListener('change', () => {
-        zs.leadsTo = leadsToSelect.value;
-        saveFullState();
-      });
-      row.appendChild(leadsToSelect);
-
       nameLabel.addEventListener('click', () => {
         zs.collapsed = !zs.collapsed;
         nameLabel.style.color = zs.collapsed ? '#888' : color;
         noteArea.style.display = zs.collapsed ? 'none' : '';
-        leadsToSelect.style.display = zs.collapsed ? 'none' : '';
         saveFullState();
       });
 
@@ -1238,24 +1208,33 @@
       kingdomCol.appendChild(kingdomTitle);
       kingdomCol.appendChild(kingdomGrid);
 
-      // "How do I reach <Kingdom>?" panel - hidden until a kingdom's ⓘ badge
-      // is clicked, then shows the generated list of zones whose "→ leads
-      // to" points at that kingdom, right under the grid.
+      // Info panel - hidden until a Refight/Shop/Kingdom's ⓘ badge is
+      // clicked, then shows the generated list of zones that have it
+      // picked as a requirement (via each zone's own "+" button),
+      // right under all three grids.
       const reachPanel = document.createElement('div');
       reachPanel.className = 'req-picker-reach-panel';
       reachPanel.style.display = 'none';
-      kingdomCol.appendChild(reachPanel);
 
-      function renderReachPanel(key) {
-        const item = APC.findItem('kingdoms', key);
+      function renderReachPanel(kind, key) {
+        const item = APC.findItem(kind, key);
         if (!item) return;
         reachPanel.innerHTML = '';
         reachPanel.style.display = '';
 
+        const questionText =
+          kind === 'kingdoms' ? 'How do I reach ' + item.name + ' Kingdom?' :
+          kind === 'refights' ? 'Which zones need the ' + item.name + '?' :
+          'Which zones need the ' + item.name + '?';
+        const emptyText =
+          kind === 'kingdoms'
+            ? 'No loading zone is tagged with this kingdom yet. On a zone in the main Notes view, use its + button → Kingdom tab to pick ' + item.name + '.'
+            : 'No loading zone has ' + item.name + ' picked as a requirement yet. Add it to a zone via its + button in the main Notes view.';
+
         const head = document.createElement('div');
         head.className = 'req-picker-reach-head';
         const label = document.createElement('span');
-        label.textContent = 'How do I reach ' + item.name + ' Kingdom?';
+        label.textContent = questionText;
         const closeBtn = document.createElement('button');
         closeBtn.type = 'button';
         closeBtn.className = 'req-picker-reach-close';
@@ -1266,7 +1245,7 @@
         head.appendChild(closeBtn);
         reachPanel.appendChild(head);
 
-        const lines = buildReachLines(key);
+        const lines = kind === 'kingdoms' ? buildReachLines(key) : buildRequirementLines(kind, key);
         const body = document.createElement('div');
         body.className = 'req-picker-reach-body';
         if (lines.length) {
@@ -1279,7 +1258,7 @@
         } else {
           const empty = document.createElement('div');
           empty.className = 'req-picker-reach-empty';
-          empty.textContent = 'No loading zone is marked as leading here yet. Set "→ leads to" on a zone in the main Notes view to add one.';
+          empty.textContent = emptyText;
           body.appendChild(empty);
         }
         reachPanel.appendChild(body);
@@ -1288,6 +1267,7 @@
       kingdomWrap.appendChild(refightCol);
       kingdomWrap.appendChild(shopCol);
       kingdomWrap.appendChild(kingdomCol);
+      kingdomWrap.appendChild(reachPanel);
       popup.appendChild(kingdomWrap);
 
       let activeKind = 'captures';
@@ -1356,16 +1336,19 @@
             cell.appendChild(pairImg);
           }
         }
-        // Reaching Kingdoms gets a small info badge that opens/edits the
-        // "How do I reach <Kingdom>?" note instead of toggling a requirement.
-        if (kind === 'kingdoms') {
+        // Kingdoms, Refights, and Shops each get a small info badge that
+        // opens the generated "who leads here / who needs this" panel
+        // instead of toggling a requirement.
+        if (kind === 'kingdoms' || kind === 'refights' || kind === 'shops') {
           const infoBtn = document.createElement('span');
           infoBtn.className = 'req-picker-reach-badge';
           infoBtn.textContent = 'ⓘ';
-          infoBtn.title = 'How do I reach ' + item.name + ' Kingdom?';
+          infoBtn.title = kind === 'kingdoms'
+            ? 'How do I reach ' + item.name + ' Kingdom?'
+            : 'Which zones need the ' + item.name + '?';
           infoBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            renderReachPanel(item.key);
+            renderReachPanel(kind, item.key);
           });
           cell.appendChild(infoBtn);
         }
