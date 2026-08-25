@@ -138,49 +138,6 @@
       text-align: left;
     }
     .req-picker-find-btn:hover { background: rgba(255,255,255,.12); }
-    .req-picker-chooser {
-      flex: 1 1 100%;
-      order: -1;
-      margin-bottom: 10px;
-      padding: 10px;
-      border: 1px solid var(--border, #444);
-      border-radius: 8px;
-      background: rgba(0,0,0,.25);
-      display: flex;
-      flex-wrap: wrap;
-      gap: 14px;
-    }
-    .req-picker-chooser-group { min-width: 140px; flex: 1; }
-    .req-picker-chooser-group-title {
-      font-size: .75rem;
-      font-weight: 600;
-      opacity: .75;
-      margin-bottom: 6px;
-      text-transform: uppercase;
-      letter-spacing: .03em;
-    }
-    .req-picker-chooser-list {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-      max-height: 180px;
-      overflow-y: auto;
-    }
-    .req-picker-chooser-item {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 4px 6px;
-      border: none;
-      border-radius: 6px;
-      background: transparent;
-      color: inherit;
-      font-size: .8rem;
-      text-align: left;
-      cursor: pointer;
-    }
-    .req-picker-chooser-item:hover { background: rgba(255,255,255,.1); }
-    .req-picker-chooser-item img { width: 18px; height: 18px; object-fit: contain; flex-shrink: 0; }
 
     .req-picker-reach-panel {
       flex: 1 1 100%;
@@ -226,6 +183,75 @@
       font-style: italic;
       opacity: .75;
       padding: 4px 2px;
+    }
+
+    /* ── Find mode: the pre-existing Refight/Shop/Kingdom buttons shake
+       and dim slightly to invite a click, instead of a second duplicate
+       row of buttons being added above them. ─────────────────────────── */
+    @keyframes req-picker-find-shake {
+      0%, 100% { transform: translateX(0) rotate(0deg); }
+      20%      { transform: translateX(-2px) rotate(-1deg); }
+      40%      { transform: translateX(2px) rotate(1deg); }
+      60%      { transform: translateX(-2px) rotate(-1deg); }
+      80%      { transform: translateX(2px) rotate(1deg); }
+    }
+    .req-picker-item--find-target {
+      position: relative;
+      animation: req-picker-find-shake .45s ease-in-out infinite;
+      filter: grayscale(10%);
+      cursor: pointer;
+    }
+    .req-picker-item--find-target::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background: rgba(120,120,120,.1);
+      pointer-events: none;
+    }
+    .req-picker-find-btn.active {
+      background: rgba(255,255,255,.16);
+      border-color: rgba(255,255,255,.4);
+    }
+
+    /* ── Find results pop-up ──────────────────────────────────────────
+       A real pop-up (not an inline panel) showing which zones have the
+       clicked Refight/Shop/Kingdom picked as a requirement. */
+    .req-find-popup-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 10000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: rgba(0,0,0,0);
+      opacity: 0;
+      pointer-events: none;
+      transition: background .3s ease, opacity .25s ease;
+    }
+    .req-find-popup-overlay.active {
+      background: rgba(0,0,0,.72);
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .req-find-popup {
+      width: 100%;
+      max-width: 380px;
+      max-height: 70vh;
+      overflow-y: auto;
+      padding: 14px;
+      border: 1px solid var(--border, #444);
+      border-radius: 10px;
+      background: var(--bg, #1a1a22);
+      box-shadow: 0 10px 40px rgba(0,0,0,.55);
+      transform: scale(.92);
+      opacity: 0;
+      transition: transform .3s cubic-bezier(.34,1.56,.64,1), opacity .25s ease;
+    }
+    .req-find-popup-overlay.active .req-find-popup {
+      transform: scale(1);
+      opacity: 1;
     }
   </style>
 </head>
@@ -1251,72 +1277,57 @@
       kingdomCol.appendChild(kingdomGrid);
 
       // ── Find Entries (Kingdom tab) ───────────────────────────────────
-      // One button, one chooser: pick any Kingdom/Refight/Shop and see
-      // every zone that has it picked as a requirement - e.g. click
-      // "Find entries…", then click Luncheon, and every zone tagged with
-      // Luncheon (via its own "+" button) shows up below.
+      // One button - no duplicate button list. Click "Find", the existing
+      // Refight/Shop/Kingdom buttons below shake and dim slightly, then
+      // clicking one of THOSE (instead of adding a second set of buttons
+      // above them) pops up every zone that has it picked as a requirement.
+      let findModeActive = false;
+
       const findBtn = document.createElement('button');
       findBtn.type = 'button';
       findBtn.className = 'req-picker-find-btn';
-      findBtn.textContent = '🔍 Find entries…';
+      findBtn.textContent = '🔍 Find';
 
-      const chooserWrap = document.createElement('div');
-      chooserWrap.className = 'req-picker-chooser';
-      chooserWrap.style.display = 'none';
-
-      function buildChooserGroup(title, items, kind) {
-        const group = document.createElement('div');
-        group.className = 'req-picker-chooser-group';
-        const h = document.createElement('div');
-        h.className = 'req-picker-chooser-group-title';
-        h.textContent = title;
-        group.appendChild(h);
-        const list = document.createElement('div');
-        list.className = 'req-picker-chooser-list';
-        items.forEach(item => {
-          const btn = document.createElement('button');
-          btn.type = 'button';
-          btn.className = 'req-picker-chooser-item';
-          const img = document.createElement('img');
-          img.src = item.src;
-          img.alt = item.name;
-          const label = document.createElement('span');
-          label.textContent = item.name;
-          btn.appendChild(img);
-          btn.appendChild(label);
-          btn.addEventListener('click', () => renderReachPanel(kind, item.key));
-          list.appendChild(btn);
-        });
-        group.appendChild(list);
-        return group;
+      function setFindMode(active) {
+        findModeActive = active;
+        findBtn.classList.toggle('active', active);
+        findBtn.textContent = active ? '🔍 Tap a button below…' : '🔍 Find';
+        applyFindTargetStyling();
       }
 
-      chooserWrap.appendChild(buildChooserGroup('Kingdoms', APC.KINGDOMS, 'kingdoms'));
-      chooserWrap.appendChild(buildChooserGroup('Refights', APC.REFIGHTS, 'refights'));
-      chooserWrap.appendChild(buildChooserGroup('Shops', APC.SHOPS, 'shops'));
+      // Marks/unmarks the already-existing picker cells (not a new set of
+      // buttons) so they shake + turn ~10% grey while find mode is on.
+      // Re-run after every renderKingdomSections() rebuild too, since that
+      // wipes and rebuilds the grids from scratch (e.g. on search).
+      function applyFindTargetStyling() {
+        [refightGrid, shopGrid, kingdomGrid].forEach(g => {
+          g.querySelectorAll('.req-picker-item').forEach(cell => {
+            cell.classList.toggle('req-picker-item--find-target', findModeActive);
+          });
+        });
+      }
 
       findBtn.addEventListener('click', () => {
-        const willShow = chooserWrap.style.display === 'none';
-        chooserWrap.style.display = willShow ? '' : 'none';
-        if (!willShow) reachPanel.style.display = 'none';
+        bounce(findBtn);
+        setFindMode(!findModeActive);
       });
 
-      // Results panel - hidden until an item in the chooser above is
-      // clicked, then shows the generated list of zones that have it
-      // picked as a requirement (via each zone's own "+" button).
-      const reachPanel = document.createElement('div');
-      reachPanel.className = 'req-picker-reach-panel';
-      reachPanel.style.display = 'none';
-
-      function renderReachPanel(kind, key) {
+      // Pops up every zone that has this Refight/Shop/Kingdom picked as a
+      // requirement (or, for a Kingdom, how to reach it).
+      function showFindResultsPopup(kind, key) {
         const item = APC.findItem(kind, key);
         if (!item) return;
-        reachPanel.innerHTML = '';
-        reachPanel.style.display = '';
+        document.querySelectorAll('.req-find-popup-overlay').forEach(p => p.remove());
+
+        const popOverlay = document.createElement('div');
+        popOverlay.className = 'req-find-popup-overlay';
+        const pop = document.createElement('div');
+        pop.className = 'req-find-popup';
+        pop.addEventListener('click', (e) => e.stopPropagation());
+        popOverlay.appendChild(pop);
 
         const questionText =
           kind === 'kingdoms' ? 'How do I reach ' + item.name + ' Kingdom?' :
-          kind === 'refights' ? 'Which zones need the ' + item.name + '?' :
           'Which zones need the ' + item.name + '?';
         const emptyText =
           kind === 'kingdoms'
@@ -1332,10 +1343,10 @@
         closeBtn.className = 'req-picker-reach-close';
         closeBtn.textContent = '✕';
         closeBtn.title = 'Close';
-        closeBtn.addEventListener('click', () => { reachPanel.style.display = 'none'; });
+        closeBtn.addEventListener('click', () => closeFindPopup());
         head.appendChild(label);
         head.appendChild(closeBtn);
-        reachPanel.appendChild(head);
+        pop.appendChild(head);
 
         const lines = kind === 'kingdoms' ? buildReachLines(key) : buildRequirementLines(kind, key);
         const body = document.createElement('div');
@@ -1353,15 +1364,27 @@
           empty.textContent = emptyText;
           body.appendChild(empty);
         }
-        reachPanel.appendChild(body);
+        pop.appendChild(body);
+
+        document.body.appendChild(popOverlay);
+
+        function onPopKeyDown(e) { if (e.key === 'Escape') closeFindPopup(); }
+        function closeFindPopup() {
+          popOverlay.classList.remove('active');
+          document.removeEventListener('keydown', onPopKeyDown);
+          setTimeout(() => popOverlay.remove(), 300);
+        }
+        popOverlay.addEventListener('click', (e) => { if (e.target === popOverlay) closeFindPopup(); });
+        document.addEventListener('keydown', onPopKeyDown);
+
+        void popOverlay.offsetWidth;
+        requestAnimationFrame(() => popOverlay.classList.add('active'));
       }
 
       kingdomWrap.appendChild(findBtn);
-      kingdomWrap.appendChild(chooserWrap);
       kingdomWrap.appendChild(refightCol);
       kingdomWrap.appendChild(shopCol);
       kingdomWrap.appendChild(kingdomCol);
-      kingdomWrap.appendChild(reachPanel);
       popup.appendChild(kingdomWrap);
 
       let activeKind = 'captures';
@@ -1431,6 +1454,14 @@
           }
         }
         cell.addEventListener('click', () => {
+          // Find mode repurposes this same, already-on-screen button: a
+          // click looks the item up instead of adding/removing it as a
+          // requirement on the currently open zone.
+          if (findModeActive && (kind === 'refights' || kind === 'shops' || kind === 'kingdoms')) {
+            setFindMode(false);
+            showFindResultsPopup(kind, item.key);
+            return;
+          }
           bounce(cell);
           const nowSelected = toggleRequirement(zs, kind, item.key, noteArea);
           cell.classList.toggle('selected', nowSelected);
@@ -1476,6 +1507,8 @@
         } else {
           kingdoms.forEach(item => kingdomGrid.appendChild(buildPickerCell(item, 'kingdoms', 'req-picker-item--kingdom')));
         }
+
+        applyFindTargetStyling();
       }
 
       function renderGrid() {
@@ -1511,6 +1544,7 @@
         const toIdx = TAB_ORDER.indexOf(kind);
         const dir = toIdx > fromIdx ? 1 : -1;
         activeKind = kind;
+        if (kind !== 'kingdom' && findModeActive) setFindMode(false);
         tabCaptures.classList.toggle('active', kind === 'captures');
         tabAbilities.classList.toggle('active', kind === 'abilities');
         tabKingdom.classList.toggle('active', kind === 'kingdom');
