@@ -91,9 +91,9 @@
     .req-picker-kingdom-wrap { flex-wrap: wrap; }
     .req-picker-kingdom-col { min-width: 180px; }
 
-    /* Fallback in case style.css doesn't already position these relatively -
-       needed so the shop's paired-kingdom icon and the kingdom's reach
-       badge (both position:absolute) stay anchored to their own cell. */
+    /* Fallback in case style.css doesn't already position this relatively -
+       needed so a shop's paired-kingdom icon (position:absolute) stays
+       anchored to its own cell. */
     .req-picker-item { position: relative; }
 
     /* ── Shops (Kingdom tab, "Shops" column) ─────────────────────────
@@ -121,24 +121,66 @@
     }
     .zone-req-icon--shop { border-radius: 6px; }
 
-    /* Small "how do I reach this kingdom" info badge on each kingdom cell
-       in the Reaching Kingdoms column. Stops propagation so clicking it
-       opens the reach panel instead of toggling the kingdom requirement. */
-    .req-picker-reach-badge {
-      position: absolute;
-      top: 2px;
-      right: 2px;
-      width: 16px;
-      height: 16px;
-      line-height: 16px;
-      font-size: 11px;
-      text-align: center;
-      border-radius: 50%;
-      background: rgba(0,0,0,.55);
-      color: #e6e6ee;
+    /* ── Find Entries (Kingdom tab) ──────────────────────────────────
+       One button + chooser that replaces the old per-cell info badges. */
+    .req-picker-find-btn {
+      flex: 1 1 100%;
+      order: -1;
+      margin-bottom: 8px;
+      padding: 8px 12px;
+      font-size: .85rem;
+      font-weight: 600;
+      border-radius: 8px;
+      border: 1px solid var(--border, #444);
+      background: rgba(255,255,255,.06);
+      color: inherit;
+      cursor: pointer;
+      text-align: left;
+    }
+    .req-picker-find-btn:hover { background: rgba(255,255,255,.12); }
+    .req-picker-chooser {
+      flex: 1 1 100%;
+      order: -1;
+      margin-bottom: 10px;
+      padding: 10px;
+      border: 1px solid var(--border, #444);
+      border-radius: 8px;
+      background: rgba(0,0,0,.25);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+    }
+    .req-picker-chooser-group { min-width: 140px; flex: 1; }
+    .req-picker-chooser-group-title {
+      font-size: .75rem;
+      font-weight: 600;
+      opacity: .75;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: .03em;
+    }
+    .req-picker-chooser-list {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      max-height: 180px;
+      overflow-y: auto;
+    }
+    .req-picker-chooser-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 6px;
+      border: none;
+      border-radius: 6px;
+      background: transparent;
+      color: inherit;
+      font-size: .8rem;
+      text-align: left;
       cursor: pointer;
     }
-    .req-picker-reach-badge:hover { background: rgba(0,0,0,.8); }
+    .req-picker-chooser-item:hover { background: rgba(255,255,255,.1); }
+    .req-picker-chooser-item img { width: 18px; height: 18px; object-fit: contain; flex-shrink: 0; }
 
     .req-picker-reach-panel {
       flex: 1 1 100%;
@@ -1208,10 +1250,60 @@
       kingdomCol.appendChild(kingdomTitle);
       kingdomCol.appendChild(kingdomGrid);
 
-      // Info panel - hidden until a Refight/Shop/Kingdom's ⓘ badge is
+      // ── Find Entries (Kingdom tab) ───────────────────────────────────
+      // One button, one chooser: pick any Kingdom/Refight/Shop and see
+      // every zone that has it picked as a requirement - e.g. click
+      // "Find entries…", then click Luncheon, and every zone tagged with
+      // Luncheon (via its own "+" button) shows up below.
+      const findBtn = document.createElement('button');
+      findBtn.type = 'button';
+      findBtn.className = 'req-picker-find-btn';
+      findBtn.textContent = '🔍 Find entries…';
+
+      const chooserWrap = document.createElement('div');
+      chooserWrap.className = 'req-picker-chooser';
+      chooserWrap.style.display = 'none';
+
+      function buildChooserGroup(title, items, kind) {
+        const group = document.createElement('div');
+        group.className = 'req-picker-chooser-group';
+        const h = document.createElement('div');
+        h.className = 'req-picker-chooser-group-title';
+        h.textContent = title;
+        group.appendChild(h);
+        const list = document.createElement('div');
+        list.className = 'req-picker-chooser-list';
+        items.forEach(item => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'req-picker-chooser-item';
+          const img = document.createElement('img');
+          img.src = item.src;
+          img.alt = item.name;
+          const label = document.createElement('span');
+          label.textContent = item.name;
+          btn.appendChild(img);
+          btn.appendChild(label);
+          btn.addEventListener('click', () => renderReachPanel(kind, item.key));
+          list.appendChild(btn);
+        });
+        group.appendChild(list);
+        return group;
+      }
+
+      chooserWrap.appendChild(buildChooserGroup('Kingdoms', APC.KINGDOMS, 'kingdoms'));
+      chooserWrap.appendChild(buildChooserGroup('Refights', APC.REFIGHTS, 'refights'));
+      chooserWrap.appendChild(buildChooserGroup('Shops', APC.SHOPS, 'shops'));
+
+      findBtn.addEventListener('click', () => {
+        const willShow = chooserWrap.style.display === 'none';
+        chooserWrap.style.display = willShow ? '' : 'none';
+        if (!willShow) reachPanel.style.display = 'none';
+      });
+
+      // Results panel - hidden until an item in the chooser above is
       // clicked, then shows the generated list of zones that have it
-      // picked as a requirement (via each zone's own "+" button),
-      // right under all three grids.
+      // picked as a requirement (via each zone's own "+" button).
       const reachPanel = document.createElement('div');
       reachPanel.className = 'req-picker-reach-panel';
       reachPanel.style.display = 'none';
@@ -1264,6 +1356,8 @@
         reachPanel.appendChild(body);
       }
 
+      kingdomWrap.appendChild(findBtn);
+      kingdomWrap.appendChild(chooserWrap);
       kingdomWrap.appendChild(refightCol);
       kingdomWrap.appendChild(shopCol);
       kingdomWrap.appendChild(kingdomCol);
@@ -1335,22 +1429,6 @@
             pairImg.alt = pairItem.name;
             cell.appendChild(pairImg);
           }
-        }
-        // Kingdoms, Refights, and Shops each get a small info badge that
-        // opens the generated "who leads here / who needs this" panel
-        // instead of toggling a requirement.
-        if (kind === 'kingdoms' || kind === 'refights' || kind === 'shops') {
-          const infoBtn = document.createElement('span');
-          infoBtn.className = 'req-picker-reach-badge';
-          infoBtn.textContent = 'ⓘ';
-          infoBtn.title = kind === 'kingdoms'
-            ? 'How do I reach ' + item.name + ' Kingdom?'
-            : 'Which zones need the ' + item.name + '?';
-          infoBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            renderReachPanel(kind, item.key);
-          });
-          cell.appendChild(infoBtn);
         }
         cell.addEventListener('click', () => {
           bounce(cell);
