@@ -91,14 +91,30 @@
     .req-picker-kingdom-wrap { flex-wrap: wrap; }
     .req-picker-kingdom-col { min-width: 180px; }
 
-    /* Fallback so the popup contains and scrolls its own content instead of
-       overflowing past the bottom of the viewport - with three kingdom-tab
-       columns (Refights/Shops/Reaching Kingdoms) the item list can run
-       taller than the screen, and without this the extra rows just get cut
-       off below the visible window with no way to reach them. */
+    /* No scrolling: everything must fit. Shops is locked to a 3x3 grid and
+       every kingdom-tab cell is shrunk so the whole popup fits on screen
+       without needing scroll or a taller max-height. */
     .req-picker-popup {
       max-height: 90vh;
-      overflow-y: auto;
+      overflow: hidden;
+    }
+    #shop-grid-force-3x3.req-picker-grid--sub {
+      grid-template-columns: repeat(3, 1fr) !important;
+      grid-auto-rows: 1fr;
+    }
+    .req-picker-kingdom-wrap .req-picker-item {
+      padding: 4px !important;
+      font-size: .7rem !important;
+    }
+    .req-picker-kingdom-wrap .req-picker-item img {
+      width: 26px !important;
+      height: 26px !important;
+    }
+    .req-picker-item-pair-icon {
+      width: 9px !important;
+      height: 9px !important;
+      right: -2px !important;
+      bottom: -2px !important;
     }
 
     /* Fallback in case style.css doesn't already position this relatively -
@@ -1368,6 +1384,7 @@
       shopTitle.textContent = 'Shops';
       const shopGrid = document.createElement('div');
       shopGrid.className = 'req-picker-grid req-picker-grid--sub';
+      shopGrid.id = 'shop-grid-force-3x3';
       shopCol.appendChild(shopTitle);
       shopCol.appendChild(shopGrid);
 
