@@ -171,12 +171,35 @@
       gap: 4px;
     }
     .req-picker-reach-line {
-      font-size: .85rem;
-      padding: 6px 8px;
-      border-radius: 6px;
-      border: 1px solid var(--border, #444);
-      background: rgba(0,0,0,.3);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: .82rem;
+      padding: 7px 9px;
+      border-radius: 8px;
+      border: 1px solid color-mix(in srgb, var(--line-color, #666) 45%, var(--border, #444));
+      background: linear-gradient(135deg,
+        color-mix(in srgb, var(--line-color, #666) 20%, transparent),
+        color-mix(in srgb, var(--line-color, #666) 6%, transparent));
       color: inherit;
+    }
+    .req-picker-reach-line-icon {
+      width: 22px;
+      height: 22px;
+      object-fit: contain;
+      flex-shrink: 0;
+      border-radius: 5px;
+      background: rgba(0,0,0,.35);
+      padding: 2px;
+      box-shadow: 0 0 0 1px color-mix(in srgb, var(--line-color, #666) 55%, transparent);
+    }
+    .req-picker-reach-line-icon--to { margin-left: auto; }
+    .req-picker-reach-line-text { flex: 1; line-height: 1.25; }
+    .req-picker-reach-line-kingdom { opacity: .7; }
+    .req-picker-reach-line-arrow {
+      opacity: .55;
+      font-size: .75rem;
+      flex-shrink: 0;
     }
     .req-picker-reach-empty {
       font-size: .8rem;
@@ -198,7 +221,7 @@
     .req-picker-item--find-target {
       position: relative;
       animation: req-picker-find-shake .45s ease-in-out infinite;
-      filter: grayscale(10%);
+      filter: grayscale(25%);
       cursor: pointer;
     }
     .req-picker-item--find-target::after {
@@ -237,14 +260,21 @@
     }
     .req-find-popup {
       width: 100%;
-      max-width: 380px;
-      max-height: 70vh;
+      max-width: 400px;
+      max-height: 74vh;
       overflow-y: auto;
-      padding: 14px;
-      border: 1px solid var(--border, #444);
-      border-radius: 10px;
-      background: var(--bg, #1a1a22);
-      box-shadow: 0 10px 40px rgba(0,0,0,.55);
+      padding: 0;
+      border: 1px solid color-mix(in srgb, var(--popup-color, #888) 55%, var(--border, #444));
+      border-radius: 14px;
+      background:
+        radial-gradient(120% 100% at 50% 0%,
+          color-mix(in srgb, var(--popup-color, #888) 16%, transparent),
+          transparent 60%),
+        var(--bg, #1a1a22);
+      box-shadow:
+        0 10px 40px rgba(0,0,0,.55),
+        0 0 0 1px color-mix(in srgb, var(--popup-color, #888) 25%, transparent),
+        0 0 30px color-mix(in srgb, var(--popup-color, #888) 22%, transparent);
       transform: scale(.92);
       opacity: 0;
       transition: transform .3s cubic-bezier(.34,1.56,.64,1), opacity .25s ease;
@@ -252,6 +282,46 @@
     .req-find-popup-overlay.active .req-find-popup {
       transform: scale(1);
       opacity: 1;
+    }
+    .req-find-popup-head {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 14px 12px;
+      border-bottom: 1px solid color-mix(in srgb, var(--popup-color, #888) 35%, var(--border, #444));
+    }
+    .req-find-popup-head-icon {
+      width: 34px;
+      height: 34px;
+      object-fit: contain;
+      flex-shrink: 0;
+      padding: 4px;
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--popup-color, #888) 22%, rgba(0,0,0,.3));
+      box-shadow: 0 0 0 1px color-mix(in srgb, var(--popup-color, #888) 55%, transparent);
+    }
+    .req-find-popup-head-text {
+      flex: 1;
+      font-size: .92rem;
+      font-weight: 600;
+      line-height: 1.25;
+    }
+    .req-find-popup-close {
+      background: none;
+      border: none;
+      color: inherit;
+      cursor: pointer;
+      font-size: .85rem;
+      opacity: .65;
+      flex-shrink: 0;
+      padding: 4px;
+    }
+    .req-find-popup-close:hover { opacity: 1; }
+    .req-find-popup-body {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 12px 14px 14px;
     }
   </style>
 </head>
@@ -329,18 +399,30 @@
     }
 
     // Generic reverse lookup: every zone that has {kind, key} picked as a
-    // requirement (Captures/Abilities/Refights/Shops/Kingdoms), one line
-    // each. `verb` lets Kingdoms read "goes to" while everything else
+    // requirement (Captures/Abilities/Refights/Shops/Kingdoms), one row of
+    // data each (not a flat string) so the find pop-up can render it as a
+    // from-icon/label/to-icon line, tinted with the zone's own kingdom
+    // color. `verb` lets Kingdoms read "goes to" while everything else
     // defaults to "needs".
     function buildRequirementLines(kind, key, verb) {
       const item = APC.findItem(kind, key);
       const targetName = item ? item.name : key;
+      const targetIcon = item ? item.src : null;
       const lines = [];
       for (const [kingdom, data] of Object.entries(fullState.loading_zones)) {
         for (const [zone, zs] of Object.entries(data.zones)) {
           if (!Array.isArray(zs.requirements)) continue;
           if (zs.requirements.some(r => r.kind === kind && r.key === key)) {
-            lines.push(zoneDisplayName(kingdom, zone) + ' in ' + kingdomDisplayName(kingdom) + (verb || ' needs ') + targetName);
+            const tpl = LOADING_ZONES_TEMPLATE[kingdom] || {};
+            lines.push({
+              fromIcon: tpl.icon ? 'assets/' + tpl.icon : null,
+              fromColor: tpl.color || null,
+              fromLabel: zoneDisplayName(kingdom, zone),
+              kingdomLabel: kingdomDisplayName(kingdom),
+              verb: verb || ' needs ',
+              toIcon: targetIcon,
+              toLabel: targetName,
+            });
           }
         }
       }
@@ -1313,16 +1395,28 @@
       });
 
       // Pops up every zone that has this Refight/Shop/Kingdom picked as a
-      // requirement (or, for a Kingdom, how to reach it).
+      // requirement (or, for a Kingdom, how to reach it). Tinted with the
+      // clicked item's own color, with each result row further tinted by
+      // that particular zone's kingdom color (e.g. a Snow zone's row reads
+      // orange, since Snow's kingdom color is orange).
       function showFindResultsPopup(kind, key) {
         const item = APC.findItem(kind, key);
         if (!item) return;
         document.querySelectorAll('.req-find-popup-overlay').forEach(p => p.remove());
 
+        // Kingdoms carry item.color directly; Refights/Shops carry a
+        // [c1, c2] pair (see .req-picker-item--shop above) - c1 reads as
+        // "this item's" color. Anything else falls back to a neutral grey.
+        const popupColor =
+          (kind === 'kingdoms' && item.color) ? item.color :
+          ((kind === 'refights' || kind === 'shops') && item.colors) ? item.colors[0] :
+          '#8a8a96';
+
         const popOverlay = document.createElement('div');
         popOverlay.className = 'req-find-popup-overlay';
         const pop = document.createElement('div');
         pop.className = 'req-find-popup';
+        pop.style.setProperty('--popup-color', popupColor);
         pop.addEventListener('click', (e) => e.stopPropagation());
         popOverlay.appendChild(pop);
 
@@ -1335,28 +1429,67 @@
             : 'No loading zone has ' + item.name + ' picked as a requirement yet. Add it to a zone via its + button in the main Notes view.';
 
         const head = document.createElement('div');
-        head.className = 'req-picker-reach-head';
-        const label = document.createElement('span');
+        head.className = 'req-find-popup-head';
+        const headIcon = document.createElement('img');
+        headIcon.className = 'req-find-popup-head-icon';
+        headIcon.src = item.src;
+        headIcon.alt = item.name;
+        const label = document.createElement('div');
+        label.className = 'req-find-popup-head-text';
         label.textContent = questionText;
         const closeBtn = document.createElement('button');
         closeBtn.type = 'button';
-        closeBtn.className = 'req-picker-reach-close';
+        closeBtn.className = 'req-find-popup-close';
         closeBtn.textContent = '✕';
         closeBtn.title = 'Close';
         closeBtn.addEventListener('click', () => closeFindPopup());
+        head.appendChild(headIcon);
         head.appendChild(label);
         head.appendChild(closeBtn);
         pop.appendChild(head);
 
         const lines = kind === 'kingdoms' ? buildReachLines(key) : buildRequirementLines(kind, key);
         const body = document.createElement('div');
-        body.className = 'req-picker-reach-body';
+        body.className = 'req-find-popup-body';
         if (lines.length) {
           lines.forEach(line => {
-            const p = document.createElement('div');
-            p.className = 'req-picker-reach-line';
-            p.textContent = line;
-            body.appendChild(p);
+            const row = document.createElement('div');
+            row.className = 'req-picker-reach-line';
+            row.style.setProperty('--line-color', line.fromColor || popupColor);
+
+            // From icon (left): the zone's own kingdom.
+            if (line.fromIcon) {
+              const fromImg = document.createElement('img');
+              fromImg.className = 'req-picker-reach-line-icon req-picker-reach-line-icon--from';
+              fromImg.src = line.fromIcon;
+              fromImg.alt = line.kingdomLabel;
+              row.appendChild(fromImg);
+            }
+
+            const text = document.createElement('span');
+            text.className = 'req-picker-reach-line-text';
+            const kingdomSpan = document.createElement('span');
+            kingdomSpan.className = 'req-picker-reach-line-kingdom';
+            kingdomSpan.textContent = ' (' + line.kingdomLabel + ')';
+            text.textContent = line.fromLabel;
+            text.appendChild(kingdomSpan);
+            row.appendChild(text);
+
+            const arrow = document.createElement('span');
+            arrow.className = 'req-picker-reach-line-arrow';
+            arrow.textContent = '→';
+            row.appendChild(arrow);
+
+            // To icon (right): the requirement/target itself.
+            if (line.toIcon) {
+              const toImg = document.createElement('img');
+              toImg.className = 'req-picker-reach-line-icon req-picker-reach-line-icon--to';
+              toImg.src = line.toIcon;
+              toImg.alt = line.toLabel;
+              row.appendChild(toImg);
+            }
+
+            body.appendChild(row);
           });
         } else {
           const empty = document.createElement('div');
