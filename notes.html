@@ -91,6 +91,16 @@
     .req-picker-kingdom-wrap { flex-wrap: wrap; }
     .req-picker-kingdom-col { min-width: 180px; }
 
+    /* Fallback so the popup contains and scrolls its own content instead of
+       overflowing past the bottom of the viewport - with three kingdom-tab
+       columns (Refights/Shops/Reaching Kingdoms) the item list can run
+       taller than the screen, and without this the extra rows just get cut
+       off below the visible window with no way to reach them. */
+    .req-picker-popup {
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
     /* Fallback in case style.css doesn't already position this relatively -
        needed so a shop's paired-kingdom icon (position:absolute) stays
        anchored to its own cell. */
@@ -109,10 +119,10 @@
     }
     .req-picker-item-pair-icon {
       position: absolute;
-      right: -4px;
-      bottom: -4px;
-      width: 18px;
-      height: 18px;
+      right: -3px;
+      bottom: -3px;
+      width: 12px;
+      height: 12px;
       border-radius: 50%;
       border: 1px solid rgba(0,0,0,.5);
       background: #1a1a22;
