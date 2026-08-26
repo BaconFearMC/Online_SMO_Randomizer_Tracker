@@ -95,8 +95,10 @@
        locked to 3x3, and every kingdom-tab cell shrunk down so the whole
        popup fits on screen without needing scroll. */
     .req-picker-popup {
-      max-height: 90vh;
+      max-height: 94vh;
       overflow: hidden;
+      width: min(1320px, 96vw) !important;
+      max-width: 96vw !important;
     }
     #refight-grid-force-3x2.req-picker-grid--sub,
     #shop-grid-force-3x3.req-picker-grid--sub {
@@ -116,6 +118,19 @@
        anchored to its own cell. */
     .req-picker-item { position: relative; }
 
+    /* Refight/Shop headers: a Zone only ever has exactly one real Refight
+       and one real Shop leading into it in-game, so selecting a new one
+       replaces whichever was picked before (see the exclusive-select logic
+       in buildPickerCell) - this hint just makes that visible in the UI
+       instead of it being a silent behavior difference from every other
+       (multi-select) column. */
+    .req-picker-kingdom-col-hint {
+      font-weight: 400;
+      font-size: .78em;
+      opacity: .6;
+      margin-left: 4px;
+    }
+
     /* ── Shops (Kingdom tab, "Shops" column) ─────────────────────────
        Reuses the refight-style gradient ring via --refight-c1/--refight-c2
        (set per-item in JS: [kingdom color, gold]) so a Shop reads as its
@@ -130,17 +145,18 @@
     .req-picker-item-pair-icon {
       display: block !important;
       position: absolute !important;
-      right: -2px !important;
-      bottom: -2px !important;
-      width: 64px !important;
-      height: 64px !important;
-      min-width: 64px !important;
-      min-height: 64px !important;
+      right: -6% !important;
+      bottom: -6% !important;
+      width: 58% !important;
+      height: 58% !important;
+      aspect-ratio: 1 / 1;
+      min-width: 0 !important;
+      min-height: 0 !important;
       max-width: none !important;
       max-height: none !important;
       flex-shrink: 0 !important;
       border-radius: 50% !important;
-      border: 1px solid rgba(0,0,0,.6) !important;
+      border: 2px solid rgba(0,0,0,.6) !important;
       background: #1a1a22 !important;
       object-fit: contain !important;
       pointer-events: none !important;
@@ -1372,7 +1388,7 @@
       refightCol.className = 'req-picker-kingdom-col';
       const refightTitle = document.createElement('div');
       refightTitle.className = 'req-picker-kingdom-col-title';
-      refightTitle.textContent = 'Refights';
+      refightTitle.innerHTML = 'Refight <span class="req-picker-kingdom-col-hint">(only one applies)</span>';
       const refightGrid = document.createElement('div');
       refightGrid.className = 'req-picker-grid req-picker-grid--sub';
       refightGrid.id = 'refight-grid-force-3x2';
@@ -1387,7 +1403,7 @@
       shopCol.className = 'req-picker-kingdom-col';
       const shopTitle = document.createElement('div');
       shopTitle.className = 'req-picker-kingdom-col-title';
-      shopTitle.textContent = 'Shops';
+      shopTitle.innerHTML = 'Shop <span class="req-picker-kingdom-col-hint">(only one applies)</span>';
       const shopGrid = document.createElement('div');
       shopGrid.className = 'req-picker-grid req-picker-grid--sub';
       shopGrid.id = 'shop-grid-force-3x3';
@@ -1643,6 +1659,25 @@
             return;
           }
           bounce(cell);
+          // A zone only ever has exactly one real Refight and one real Shop
+          // leading into it in-game (unlike Captures/Abilities/Reaching
+          // Kingdoms, where several can genuinely be required together), so
+          // these two behave like a radio group: picking a new one clears
+          // out any previous pick of the same kind instead of stacking.
+          if (kind === 'refights' || kind === 'shops') {
+            const already = zs.requirements.some(r => r.kind === kind && r.key === item.key);
+            if (!already) {
+              zs.requirements
+                .filter(r => r.kind === kind)
+                .forEach(r => {
+                  const prevText = requirementDisplayText(r.kind, r.key);
+                  if (prevText) removeRequirementText(noteArea, prevText);
+                });
+              zs.requirements = zs.requirements.filter(r => r.kind !== kind);
+              const siblingGrid = kind === 'refights' ? refightGrid : shopGrid;
+              siblingGrid.querySelectorAll('.req-picker-item.selected').forEach(el => el.classList.remove('selected'));
+            }
+          }
           const nowSelected = toggleRequirement(zs, kind, item.key, noteArea);
           cell.classList.toggle('selected', nowSelected);
           onChange();
