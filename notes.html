@@ -428,6 +428,135 @@
       gap: 8px;
       padding: 16px 20px 20px;
     }
+
+    /* ── Bigger, more visible icons in the Shop "Items For Sale" picker
+       (the only place all 52 Captures / 21 Abilities show at once) ──── */
+    .req-picker-popup--shop-sale .req-picker-item {
+      padding: 8px !important;
+    }
+    .req-picker-popup--shop-sale .req-picker-item img {
+      width: 68px !important;
+      height: 68px !important;
+      max-width: none !important;
+      max-height: none !important;
+      object-fit: contain;
+    }
+    .req-picker-popup--shop-sale .req-picker-item span {
+      font-size: .82rem !important;
+      line-height: 1.2;
+    }
+
+    /* ── Notes-picker Captures tab: regular grid on the left, "One-Time
+       Captures" column on the right past a divider line ─────────────── */
+    .req-picker-captures-wrap {
+      display: flex;
+      align-items: stretch;
+      width: 100%;
+      height: 100%;
+      gap: 0;
+    }
+    .req-picker-captures-wrap .req-picker-grid {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+    .req-picker-onetime-col {
+      flex: 0 0 auto;
+      width: 200px;
+      display: flex;
+      flex-direction: column;
+      margin-left: 16px;
+      padding-left: 16px;
+      border-left: 1px solid var(--border, #444);
+    }
+    .req-picker-onetime-title {
+      font-size: .85rem;
+      font-weight: 700;
+      letter-spacing: .02em;
+      opacity: .85;
+      margin-bottom: 8px;
+      flex-shrink: 0;
+    }
+    .req-picker-grid--onetime {
+      display: grid !important;
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+      grid-auto-rows: min-content;
+      gap: 8px;
+      overflow-y: auto;
+      align-content: start;
+      flex: 1 1 auto;
+      min-height: 0;
+      padding-right: 4px;
+    }
+    .req-picker-grid--onetime .req-picker-item {
+      padding: 5px !important;
+    }
+    .req-picker-grid--onetime .req-picker-item span {
+      font-size: .68rem !important;
+      line-height: 1.15;
+    }
+
+    /* Coin Grind is one tile that opens a tiny 3-option submenu (Snow /
+       Cascade / Wooded) rather than toggling a requirement directly. */
+    .req-picker-coingrind-submenu {
+      position: fixed;
+      z-index: 10001;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 10px;
+      min-width: 200px;
+      border-radius: 12px;
+      border: 1px solid var(--border, #444);
+      background: var(--bg, #1a1a22);
+      box-shadow: 0 10px 34px rgba(0,0,0,.55);
+      opacity: 0;
+      transform: translateY(-4px) scale(.97);
+      transition: opacity .16s ease, transform .16s ease;
+      pointer-events: none;
+    }
+    .req-picker-coingrind-submenu.active {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      pointer-events: auto;
+    }
+    .req-picker-coingrind-opt {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 8px;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      background: rgba(255,255,255,.04);
+      color: inherit;
+      font-size: .82rem;
+      text-align: left;
+      cursor: pointer;
+      transition: background .15s ease, border-color .15s ease;
+    }
+    .req-picker-coingrind-opt:hover {
+      background: rgba(255,255,255,.09);
+    }
+    .req-picker-coingrind-opt.selected {
+      border-color: rgba(140,180,255,.6);
+      background: rgba(110,160,255,.16);
+    }
+    .req-picker-coingrind-opt img {
+      width: 26px;
+      height: 26px;
+      object-fit: contain;
+      flex-shrink: 0;
+      border-radius: 5px;
+      background: rgba(0,0,0,.3);
+      padding: 2px;
+    }
+    .req-picker-coingrind-opt-sub {
+      display: block;
+      opacity: .6;
+      font-size: .78em;
+    }
+    .req-picker-item--coingrind.selected {
+      border-color: rgba(255,215,0,.6) !important;
+    }
   </style>
 </head>
 <body class="notes-page">
@@ -1501,12 +1630,12 @@
     // Shared rows x cols grid-fit math (see updateGridFit inside
     // openRequirementPicker, which this mirrors) - used by the two smaller,
     // standalone popups below so their grids fill their box the same way.
-    function fitPickerGrid(grid, itemCount) {
+    function fitPickerGrid(grid, itemCount, minCell) {
       if (!itemCount) itemCount = 1;
       const w = grid.clientWidth || 1;
       const h = grid.clientHeight || 1;
       const gap = 8;
-      const minCell = 70;
+      if (!minCell) minCell = 70;
       const maxCols = Math.max(1, Math.floor((w + gap) / (minCell + gap)));
 
       let best = null;
@@ -1639,7 +1768,7 @@
       const overlay = document.createElement('div');
       overlay.className = 'req-picker-overlay';
       const popup = document.createElement('div');
-      popup.className = 'req-picker-popup req-picker-popup--scroll';
+      popup.className = 'req-picker-popup req-picker-popup--scroll req-picker-popup--shop-sale';
       popup.addEventListener('click', (e) => e.stopPropagation());
       overlay.appendChild(popup);
 
@@ -1691,7 +1820,7 @@
         const filtered = q ? list.filter(i => i.name.toLowerCase().includes(q)) : list;
         const sale = APC.getShopSale(fullState, shopKey);
         const selectedKey = activeKind === 'captures' ? sale.capture : sale.ability;
-        fitPickerGrid(grid, filtered.length);
+        fitPickerGrid(grid, filtered.length, 100);
         if (!filtered.length) {
           const empty = document.createElement('div');
           empty.className = 'req-picker-empty';
@@ -1826,9 +1955,28 @@
       search.placeholder = 'Search…';
       popup.appendChild(search);
 
+      // Captures tab: a wrapper holding the regular grid on the left and a
+      // "One-Time Captures" column on the right, past a divider line. The
+      // wrapper is reused (not rebuilt) across tab switches; the one-time
+      // column is just hidden for Abilities/Kingdom.
+      const capturesWrap = document.createElement('div');
+      capturesWrap.className = 'req-picker-captures-wrap';
+      popup.appendChild(capturesWrap);
+
       const grid = document.createElement('div');
       grid.className = 'req-picker-grid';
-      popup.appendChild(grid);
+      capturesWrap.appendChild(grid);
+
+      const onetimeCol = document.createElement('div');
+      onetimeCol.className = 'req-picker-onetime-col';
+      const onetimeTitle = document.createElement('div');
+      onetimeTitle.className = 'req-picker-onetime-title';
+      onetimeTitle.textContent = 'One-Time Captures';
+      const onetimeGrid = document.createElement('div');
+      onetimeGrid.className = 'req-picker-grid req-picker-grid--onetime';
+      onetimeCol.appendChild(onetimeTitle);
+      onetimeCol.appendChild(onetimeGrid);
+      capturesWrap.appendChild(onetimeCol);
 
       // Kingdom tab: three side-by-side sections instead of the single grid -
       // Refights, Shops, and Reaching Kingdoms.
@@ -2224,15 +2372,130 @@
         applyFindTargetStyling();
       }
 
+      function buildOnetimeGrid() {
+        onetimeGrid.innerHTML = '';
+        const q = search.value.trim().toLowerCase();
+        const list = APC.NOTES_CAPTURES_ONETIME;
+        const filtered = q ? list.filter(i => i.name.toLowerCase().includes(q)) : list;
+        filtered.forEach(item => onetimeGrid.appendChild(buildPickerCell(item, 'captures', 'req-picker-item--capture')));
+        const coinMatches = !q || 'coin grind'.includes(q) || 'snow coin grind'.includes(q) ||
+          'cascade coin grind'.includes(q) || 'wooded coin grind'.includes(q);
+        if (coinMatches) onetimeGrid.appendChild(buildCoinGrindCell());
+        if (!filtered.length && !coinMatches) {
+          const empty = document.createElement('div');
+          empty.className = 'req-picker-empty';
+          empty.textContent = 'No matches';
+          onetimeGrid.appendChild(empty);
+        }
+      }
+
+      // Coin Grind isn't a single capture - it's a tile that opens a small
+      // submenu (Snow / Cascade / Wooded), each toggling the requirement
+      // that actually gates that kingdom's coin grind. Cascade and Wooded
+      // "say and show" T-Rex / Uproot respectively, since that's the real
+      // requirement in-game; Snow uses the generic Coin Grind capture.
+      const COIN_GRIND_OPTIONS = [
+        { label: 'Snow Coin Grind',    kind: 'captures', key: 'Coin_Grind_Capture' },
+        { label: 'Cascade Coin Grind', kind: 'captures', key: 'T-Rex_Capture' },
+        { label: 'Wooded Coin Grind',  kind: 'captures', key: 'Uproot_Capture' },
+      ];
+
+      function buildCoinGrindCell() {
+        const coinItem = APC.findItem('captures', 'Coin_Grind_Capture');
+        const cell = document.createElement('button');
+        cell.type = 'button';
+        cell.className = 'req-picker-item req-picker-item--capture req-picker-item--coingrind';
+        const img = document.createElement('img');
+        img.src = coinItem ? coinItem.src : 'assets/capture/Coin.png';
+        img.alt = 'Coin Grind';
+        const label = document.createElement('span');
+        label.textContent = 'Coin Grind';
+        cell.appendChild(img);
+        cell.appendChild(label);
+
+        function refreshSelected() {
+          const anySelected = COIN_GRIND_OPTIONS.some(o =>
+            zs.requirements.some(r => r.kind === o.kind && r.key === o.key));
+          cell.classList.toggle('selected', anySelected);
+        }
+        refreshSelected();
+
+        cell.addEventListener('click', (e) => {
+          e.stopPropagation();
+          bounce(cell);
+          openCoinGrindSubmenu(cell, refreshSelected);
+        });
+        return cell;
+      }
+
+      function openCoinGrindSubmenu(anchorEl, onDone) {
+        document.querySelectorAll('.req-picker-coingrind-submenu').forEach(m => m.remove());
+        const menu = document.createElement('div');
+        menu.className = 'req-picker-coingrind-submenu';
+        document.body.appendChild(menu);
+
+        COIN_GRIND_OPTIONS.forEach(opt => {
+          const shows = APC.findItem(opt.kind, opt.key);
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'req-picker-coingrind-opt';
+          const selected = zs.requirements.some(r => r.kind === opt.kind && r.key === opt.key);
+          btn.classList.toggle('selected', selected);
+          const img = document.createElement('img');
+          img.src = shows ? shows.src : '';
+          img.alt = opt.label;
+          const text = document.createElement('span');
+          text.textContent = opt.label;
+          if (shows && opt.key !== 'Coin_Grind_Capture') {
+            const sub = document.createElement('span');
+            sub.className = 'req-picker-coingrind-opt-sub';
+            sub.textContent = shows.name;
+            text.appendChild(sub);
+          }
+          btn.appendChild(img);
+          btn.appendChild(text);
+          btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            bounce(btn);
+            const nowSelected = toggleRequirement(zs, opt.kind, opt.key, noteArea);
+            btn.classList.toggle('selected', nowSelected);
+            onChange();
+            if (onDone) onDone();
+          });
+          menu.appendChild(btn);
+        });
+
+        const rect = anchorEl.getBoundingClientRect();
+        menu.style.left = Math.min(rect.left, window.innerWidth - 220) + 'px';
+        menu.style.top = (rect.bottom + 6) + 'px';
+
+        function onDocClick(e) {
+          if (!menu.contains(e.target) && e.target !== anchorEl) closeMenu();
+        }
+        function onKeyDown(e) { if (e.key === 'Escape') closeMenu(); }
+        function closeMenu() {
+          menu.classList.remove('active');
+          document.removeEventListener('click', onDocClick, true);
+          document.removeEventListener('keydown', onKeyDown);
+          setTimeout(() => menu.remove(), 200);
+        }
+        setTimeout(() => document.addEventListener('click', onDocClick, true), 0);
+        document.addEventListener('keydown', onKeyDown);
+
+        void menu.offsetWidth;
+        requestAnimationFrame(() => menu.classList.add('active'));
+      }
+
       function renderGrid() {
         if (activeKind === 'kingdom') {
-          grid.style.display = 'none';
+          capturesWrap.style.display = 'none';
           kingdomWrap.style.display = '';
           renderKingdomSections();
           return;
         }
-        grid.style.display = '';
+        capturesWrap.style.display = '';
         kingdomWrap.style.display = 'none';
+        onetimeCol.style.display = activeKind === 'captures' ? '' : 'none';
 
         grid.innerHTML = '';
         const list = activeKind === 'captures' ? APC.NOTES_CAPTURES : APC.NOTES_ABILITIES;
@@ -2245,9 +2508,11 @@
           empty.className = 'req-picker-empty';
           empty.textContent = 'No matches';
           grid.appendChild(empty);
-          return;
+        } else {
+          filtered.forEach(item => grid.appendChild(buildPickerCell(item, activeKind, kindClass)));
         }
-        filtered.forEach(item => grid.appendChild(buildPickerCell(item, activeKind, kindClass)));
+
+        if (activeKind === 'captures') buildOnetimeGrid();
       }
 
       const TAB_ORDER = ['captures', 'abilities', 'kingdom'];
@@ -2262,7 +2527,7 @@
         tabAbilities.classList.toggle('active', kind === 'abilities');
         tabKingdom.classList.toggle('active', kind === 'kingdom');
         renderGrid();
-        const slideTarget = kind === 'kingdom' ? kingdomWrap : grid;
+        const slideTarget = kind === 'kingdom' ? kingdomWrap : capturesWrap;
         slideTarget.style.setProperty('--tab-slide-from', (dir * 24) + 'px');
         slideTarget.classList.remove('tab-slide-in');
         void slideTarget.offsetWidth;

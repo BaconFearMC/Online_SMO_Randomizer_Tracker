@@ -209,6 +209,7 @@
     'Chargin_Chuck_Capture': "Chargin' Chuck",
     'Knucklotec_Fist_Capture': "Knucklotec's Fist",
     'Rocket_Capture': 'Mini Rocket',
+    'Puzzle_Part_(Lake)_Capture': 'Puzzle Part (Lake Kingdom)',
   };
 
   // Captures whose image file doesn't follow the assets/capture/<key>.png
@@ -239,45 +240,62 @@
   // Anything left out can still appear as a requirement icon if it was picked
   // before being trimmed (APC.findItem still looks it up in the full list);
   // it just won't be selectable from the picker going forward.
+  // "Regular" Notes-picker captures - always shown on the left side of the
+  // Captures tab. Knucklotec's Fist and Glydon used to live here but were
+  // pulled out entirely (see comment below): they're no longer selectable
+  // from ANY Notes-picker grid, but typing their name into a note still
+  // works exactly like it always has, since detectItemsInText scans the
+  // full 52-entry CAPTURES/ALL_ITEMS list, not this trimmed one.
   const NOTES_CAPTURE_KEYS = [
     'Frog_Capture',
     'Spark_pylon_Capture',
     'Paragoomba_Capture',
-    'Chain_Chomp_Capture',
-    'T-Rex_Capture',
     'Bullet_Bill_Capture',
     'Goomba_Capture',
-    'Knucklotec_Fist_Capture',
     'Rocket_Capture',
-    'Glydon_Capture',
-    'Zipper_Capture',
-    'Cheep_Cheep_Capture',
     'Uproot_Capture',
     'Fire_Bro_Capture',
     'Sherm_Capture',
+    'Gushen_Capture',
+    'Lava_Bubble_Capture',
+    'Hammer_Bro_Capture',
+    'Pokio_Capture',
+    'Yoshi_Capture',
+  ];
+
+  // "One-Time" Notes-picker captures - things you only ever pick once or
+  // twice across the whole run, so they're split into their own column
+  // (right side of the Captures tab, past a divider) to keep the regular
+  // grid on the left short and fast to scan. Same fixed-order idea as
+  // NOTES_CAPTURE_KEYS above, just a separate list/column.
+  const NOTES_CAPTURE_ONETIME_KEYS = [
+    'Chain_Chomp_Capture',
+    'T-Rex_Capture',
+    'Zipper_Capture',
+    'Cheep_Cheep_Capture',
     'Picture_Match_Part_(Goomba)_Capture',
     'Taxi_Capture',
     'Ty-foo_Capture',
     'Shiverian_Racer_Capture',
-    'Gushen_Capture',
-    'Lava_Bubble_Capture',
     'Volbonan_Capture',
-    'Hammer_Bro_Capture',
-    'Pokio_Capture',
     'Jizo_Capture',
     'Parabones_Capture',
     'Banzai_Bill_Capture',
     'Picture_Match_Part_(Mario)_Capture',
-    'Yoshi_Capture',
     'Puzzle_Part_(Lake)_Capture',
   ];
 
-  const NOTES_CAPTURES = NOTES_CAPTURE_KEYS
-    .map((key, i) => {
-      const master = CAPTURES.find((c) => c.key === key);
-      return master ? Object.assign({}, master, { order: i }) : null;
-    })
-    .filter(Boolean);
+  function buildNotesList(keys) {
+    return keys
+      .map((key, i) => {
+        const master = CAPTURES.find((c) => c.key === key);
+        return master ? Object.assign({}, master, { order: i }) : null;
+      })
+      .filter(Boolean);
+  }
+
+  const NOTES_CAPTURES = buildNotesList(NOTES_CAPTURE_KEYS);
+  const NOTES_CAPTURES_ONETIME = buildNotesList(NOTES_CAPTURE_ONETIME_KEYS);
 
   // Abilities aren't trimmed, but are exposed under the same name so the
   // Notes Tab picker code can treat both groups identically.
@@ -497,7 +515,7 @@
 
   global.APC = {
     CAPTURES, ABILITIES, REFIGHTS, KINGDOMS, SHOPS,
-    NOTES_CAPTURES, NOTES_ABILITIES,
+    NOTES_CAPTURES, NOTES_CAPTURES_ONETIME, NOTES_ABILITIES,
     CAPTURE_LINKS, ABILITY_LINKS,
     linkedTrackerKey, findItem, detectItemsInText,
     ensure, isUnlocked, setUnlocked, countUnlocked,
