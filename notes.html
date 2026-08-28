@@ -1422,8 +1422,17 @@
             // icon riding right beside it (matching the "(Name)" text pair);
             // a Shop shows its shop.png icon plus its kingdom's icon the
             // same way. Either icon removes the whole pair (icons + text) -
-            // they represent one requirement, not two.
-            const removeBoth = () => toggleRequirement(zs, req.kind, req.key, noteArea);
+            // they represent one requirement, not two. A Shop's "sells"
+            // sentence (if any) has to come out too, and before the shop's
+            // own name text - see the matching cleanup in buildPickerCell.
+            const removeBoth = () => {
+              if (req.kind === 'shops') {
+                const sale = APC.getShopSale(fullState, req.key);
+                const saleTxt = shopSaleDisplayText(req.key, sale);
+                if (saleTxt) removeRequirementText(noteArea, saleTxt);
+              }
+              toggleRequirement(zs, req.kind, req.key, noteArea);
+            };
             const group = document.createElement('span');
             group.className = 'zone-req-pair';
             group.appendChild(buildReqIconEl(req.kind, req.key, item, removeBoth, null, item.colors));
@@ -1644,6 +1653,20 @@
       return item.name;
     }
 
+    // Text inserted into the note for a Shop's "for sale" pairing, e.g.
+    // "Lost Shop sells Vault & Cactus" - shared between openShopSalePicker
+    // (which writes it) and anywhere a Shop requirement gets removed (which
+    // has to clean it back out again). Returns null while the sale is
+    // incomplete, since there's nothing to write or remove.
+    function shopSaleDisplayText(shopKey, sale) {
+      const shopItem = APC.findItem('shops', shopKey);
+      if (!shopItem || !sale || !sale.capture || !sale.ability) return null;
+      const capItem = APC.findItem('captures', sale.capture);
+      const ablItem = APC.findItem('abilities', sale.ability);
+      if (!capItem || !ablItem) return null;
+      return shopItem.name + ' sells ' + ablItem.name + ' & ' + capItem.name;
+    }
+
     function toggleRequirement(zs, kind, key, noteArea) {
       if (!Array.isArray(zs.requirements)) zs.requirements = [];
       const idx = zs.requirements.findIndex(r => r.kind === kind && r.key === key);
@@ -1810,11 +1833,7 @@
       // appended via appendRequirementText. Returns null while the sale is
       // still incomplete, since there's nothing sensible to write yet.
       function saleText(sale) {
-        if (!shopItem || !sale.capture || !sale.ability) return null;
-        const capItem = APC.findItem('captures', sale.capture);
-        const ablItem = APC.findItem('abilities', sale.ability);
-        if (!capItem || !ablItem) return null;
-        return shopItem.name + ' sells ' + ablItem.name + ' & ' + capItem.name;
+        return shopSaleDisplayText(shopKey, sale);
       }
 
       const overlay = document.createElement('div');
@@ -2396,6 +2415,17 @@
               zs.requirements
                 .filter(r => r.kind === kind)
                 .forEach(r => {
+                  // A Shop being swapped out also had its "sells" sentence
+                  // written into the note - that has to go first, since it
+                  // starts with the same name text removeRequirementText is
+                  // about to search for next (leaving it for last risks
+                  // matching inside "X Shop sells A & B" instead of the
+                  // standalone "X Shop").
+                  if (r.kind === 'shops') {
+                    const sale = APC.getShopSale(fullState, r.key);
+                    const saleTxt = shopSaleDisplayText(r.key, sale);
+                    if (saleTxt) removeRequirementText(noteArea, saleTxt);
+                  }
                   const prevText = requirementDisplayText(r.kind, r.key);
                   if (prevText) removeRequirementText(noteArea, prevText);
                 });
@@ -2412,11 +2442,15 @@
           // what it sells right away (a real shop always has exactly 1
           // Capture + 1 Ability for sale). Already-configured shops aren't
           // re-prompted here - use the 🏷 button to edit those any time.
+          // Either way, picking a Shop here is done with this picker - the
+          // sale popup (if any) takes over, so close this one out instead
+          // of leaving it sitting open underneath.
           if (kind === 'shops' && nowSelected) {
             const sale = APC.getShopSale(fullState, item.key);
             if (!sale.capture && !sale.ability) {
               openShopSalePicker(item.key, refreshSaleTitle, noteArea);
             }
+            closePicker();
           }
         });
         return cell;
