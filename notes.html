@@ -164,6 +164,51 @@
     }
     .zone-req-icon--shop { border-radius: 6px; }
 
+    /* Small "🏷 what's for sale" edit button riding on a Shop cell's
+       opposite corner from its paired-kingdom icon (top-left vs
+       bottom-right), so both can coexist without overlapping. */
+    .req-picker-item-sale-btn {
+      position: absolute !important;
+      top: -6px !important;
+      left: -6px !important;
+      width: 20px !important;
+      height: 20px !important;
+      min-width: 0 !important;
+      min-height: 0 !important;
+      padding: 0 !important;
+      display: flex !important;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      line-height: 1;
+      border-radius: 50%;
+      background: rgba(20,20,26,.9);
+      border: 1px solid rgba(255,215,0,.65);
+      color: inherit;
+      cursor: pointer;
+      z-index: 3;
+      box-shadow: 0 1px 4px rgba(0,0,0,.5);
+      transition: transform .15s ease, background .2s ease;
+    }
+    .req-picker-item-sale-btn:hover {
+      background: rgba(50,50,60,.95);
+      transform: scale(1.12);
+    }
+
+    /* The Kingdom-only picker and Shop "for sale" picker (openKingdomOnly
+       Picker / openShopSalePicker) reuse .req-picker-popup, but their grids
+       (18 Kingdoms; all 52 Captures / 21 Abilities) weren't sized for the
+       no-scroll "everything must fit" layout above - let these two scroll
+       instead of squeezing cells down illegibly. */
+    .req-picker-popup--scroll { overflow-y: auto !important; }
+    .req-picker-popup--scroll .req-picker-grid { overflow: visible; max-height: none; }
+
+    /* Paintings column's own Shop rows (Cap/Cascade/Wooded/Seaside) - just
+       reuses the zone-row/zone-reqs language already used for loading
+       zones, so the two Capture/Ability "for sale" chips sit next to the
+       row name exactly like requirement icons do on a normal zone. */
+    .zone-req-icon--capture, .zone-req-icon--ability { border-radius: 6px; }
+
     /* ── Find Entries (Kingdom tab) ──────────────────────────────────
        One button + chooser that replaces the old per-cell info badges. */
     .req-picker-find-btn {
@@ -396,7 +441,7 @@
     <div id="lz-content"></div>
   </div>
 
-  <script src="apc-data.js?v=3"></script>
+  <script src="apc-data.js?v=5"></script>
   <script>
     'use strict';
 
@@ -521,6 +566,15 @@
     const PAINTINGS_NOTES_KEY = 'Paintings';
     const PAINTING_NOTE_KINGDOMS = ['Cascade','Sand','Lake','Wooded','Metro','Snow','Seaside','Luncheon',"Bowser's",'Mushroom'];
 
+    // Extra Shops that only live in the Paintings column (not real
+    // in-loading-zone gates, so they never show up in the Kingdom tab's
+    // "Shop" picker on a zone - see PAINTING_SHOP_ENTRIES/`paintingOnly` in
+    // apc-data.js). Each maps a kingdom name here to its APC.SHOPS key.
+    const PAINTING_SHOP_KINGDOMS = ['Cap', 'Cascade', 'Wooded', 'Seaside'];
+    const PAINTING_SHOP_KEYS = {
+      Cap: 'Cap_Shop', Cascade: 'Cascade_Shop', Wooded: 'Wooded_Shop', Seaside: 'Seaside_Shop',
+    };
+
     let fullState = null;
 
     function buildDefaultLoadingZones() {
@@ -615,6 +669,8 @@
       PAINTING_NOTE_KINGDOMS.forEach(k => {
         if (!(k in fullState.painting_notes)) fullState.painting_notes[k] = '';
       });
+      if (!fullState.painting_destinations) fullState.painting_destinations = {};
+      if (!fullState.shop_sales) fullState.shop_sales = {};
 
       // "How do I reach <Kingdom>?" (Kingdom tab -> Reaching Kingdoms) is
       // generated from each zone's "→ leads to" pick below, so there's no
@@ -644,6 +700,8 @@
       if (fullState.painting_notes) {
         for (const k of Object.keys(fullState.painting_notes)) fullState.painting_notes[k] = '';
       }
+      fullState.painting_destinations = {};
+      fullState.shop_sales = {};
       saveFullState();
       buildLoadingZonesContent();
     }
@@ -801,6 +859,57 @@
 
         const top = document.createElement('div');
         top.className = 'zone-row-top';
+
+        // A Painting only ever needs a single "which Kingdom does this lead
+        // to?" pick - the + button here opens straight to that Kingdom-only
+        // grid (all 18), never the full Capture/Ability/Refight/Shop picker
+        // a loading zone's + button opens.
+        const reqsWrap = document.createElement('div');
+        reqsWrap.className = 'zone-reqs';
+
+        function renderDestChip() {
+          reqsWrap.innerHTML = '';
+          const addBtn = document.createElement('button');
+          addBtn.type = 'button';
+          addBtn.className = 'zone-req-add';
+          addBtn.title = 'Pick which Kingdom this Painting leads to';
+          addBtn.textContent = '+';
+          addBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            bounce(addBtn);
+            const current = APC.getPaintingDestination(fullState, kingdom);
+            openKingdomOnlyPicker(current, (kingdomKey) => {
+              APC.setPaintingDestination(fullState, kingdom, kingdomKey);
+              saveFullState();
+              renderDestChip();
+            });
+          });
+          reqsWrap.appendChild(addBtn);
+
+          const destKey = APC.getPaintingDestination(fullState, kingdom);
+          if (destKey) {
+            const item = APC.findItem('kingdoms', destKey);
+            if (item) {
+              const img = document.createElement('img');
+              img.className = 'zone-req-icon zone-req-icon--kingdom';
+              img.src = item.src;
+              img.alt = item.name;
+              img.title = 'Leads to ' + item.name + ' (click to remove)';
+              if (item.color) img.style.setProperty('--kingdom-color', item.color);
+              img.addEventListener('click', (e) => {
+                e.stopPropagation();
+                bounce(img);
+                APC.setPaintingDestination(fullState, kingdom, null);
+                saveFullState();
+                renderDestChip();
+              });
+              reqsWrap.appendChild(img);
+            }
+          }
+        }
+        renderDestChip();
+        top.appendChild(reqsWrap);
+
         const nameLabel = document.createElement('span');
         nameLabel.className = 'zone-name';
         nameLabel.textContent = kingdom;
@@ -825,6 +934,14 @@
         zonesRoot.appendChild(row);
       });
 
+      // Extra per-kingdom Shops that only live here in the Paintings column
+      // (Cap, Cascade, Wooded, Seaside - see PAINTING_SHOP_KINGDOMS above).
+      // Unlike a Painting row, a Shop row's + button skips straight to the
+      // Capture-for-sale/Ability-for-sale picker - never the Kingdom grid.
+      PAINTING_SHOP_KINGDOMS.forEach(kingdom => {
+        zonesRoot.appendChild(buildPaintingShopRow(kingdom));
+      });
+
       if (fullState.kingdom_collapsed[PAINTINGS_NOTES_KEY]) {
         zonesRoot.style.display = 'none';
         header.classList.add('collapsed');
@@ -840,6 +957,84 @@
       col.appendChild(header);
       col.appendChild(zonesRoot);
       return col;
+    }
+
+    // One row for a Paintings-column-only Shop (Cap/Cascade/Wooded/Seaside).
+    // No note box - just the shop's name and a + that opens the Capture &
+    // Ability "for sale" picker directly (see openShopSalePicker).
+    function buildPaintingShopRow(kingdomName) {
+      const shopKey = PAINTING_SHOP_KEYS[kingdomName];
+      const kd = LOADING_ZONES_TEMPLATE[kingdomName] || { color: '#ffd700' };
+      const row = document.createElement('div');
+      row.className = 'zone-row';
+
+      const top = document.createElement('div');
+      top.className = 'zone-row-top';
+
+      const reqsWrap = document.createElement('div');
+      reqsWrap.className = 'zone-reqs';
+
+      function buildSaleChip(kind, key) {
+        const item = APC.findItem(kind, key);
+        if (!item) return null;
+        const img = document.createElement('img');
+        img.className = 'zone-req-icon ' + (kind === 'captures' ? 'zone-req-icon--capture' : 'zone-req-icon--ability');
+        img.src = item.src;
+        img.alt = item.name;
+        img.title = item.name + ' - for sale (click to remove)';
+        img.addEventListener('click', (e) => {
+          e.stopPropagation();
+          bounce(img);
+          APC.setShopSale(fullState, shopKey, kind, null);
+          saveFullState();
+          renderChips();
+        });
+        return img;
+      }
+
+      function renderChips() {
+        reqsWrap.innerHTML = '';
+        const addBtn = document.createElement('button');
+        addBtn.type = 'button';
+        addBtn.className = 'zone-req-add';
+        addBtn.title = 'Set the Capture & Ability for sale at this Shop';
+        addBtn.textContent = '+';
+        addBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          bounce(addBtn);
+          openShopSalePicker(shopKey, renderChips);
+        });
+        reqsWrap.appendChild(addBtn);
+
+        const sale = APC.getShopSale(fullState, shopKey);
+        if (sale.ability) {
+          const chip = buildSaleChip('abilities', sale.ability);
+          if (chip) reqsWrap.appendChild(chip);
+        }
+        if (sale.capture) {
+          const chip = buildSaleChip('captures', sale.capture);
+          if (chip) reqsWrap.appendChild(chip);
+        }
+      }
+      renderChips();
+      top.appendChild(reqsWrap);
+
+      const icon = document.createElement('img');
+      icon.className = 'zone-req-icon--shop';
+      icon.src = 'assets/shop.png';
+      icon.alt = 'Shop';
+      icon.height = 16;
+      icon.style.marginRight = '4px';
+      top.appendChild(icon);
+
+      const nameLabel = document.createElement('span');
+      nameLabel.className = 'zone-name';
+      nameLabel.textContent = kingdomName + ' Shop';
+      nameLabel.style.color = kd.color;
+      top.appendChild(nameLabel);
+      row.appendChild(top);
+
+      return row;
     }
 
     function buildKingdomColumn(kingdom, data) {
@@ -1303,6 +1498,263 @@
       return true;
     }
 
+    // Shared rows x cols grid-fit math (see updateGridFit inside
+    // openRequirementPicker, which this mirrors) - used by the two smaller,
+    // standalone popups below so their grids fill their box the same way.
+    function fitPickerGrid(grid, itemCount) {
+      if (!itemCount) itemCount = 1;
+      const w = grid.clientWidth || 1;
+      const h = grid.clientHeight || 1;
+      const gap = 8;
+      const minCell = 70;
+      const maxCols = Math.max(1, Math.floor((w + gap) / (minCell + gap)));
+
+      let best = null;
+      for (let cols = 1; cols <= maxCols; cols++) {
+        const rows = Math.ceil(itemCount / cols);
+        const cellW = (w - gap * (cols - 1)) / cols;
+        const cellH = (h - gap * (rows - 1)) / rows;
+        if (cellW < minCell || cellH < minCell * 0.75) continue;
+        const emptyCells = rows * cols - itemCount;
+        const aspect = Math.max(cellW / cellH, cellH / cellW);
+        const score = emptyCells * 1000 + aspect;
+        if (!best || score < best.score) best = { cols, rows, score };
+      }
+      if (!best) best = { cols: maxCols, rows: Math.ceil(itemCount / maxCols) };
+
+      grid.style.setProperty('--req-picker-cols', best.cols);
+      grid.style.setProperty('--req-picker-rows', best.rows);
+    }
+
+    // ── Kingdom-only picker (Paintings column: a Painting's + button) ──
+    // A single grid of all 18 Kingdoms, radio-select. Picking one calls
+    // onPick(kingdomKey) and closes; there's no Captures/Abilities/Refights/
+    // Shops here at all - a Painting only ever needs one destination.
+    function openKingdomOnlyPicker(currentKey, onPick) {
+      document.querySelectorAll('.req-picker-overlay').forEach(p => p.remove());
+
+      const overlay = document.createElement('div');
+      overlay.className = 'req-picker-overlay';
+      const popup = document.createElement('div');
+      popup.className = 'req-picker-popup req-picker-popup--scroll';
+      popup.addEventListener('click', (e) => e.stopPropagation());
+      overlay.appendChild(popup);
+
+      const header = document.createElement('div');
+      header.className = 'req-picker-header';
+      const title = document.createElement('div');
+      title.className = 'req-picker-title';
+      title.textContent = 'Which Kingdom does this Painting lead to?';
+      const closeBtn = document.createElement('button');
+      closeBtn.type = 'button';
+      closeBtn.className = 'req-picker-close';
+      closeBtn.textContent = '✕';
+      closeBtn.title = 'Close';
+      closeBtn.addEventListener('click', () => closePicker());
+      header.appendChild(title);
+      header.appendChild(closeBtn);
+      popup.appendChild(header);
+
+      const search = document.createElement('input');
+      search.type = 'text';
+      search.className = 'req-picker-search';
+      search.placeholder = 'Search…';
+      popup.appendChild(search);
+
+      const grid = document.createElement('div');
+      grid.className = 'req-picker-grid';
+      popup.appendChild(grid);
+
+      function render() {
+        grid.innerHTML = '';
+        const q = search.value.trim().toLowerCase();
+        const list = q ? APC.KINGDOMS.filter(i => i.name.toLowerCase().includes(q)) : APC.KINGDOMS;
+        fitPickerGrid(grid, list.length);
+        if (!list.length) {
+          const empty = document.createElement('div');
+          empty.className = 'req-picker-empty';
+          empty.textContent = 'No matches';
+          grid.appendChild(empty);
+          return;
+        }
+        list.forEach(item => {
+          const cell = document.createElement('button');
+          cell.type = 'button';
+          cell.className = 'req-picker-item req-picker-item--kingdom';
+          cell.classList.toggle('selected', item.key === currentKey);
+          if (item.color) cell.style.setProperty('--kingdom-color', item.color);
+          const img = document.createElement('img');
+          img.src = item.src;
+          img.alt = item.name;
+          const label = document.createElement('span');
+          label.textContent = item.name;
+          cell.appendChild(img);
+          cell.appendChild(label);
+          cell.addEventListener('click', () => {
+            bounce(cell);
+            // A second click on the already-picked Kingdom clears it instead
+            // of just re-picking the same one, so there's a way back to "no
+            // destination set yet" without leaving the popup.
+            onPick(item.key === currentKey ? null : item.key);
+            closePicker();
+          });
+          grid.appendChild(cell);
+        });
+      }
+
+      search.addEventListener('input', render);
+      document.body.appendChild(overlay);
+      render();
+      requestAnimationFrame(render);
+      const onResize = () => render();
+      window.addEventListener('resize', onResize);
+
+      function onKeyDown(e) { if (e.key === 'Escape') closePicker(); }
+      function closePicker() {
+        overlay.classList.remove('active');
+        document.removeEventListener('keydown', onKeyDown);
+        window.removeEventListener('resize', onResize);
+        setTimeout(() => overlay.remove(), 320);
+      }
+      overlay.addEventListener('click', (e) => { if (e.target === overlay) closePicker(); });
+      document.addEventListener('keydown', onKeyDown);
+
+      void overlay.offsetWidth;
+      requestAnimationFrame(() => overlay.classList.add('active'));
+      search.focus();
+    }
+
+    // ── Shop "for sale" picker (Kingdom tab's Shop grid, and the Paintings
+    // column's Shop rows) ──────────────────────────────────────────────
+    // Every Shop always has exactly 1 Capture and 1 Ability for sale. Two
+    // tabs, each a radio-select grid over the FULL list (all 52 Captures /
+    // all 21 Abilities - not the trimmed Notes-picker Captures list), so any
+    // shop's real in-game stock can be recorded. Picks save immediately
+    // (no separate "confirm" step) via APC.setShopSale; onChange fires after
+    // every pick and again on close so the calling row/cell can refresh.
+    function openShopSalePicker(shopKey, onChange) {
+      document.querySelectorAll('.req-picker-overlay').forEach(p => p.remove());
+      const shopItem = APC.findItem('shops', shopKey);
+
+      const overlay = document.createElement('div');
+      overlay.className = 'req-picker-overlay';
+      const popup = document.createElement('div');
+      popup.className = 'req-picker-popup req-picker-popup--scroll';
+      popup.addEventListener('click', (e) => e.stopPropagation());
+      overlay.appendChild(popup);
+
+      const header = document.createElement('div');
+      header.className = 'req-picker-header';
+      const title = document.createElement('div');
+      title.className = 'req-picker-title';
+      title.textContent = (shopItem ? shopItem.name : 'Shop') + ' — Items For Sale';
+      const closeBtn = document.createElement('button');
+      closeBtn.type = 'button';
+      closeBtn.className = 'req-picker-close';
+      closeBtn.textContent = '✕';
+      closeBtn.title = 'Close';
+      closeBtn.addEventListener('click', () => closePicker());
+      header.appendChild(title);
+      header.appendChild(closeBtn);
+      popup.appendChild(header);
+
+      const tabs = document.createElement('div');
+      tabs.className = 'req-picker-tabs';
+      const tabCaptures = document.createElement('button');
+      tabCaptures.type = 'button';
+      tabCaptures.className = 'req-picker-tab req-picker-tab--capture active';
+      tabCaptures.textContent = 'Capture for Sale';
+      const tabAbilities = document.createElement('button');
+      tabAbilities.type = 'button';
+      tabAbilities.className = 'req-picker-tab req-picker-tab--ability';
+      tabAbilities.textContent = 'Ability for Sale';
+      tabs.appendChild(tabCaptures);
+      tabs.appendChild(tabAbilities);
+      popup.appendChild(tabs);
+
+      const search = document.createElement('input');
+      search.type = 'text';
+      search.className = 'req-picker-search';
+      search.placeholder = 'Search…';
+      popup.appendChild(search);
+
+      const grid = document.createElement('div');
+      grid.className = 'req-picker-grid';
+      popup.appendChild(grid);
+
+      let activeKind = 'captures';
+
+      function render() {
+        grid.innerHTML = '';
+        const q = search.value.trim().toLowerCase();
+        const list = activeKind === 'captures' ? APC.CAPTURES : APC.ABILITIES;
+        const filtered = q ? list.filter(i => i.name.toLowerCase().includes(q)) : list;
+        const sale = APC.getShopSale(fullState, shopKey);
+        const selectedKey = activeKind === 'captures' ? sale.capture : sale.ability;
+        fitPickerGrid(grid, filtered.length);
+        if (!filtered.length) {
+          const empty = document.createElement('div');
+          empty.className = 'req-picker-empty';
+          empty.textContent = 'No matches';
+          grid.appendChild(empty);
+          return;
+        }
+        filtered.forEach(item => {
+          const cell = document.createElement('button');
+          cell.type = 'button';
+          cell.className = 'req-picker-item ' + (activeKind === 'captures' ? 'req-picker-item--capture' : 'req-picker-item--ability');
+          cell.classList.toggle('selected', item.key === selectedKey);
+          const img = document.createElement('img');
+          img.src = item.src;
+          img.alt = item.name;
+          const label = document.createElement('span');
+          label.textContent = item.name;
+          cell.appendChild(img);
+          cell.appendChild(label);
+          cell.addEventListener('click', () => {
+            bounce(cell);
+            const alreadySelected = item.key === selectedKey;
+            APC.setShopSale(fullState, shopKey, activeKind, alreadySelected ? null : item.key);
+            saveFullState();
+            render();
+            if (onChange) onChange();
+          });
+          grid.appendChild(cell);
+        });
+      }
+
+      function setTab(kind) {
+        activeKind = kind;
+        tabCaptures.classList.toggle('active', kind === 'captures');
+        tabAbilities.classList.toggle('active', kind === 'abilities');
+        render();
+      }
+      tabCaptures.addEventListener('click', () => { bounce(tabCaptures); setTab('captures'); });
+      tabAbilities.addEventListener('click', () => { bounce(tabAbilities); setTab('abilities'); });
+      search.addEventListener('input', render);
+
+      document.body.appendChild(overlay);
+      render();
+      requestAnimationFrame(render);
+      const onResize = () => render();
+      window.addEventListener('resize', onResize);
+
+      function onKeyDown(e) { if (e.key === 'Escape') closePicker(); }
+      function closePicker() {
+        overlay.classList.remove('active');
+        document.removeEventListener('keydown', onKeyDown);
+        window.removeEventListener('resize', onResize);
+        setTimeout(() => overlay.remove(), 320);
+        if (onChange) onChange();
+      }
+      overlay.addEventListener('click', (e) => { if (e.target === overlay) closePicker(); });
+      document.addEventListener('keydown', onKeyDown);
+
+      void overlay.offsetWidth;
+      requestAnimationFrame(() => overlay.classList.add('active'));
+      search.focus();
+    }
+
     // ── Requirement Picker (replaces the old Kingdom Moon icon picker) ─
     // Two tabbed groups - Captures and Abilities, sourced from apc-data.js -
     // plus a quick-insert AND/OR/() toolbar for grouping. Picking an entry
@@ -1649,6 +2101,37 @@
             cell.appendChild(pairImg);
           }
         }
+
+        // Every Shop always has exactly 1 Capture + 1 Ability for sale. A
+        // small tag button opens that picker any time (edit), independent
+        // of whether this Shop is currently picked as the zone's
+        // requirement; the cell's tooltip reflects whatever's set.
+        let refreshSaleTitle = null;
+        if (kind === 'shops') {
+          refreshSaleTitle = function () {
+            const sale = APC.getShopSale(fullState, item.key);
+            const capItem = sale.capture ? APC.findItem('captures', sale.capture) : null;
+            const ablItem = sale.ability ? APC.findItem('abilities', sale.ability) : null;
+            const bits = [];
+            if (ablItem) bits.push(ablItem.name);
+            if (capItem) bits.push(capItem.name);
+            cell.title = item.name + (bits.length ? (' — sells ' + bits.join(' & ')) : ' (click 🏷 to set what it sells)');
+          };
+          refreshSaleTitle();
+
+          const saleBtn = document.createElement('button');
+          saleBtn.type = 'button';
+          saleBtn.className = 'req-picker-item-sale-btn';
+          saleBtn.textContent = '🏷';
+          saleBtn.title = 'Set the Capture & Ability for sale here';
+          saleBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            bounce(saleBtn);
+            openShopSalePicker(item.key, refreshSaleTitle);
+          });
+          cell.appendChild(saleBtn);
+        }
+
         cell.addEventListener('click', () => {
           // Find mode repurposes this same, already-on-screen button: a
           // click looks the item up instead of adding/removing it as a
@@ -1681,6 +2164,17 @@
           const nowSelected = toggleRequirement(zs, kind, item.key, noteArea);
           cell.classList.toggle('selected', nowSelected);
           onChange();
+
+          // First time this Shop gets picked as a requirement, prompt for
+          // what it sells right away (a real shop always has exactly 1
+          // Capture + 1 Ability for sale). Already-configured shops aren't
+          // re-prompted here - use the 🏷 button to edit those any time.
+          if (kind === 'shops' && nowSelected) {
+            const sale = APC.getShopSale(fullState, item.key);
+            if (!sale.capture && !sale.ability) {
+              openShopSalePicker(item.key, refreshSaleTitle);
+            }
+          }
         });
         return cell;
       }
@@ -1693,7 +2187,11 @@
         const refights = q ? APC.REFIGHTS.filter(i => i.name.toLowerCase().includes(q)) : APC.REFIGHTS;
         // Matched against each shop's own full name (e.g. "Lake Shop"), so a
         // search never falls back to matching the kingdom it belongs to.
-        const shops = q ? APC.SHOPS.filter(i => i.name.toLowerCase().includes(q)) : APC.SHOPS;
+        // Painting-menu-only shops (Cap/Cascade/Wooded/Seaside) are left out
+        // here - they're not real zone gates, so they only ever show up in
+        // the Paintings column itself (see PAINTING_SHOP_KINGDOMS above).
+        const shops = (q ? APC.SHOPS.filter(i => i.name.toLowerCase().includes(q)) : APC.SHOPS)
+          .filter(i => !i.paintingOnly);
         const kingdoms = q ? APC.KINGDOMS.filter(i => i.name.toLowerCase().includes(q)) : APC.KINGDOMS;
 
         if (!refights.length) {

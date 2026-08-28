@@ -175,9 +175,32 @@
     });
   });
 
+  // ── Painting-menu-only Shops (Notes Tab: Paintings column) ──────────────
+  // Cap, Cascade, Wooded, and Seaside each get their own shop entry too, but
+  // these are only ever surfaced from the Paintings toggleable column - never
+  // from the Kingdom tab's "Shop" picker on a loading zone (that grid filters
+  // on `paintingOnly` to leave them out - see SHOPS usage in notes.html).
+  // Same shape as SHOP_ENTRIES above (shop.png icon, paired kingdom colors)
+  // so they still work everywhere a normal shop entry does (findItem,
+  // detectItemsInText, the Capture/Ability "for sale" picker, etc).
+  const PAINTING_SHOP_ENTRIES = [
+    { key: 'Cap_Shop',     name: 'Cap Shop',     kingdom: 'Cap' },
+    { key: 'Cascade_Shop', name: 'Cascade Shop', kingdom: 'Cascade' },
+    { key: 'Wooded_Shop',  name: 'Wooded Shop',  kingdom: 'Wooded' },
+    { key: 'Seaside_Shop', name: 'Seaside Shop', kingdom: 'Seaside' },
+  ].map((s) => {
+    const kingdom = KINGDOM_ENTRIES.find((k) => k.key === s.kingdom);
+    return Object.assign({}, s, {
+      src: 'assets/shop.png',
+      pair: { kind: 'kingdoms', key: s.kingdom },
+      colors: kingdom ? [kingdom.color, '#ffd700'] : ['#ffd700', '#ffd700'],
+      paintingOnly: true,
+    });
+  });
+
   const REFIGHTS = REFIGHT_ENTRIES.map((r, i) => Object.assign({}, r, { order: i }));
   const KINGDOMS = KINGDOM_ENTRIES.map((k, i) => Object.assign({}, k, { order: i }));
-  const SHOPS = SHOP_ENTRIES.map((s, i) => Object.assign({}, s, { order: i }));
+  const SHOPS = SHOP_ENTRIES.concat(PAINTING_SHOP_ENTRIES).map((s, i) => Object.assign({}, s, { order: i }));
 
   // Only needed where the auto-generated label would be wrong.
   const NAME_OVERRIDES = {
@@ -379,6 +402,49 @@
     return n;
   }
 
+  // ── Shop inventory: the 1 Capture + 1 Ability every shop always has for
+  // sale (Notes Tab: Kingdom tab "Shop" picker, and the Paintings column's
+  // shop rows). Stored on state.shop_sales[shopKey] = { capture, ability },
+  // independent of whether that shop is also picked as a zone requirement.
+  function ensureShopSales(state) {
+    if (!state.shop_sales) state.shop_sales = {};
+    return state.shop_sales;
+  }
+
+  function getShopSale(state, shopKey) {
+    const sales = ensureShopSales(state);
+    return sales[shopKey] || { capture: null, ability: null };
+  }
+
+  // `kind` is 'captures' or 'abilities'; `key` is the picked item's key, or
+  // null to clear that half of the pairing.
+  function setShopSale(state, shopKey, kind, key) {
+    const sales = ensureShopSales(state);
+    if (!sales[shopKey]) sales[shopKey] = { capture: null, ability: null };
+    if (kind === 'captures') sales[shopKey].capture = key || null;
+    else if (kind === 'abilities') sales[shopKey].ability = key || null;
+    return sales[shopKey];
+  }
+
+  // ── Painting destinations (Notes Tab: Paintings column, painting rows) ──
+  // Which of the 18 Kingdoms a given painting leads to. Stored on
+  // state.painting_destinations[paintingKey] = kingdomKey.
+  function ensurePaintingDestinations(state) {
+    if (!state.painting_destinations) state.painting_destinations = {};
+    return state.painting_destinations;
+  }
+
+  function getPaintingDestination(state, paintingKey) {
+    return ensurePaintingDestinations(state)[paintingKey] || null;
+  }
+
+  function setPaintingDestination(state, paintingKey, kingdomKey) {
+    const dests = ensurePaintingDestinations(state);
+    if (kingdomKey) dests[paintingKey] = kingdomKey;
+    else delete dests[paintingKey];
+    return kingdomKey || null;
+  }
+
 
   const CHANNEL_NAME = 'smo_tracker_apc';
   const SENDER_ID = Math.random().toString(36).slice(2);
@@ -427,7 +493,7 @@
     };
   }
 
-  console.log('SMO tracker apc-data.js v4');
+  console.log('SMO tracker apc-data.js v5');
 
   global.APC = {
     CAPTURES, ABILITIES, REFIGHTS, KINGDOMS, SHOPS,
@@ -435,6 +501,8 @@
     CAPTURE_LINKS, ABILITY_LINKS,
     linkedTrackerKey, findItem, detectItemsInText,
     ensure, isUnlocked, setUnlocked, countUnlocked,
+    getShopSale, setShopSale,
+    getPaintingDestination, setPaintingDestination,
     makeChannel,
   };
 })(window);
