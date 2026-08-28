@@ -1793,11 +1793,17 @@
     // (no separate "confirm" step) via APC.setShopSale; onChange fires after
     // every pick and again on close so the calling row/cell can refresh.
     function openShopSalePicker(shopKey, onChange) {
-      document.querySelectorAll('.req-picker-overlay').forEach(p => p.remove());
+      // Only clear out any other already-open sale popup (e.g. re-triggered
+      // before the previous one animated closed) - NOT every .req-picker-
+      // overlay, since this is very often opened from on top of the Kingdom
+      // tab's "Add a Requirement" picker (clicking a Shop, or its 🏷 button),
+      // which must stay open underneath so the user lands back in it once
+      // they're done setting what's for sale.
+      document.querySelectorAll('.req-picker-overlay--sale').forEach(p => p.remove());
       const shopItem = APC.findItem('shops', shopKey);
 
       const overlay = document.createElement('div');
-      overlay.className = 'req-picker-overlay';
+      overlay.className = 'req-picker-overlay req-picker-overlay--sale';
       const popup = document.createElement('div');
       popup.className = 'req-picker-popup req-picker-popup--scroll req-picker-popup--shop-sale';
       popup.addEventListener('click', (e) => e.stopPropagation());
@@ -1876,6 +1882,19 @@
             const alreadySelected = item.key === selectedKey;
             APC.setShopSale(fullState, shopKey, activeKind, alreadySelected ? null : item.key);
             saveFullState();
+            // Every Shop always has exactly 1 Capture + 1 Ability for sale
+            // (see comment at the top of this function) - so walk the user
+            // through both: picking a Capture while no Ability is set yet
+            // auto-advances to the Ability tab, instead of leaving them to
+            // notice and click the second tab themselves.
+            if (activeKind === 'captures' && !alreadySelected) {
+              const sale = APC.getShopSale(fullState, shopKey);
+              if (!sale.ability) {
+                setTab('abilities');
+                if (onChange) onChange();
+                return;
+              }
+            }
             render();
             if (onChange) onChange();
           });
@@ -2586,7 +2605,11 @@
       window.addEventListener('resize', onResize);
 
       function onKeyDown(e) {
-        if (e.key === 'Escape') closePicker();
+        // If the "for sale" sub-picker is currently open on top of this one
+        // (see openShopSalePicker), let its own Escape handler close that
+        // instead - otherwise both close at once and this picker vanishes
+        // out from under the sale popup while it's still on screen.
+        if (e.key === 'Escape' && !document.querySelector('.req-picker-overlay--sale')) closePicker();
       }
       function closePicker() {
         overlay.classList.remove('active');
