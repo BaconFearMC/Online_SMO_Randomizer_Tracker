@@ -1792,7 +1792,7 @@
     // shop's real in-game stock can be recorded. Picks save immediately
     // (no separate "confirm" step) via APC.setShopSale; onChange fires after
     // every pick and again on close so the calling row/cell can refresh.
-    function openShopSalePicker(shopKey, onChange) {
+    function openShopSalePicker(shopKey, onChange, noteArea) {
       // Only clear out any other already-open sale popup (e.g. re-triggered
       // before the previous one animated closed) - NOT every .req-picker-
       // overlay, since this is very often opened from on top of the Kingdom
@@ -1801,6 +1801,21 @@
       // they're done setting what's for sale.
       document.querySelectorAll('.req-picker-overlay--sale').forEach(p => p.remove());
       const shopItem = APC.findItem('shops', shopKey);
+
+      // When called with a zone's noteArea (from the Kingdom tab's Shop
+      // grid - either the shop's first-pick auto-prompt or its 🏷 edit
+      // button), a completed sale (both halves set) also gets written into
+      // that zone's note as plain text, e.g. "Lost Shop sells Swing &
+      // Goomba" - mirroring how every other requirement's name gets
+      // appended via appendRequirementText. Returns null while the sale is
+      // still incomplete, since there's nothing sensible to write yet.
+      function saleText(sale) {
+        if (!shopItem || !sale.capture || !sale.ability) return null;
+        const capItem = APC.findItem('captures', sale.capture);
+        const ablItem = APC.findItem('abilities', sale.ability);
+        if (!capItem || !ablItem) return null;
+        return shopItem.name + ' sells ' + ablItem.name + ' & ' + capItem.name;
+      }
 
       const overlay = document.createElement('div');
       overlay.className = 'req-picker-overlay req-picker-overlay--sale';
@@ -1880,23 +1895,45 @@
           cell.addEventListener('click', () => {
             bounce(cell);
             const alreadySelected = item.key === selectedKey;
+            const prevText = noteArea ? saleText(APC.getShopSale(fullState, shopKey)) : null;
             APC.setShopSale(fullState, shopKey, activeKind, alreadySelected ? null : item.key);
             saveFullState();
-            // Every Shop always has exactly 1 Capture + 1 Ability for sale
-            // (see comment at the top of this function) - so walk the user
-            // through both: picking a Capture while no Ability is set yet
-            // auto-advances to the Ability tab, instead of leaving them to
-            // notice and click the second tab themselves.
-            if (activeKind === 'captures' && !alreadySelected) {
-              const sale = APC.getShopSale(fullState, shopKey);
-              if (!sale.ability) {
-                setTab('abilities');
-                if (onChange) onChange();
-                return;
+            const sale = APC.getShopSale(fullState, shopKey);
+
+            // Once both halves are set, write (or refresh) the "sells"
+            // sentence into this zone's note, same as any other picked
+            // requirement's name - and drop whatever the sentence used to
+            // say if this pick changed it.
+            if (noteArea) {
+              const newText = saleText(sale);
+              if (newText !== prevText) {
+                if (prevText) removeRequirementText(noteArea, prevText);
+                if (newText) appendRequirementText(noteArea, newText);
               }
             }
+
+            // Every Shop always has exactly 1 Capture + 1 Ability for sale
+            // (see comment at the top of this function) - so walk the user
+            // through both: picking one half while the other isn't set yet
+            // auto-advances to that tab, instead of leaving them to notice
+            // and click the second tab themselves.
+            if (!alreadySelected && activeKind === 'captures' && !sale.ability) {
+              setTab('abilities');
+              if (onChange) onChange();
+              return;
+            }
+            if (!alreadySelected && activeKind === 'abilities' && !sale.capture) {
+              setTab('captures');
+              if (onChange) onChange();
+              return;
+            }
+
             render();
             if (onChange) onChange();
+
+            // Both halves are now set - the pairing is complete, so close
+            // instead of leaving the user to notice and dismiss it manually.
+            if (sale.capture && sale.ability) closePicker();
           });
           grid.appendChild(cell);
         });
@@ -2333,7 +2370,7 @@
           saleBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             bounce(saleBtn);
-            openShopSalePicker(item.key, refreshSaleTitle);
+            openShopSalePicker(item.key, refreshSaleTitle, noteArea);
           });
           cell.appendChild(saleBtn);
         }
@@ -2378,7 +2415,7 @@
           if (kind === 'shops' && nowSelected) {
             const sale = APC.getShopSale(fullState, item.key);
             if (!sale.capture && !sale.ability) {
-              openShopSalePicker(item.key, refreshSaleTitle);
+              openShopSalePicker(item.key, refreshSaleTitle, noteArea);
             }
           }
         });
