@@ -1430,6 +1430,9 @@
                 const sale = APC.getShopSale(fullState, req.key);
                 const saleTxt = shopSaleDisplayText(req.key, sale);
                 if (saleTxt) removeRequirementText(noteArea, saleTxt);
+                APC.setShopSale(fullState, req.key, 'captures', null);
+                APC.setShopSale(fullState, req.key, 'abilities', null);
+                saveFullState();
               }
               toggleRequirement(zs, req.kind, req.key, noteArea);
             };
@@ -1815,7 +1818,7 @@
     // shop's real in-game stock can be recorded. Picks save immediately
     // (no separate "confirm" step) via APC.setShopSale; onChange fires after
     // every pick and again on close so the calling row/cell can refresh.
-    function openShopSalePicker(shopKey, onChange, noteArea) {
+    function openShopSalePicker(shopKey, onChange, noteArea, zs) {
       // Only clear out any other already-open sale popup (e.g. re-triggered
       // before the previous one animated closed) - NOT every .req-picker-
       // overlay, since this is very often opened from on top of the Kingdom
@@ -1914,7 +1917,8 @@
           cell.addEventListener('click', () => {
             bounce(cell);
             const alreadySelected = item.key === selectedKey;
-            const prevText = noteArea ? saleText(APC.getShopSale(fullState, shopKey)) : null;
+            const prevSale = APC.getShopSale(fullState, shopKey);
+            const prevText = noteArea ? saleText(prevSale) : null;
             APC.setShopSale(fullState, shopKey, activeKind, alreadySelected ? null : item.key);
             saveFullState();
             const sale = APC.getShopSale(fullState, shopKey);
@@ -1922,7 +1926,7 @@
             // Once both halves are set, write (or refresh) the "sells"
             // sentence into this zone's note, same as any other picked
             // requirement's name - and drop whatever the sentence used to
-            // say if this pick changed it.
+            // say if this pick changed or cleared it.
             if (noteArea) {
               const newText = saleText(sale);
               if (newText !== prevText) {
@@ -1931,17 +1935,38 @@
               }
             }
 
+            // Deselecting a half just clears it in place - no tab-jumping,
+            // no auto-close, so a single click reliably removes it instead
+            // of needing a second click to "catch up". But if that leaves
+            // BOTH halves empty, the Shop itself is no longer configured as
+            // anything - so drop it as this zone's requirement too (and its
+            // "Shop" text), the same full removal a click on the Shop cell
+            // itself would do, rather than leaving an empty Shop pick behind.
+            if (alreadySelected) {
+              if (!sale.capture && !sale.ability && zs) {
+                const stillRequired = zs.requirements.some(r => r.kind === 'shops' && r.key === shopKey);
+                if (stillRequired) {
+                  const prevReqText = requirementDisplayText('shops', shopKey);
+                  if (prevReqText) removeRequirementText(noteArea, prevReqText);
+                  zs.requirements = zs.requirements.filter(r => !(r.kind === 'shops' && r.key === shopKey));
+                }
+              }
+              render();
+              if (onChange) onChange();
+              return;
+            }
+
             // Every Shop always has exactly 1 Capture + 1 Ability for sale
             // (see comment at the top of this function) - so walk the user
             // through both: picking one half while the other isn't set yet
             // auto-advances to that tab, instead of leaving them to notice
             // and click the second tab themselves.
-            if (!alreadySelected && activeKind === 'captures' && !sale.ability) {
+            if (activeKind === 'captures' && !sale.ability) {
               setTab('abilities');
               if (onChange) onChange();
               return;
             }
-            if (!alreadySelected && activeKind === 'abilities' && !sale.capture) {
+            if (activeKind === 'abilities' && !sale.capture) {
               setTab('captures');
               if (onChange) onChange();
               return;
@@ -2389,7 +2414,7 @@
           saleBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             bounce(saleBtn);
-            openShopSalePicker(item.key, refreshSaleTitle, noteArea);
+            openShopSalePicker(item.key, refreshSaleTitle, noteArea, zs);
           });
           cell.appendChild(saleBtn);
         }
@@ -2409,8 +2434,29 @@
           // Kingdoms, where several can genuinely be required together), so
           // these two behave like a radio group: picking a new one clears
           // out any previous pick of the same kind instead of stacking.
+          const already = zs.requirements.some(r => r.kind === kind && r.key === item.key);
+
+          if (kind === 'shops' && already) {
+            // Deselecting the currently-picked Shop removes everything it
+            // brought with it - its own "Shop" text, its "sells" sentence,
+            // and the underlying sale data - not just the requirement.
+            // Removing only the Capture or only the Ability half (via the
+            // sale picker) must never do this; only clicking the Shop cell
+            // itself, with nothing left dangling, counts as full removal.
+            const sale = APC.getShopSale(fullState, item.key);
+            const saleTxt = shopSaleDisplayText(item.key, sale);
+            if (saleTxt) removeRequirementText(noteArea, saleTxt);
+            APC.setShopSale(fullState, item.key, 'captures', null);
+            APC.setShopSale(fullState, item.key, 'abilities', null);
+            saveFullState();
+          }
+
+          // A zone only ever has exactly one real Refight and one real Shop
+          // leading into it in-game (unlike Captures/Abilities/Reaching
+          // Kingdoms, where several can genuinely be required together), so
+          // these two behave like a radio group: picking a new one clears
+          // out any previous pick of the same kind instead of stacking.
           if (kind === 'refights' || kind === 'shops') {
-            const already = zs.requirements.some(r => r.kind === kind && r.key === item.key);
             if (!already) {
               zs.requirements
                 .filter(r => r.kind === kind)
@@ -2425,6 +2471,9 @@
                     const sale = APC.getShopSale(fullState, r.key);
                     const saleTxt = shopSaleDisplayText(r.key, sale);
                     if (saleTxt) removeRequirementText(noteArea, saleTxt);
+                    APC.setShopSale(fullState, r.key, 'captures', null);
+                    APC.setShopSale(fullState, r.key, 'abilities', null);
+                    saveFullState();
                   }
                   const prevText = requirementDisplayText(r.kind, r.key);
                   if (prevText) removeRequirementText(noteArea, prevText);
@@ -2448,8 +2497,11 @@
           if (kind === 'shops' && nowSelected) {
             const sale = APC.getShopSale(fullState, item.key);
             if (!sale.capture && !sale.ability) {
-              openShopSalePicker(item.key, refreshSaleTitle, noteArea);
+              openShopSalePicker(item.key, refreshSaleTitle, noteArea, zs);
             }
+            closePicker();
+          } else if (kind === 'shops' && !nowSelected) {
+            refreshSaleTitle();
             closePicker();
           }
         });
