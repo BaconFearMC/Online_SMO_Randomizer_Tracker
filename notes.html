@@ -1762,11 +1762,22 @@
     // (no separate "confirm" step) via APC.setShopSale; onChange fires after
     // every pick and again on close so the calling row/cell can refresh.
     function openShopSalePicker(shopKey, onChange) {
-      document.querySelectorAll('.req-picker-overlay').forEach(p => p.remove());
+      // Only close any other already-open shop-sale popup here - NOT the
+      // main "Add a Requirement" picker. That picker used to share the same
+      // .req-picker-overlay class, so this call nuked it out of the DOM
+      // (rather than just layering on top) every time a Shop was clicked for
+      // the first time (auto-opens this) or the 🏷 edit button was used,
+      // which is why picking a Capture/Ability for sale looked like it
+      // "didn't work": the picker you were mid-flow in vanished and never
+      // came back. Instead, just hide it while this popup is open and
+      // restore it on close.
+      document.querySelectorAll('.req-picker-overlay--shopsale').forEach(p => p.remove());
+      const parentReqOverlay = document.querySelector('.req-picker-overlay--main.active');
+      if (parentReqOverlay) parentReqOverlay.style.display = 'none';
       const shopItem = APC.findItem('shops', shopKey);
 
       const overlay = document.createElement('div');
-      overlay.className = 'req-picker-overlay';
+      overlay.className = 'req-picker-overlay req-picker-overlay--shopsale';
       const popup = document.createElement('div');
       popup.className = 'req-picker-popup req-picker-popup--scroll req-picker-popup--shop-sale';
       popup.addEventListener('click', (e) => e.stopPropagation());
@@ -1874,6 +1885,7 @@
         document.removeEventListener('keydown', onKeyDown);
         window.removeEventListener('resize', onResize);
         setTimeout(() => overlay.remove(), 320);
+        if (parentReqOverlay) parentReqOverlay.style.display = '';
         if (onChange) onChange();
       }
       overlay.addEventListener('click', (e) => { if (e.target === overlay) closePicker(); });
@@ -1894,7 +1906,7 @@
       document.querySelectorAll('.req-picker-overlay').forEach(p => p.remove());
 
       const overlay = document.createElement('div');
-      overlay.className = 'req-picker-overlay';
+      overlay.className = 'req-picker-overlay req-picker-overlay--main';
 
       const popup = document.createElement('div');
       popup.className = 'req-picker-popup';
