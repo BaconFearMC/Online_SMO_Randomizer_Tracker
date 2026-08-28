@@ -452,7 +452,8 @@
       display: flex;
       align-items: stretch;
       width: 100%;
-      height: 100%;
+      flex: 1 1 auto;
+      min-height: 0;
       gap: 0;
     }
     .req-picker-captures-wrap .req-picker-grid {
@@ -479,13 +480,7 @@
     .req-picker-grid--onetime {
       display: grid !important;
       grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-      /* Fixed row height, not min-content - see comment above buildOnetimeGrid
-         usage / this rule's history: min-content let the browser size each
-         row off its own content's *minimum* size, and a flexed icon with
-         min-height:0 has a minimum size of zero, so some rows collapsed to
-         "just tall enough for the label" while others didn't. A concrete
-         height removes that ambiguity so every icon always has real room. */
-      grid-auto-rows: 96px !important;
+      grid-auto-rows: min-content;
       gap: 8px;
       overflow-y: auto;
       align-content: start;
@@ -495,47 +490,40 @@
     }
     .req-picker-grid--onetime .req-picker-item {
       padding: 5px !important;
+      /* grid-auto-rows: min-content means this row's height comes purely
+         from its content - if the icon <img> hasn't finished loading (or
+         fails to load) it contributes 0 height and the cell collapses to
+         a tiny text-only pill. Force a minimum so the cell always reserves
+         room for the icon regardless of image load state/timing. */
+      min-height: 76px;
     }
     .req-picker-grid--onetime .req-picker-item span {
       font-size: .68rem !important;
       line-height: 1.15;
     }
-
-    /* ── Shrink-to-fit icons, never crop them ────────────────────────────
-       Applies to the main Captures/Abilities grid (left side of the
-       Captures tab, and the whole Abilities tab - both reuse the same
-       .req-picker-grid element) and the One-Time Captures column. Each
-       cell becomes a column flexbox: the label sizes to its own text,
-       and the icon (flex:1, min-height:0, object-fit:contain) takes
-       whatever's left and scales itself down to fit rather than
-       overflowing past the cell's bottom edge and getting clipped. */
-    .req-picker-captures-wrap .req-picker-grid .req-picker-item,
-    .req-picker-grid--onetime .req-picker-item {
-      display: flex !important;
-      flex-direction: column !important;
-      align-items: center !important;
-      justify-content: center !important;
-      overflow: hidden !important;
-      box-sizing: border-box !important;
-    }
-    .req-picker-captures-wrap .req-picker-grid .req-picker-item img,
     .req-picker-grid--onetime .req-picker-item img {
-      flex: 1 1 auto !important;
-      min-height: 0 !important;
-      width: 100% !important;
-      height: 100% !important;
-      max-width: 100% !important;
-      max-height: 100% !important;
-      object-fit: contain !important;
-    }
-    .req-picker-captures-wrap .req-picker-grid .req-picker-item span,
-    .req-picker-grid--onetime .req-picker-item span {
+      /* Independent of intrinsic image size (or lack thereof pre-load/on
+         error) - always a consistent square icon slot. */
       flex: 0 0 auto !important;
-      width: 100%;
-      text-align: center;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+      width: 60% !important;
+      height: auto !important;
+      aspect-ratio: 1 / 1;
+    }
+
+    /* A capture/ability whose icon file genuinely 404s (see the img error
+       listener in buildPickerCell): hide the broken-image glyph and show a
+       plain "?" placeholder in the same reserved icon box, instead of the
+       cell silently losing its icon and shrinking. */
+    .req-picker-item--broken-icon img { visibility: hidden; }
+    .req-picker-item--broken-icon { position: relative; }
+    .req-picker-item--broken-icon::before {
+      content: '?';
+      position: absolute;
+      top: 8px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      opacity: .35;
+      color: var(--text-dim);
     }
 
     /* Coin Grind is one tile that opens a tiny 3-option submenu (Snow /
@@ -1805,22 +1793,11 @@
     // (no separate "confirm" step) via APC.setShopSale; onChange fires after
     // every pick and again on close so the calling row/cell can refresh.
     function openShopSalePicker(shopKey, onChange) {
-      // Only close any other already-open shop-sale popup here - NOT the
-      // main "Add a Requirement" picker. That picker used to share the same
-      // .req-picker-overlay class, so this call nuked it out of the DOM
-      // (rather than just layering on top) every time a Shop was clicked for
-      // the first time (auto-opens this) or the 🏷 edit button was used,
-      // which is why picking a Capture/Ability for sale looked like it
-      // "didn't work": the picker you were mid-flow in vanished and never
-      // came back. Instead, just hide it while this popup is open and
-      // restore it on close.
-      document.querySelectorAll('.req-picker-overlay--shopsale').forEach(p => p.remove());
-      const parentReqOverlay = document.querySelector('.req-picker-overlay--main.active');
-      if (parentReqOverlay) parentReqOverlay.style.display = 'none';
+      document.querySelectorAll('.req-picker-overlay').forEach(p => p.remove());
       const shopItem = APC.findItem('shops', shopKey);
 
       const overlay = document.createElement('div');
-      overlay.className = 'req-picker-overlay req-picker-overlay--shopsale';
+      overlay.className = 'req-picker-overlay';
       const popup = document.createElement('div');
       popup.className = 'req-picker-popup req-picker-popup--scroll req-picker-popup--shop-sale';
       popup.addEventListener('click', (e) => e.stopPropagation());
@@ -1928,7 +1905,6 @@
         document.removeEventListener('keydown', onKeyDown);
         window.removeEventListener('resize', onResize);
         setTimeout(() => overlay.remove(), 320);
-        if (parentReqOverlay) parentReqOverlay.style.display = '';
         if (onChange) onChange();
       }
       overlay.addEventListener('click', (e) => { if (e.target === overlay) closePicker(); });
@@ -1949,7 +1925,7 @@
       document.querySelectorAll('.req-picker-overlay').forEach(p => p.remove());
 
       const overlay = document.createElement('div');
-      overlay.className = 'req-picker-overlay req-picker-overlay--main';
+      overlay.className = 'req-picker-overlay';
 
       const popup = document.createElement('div');
       popup.className = 'req-picker-popup';
@@ -2286,8 +2262,16 @@
           cell.style.setProperty('--refight-c2', item.colors[1]);
         }
         const img = document.createElement('img');
-        img.src = item.src;
         img.alt = item.name;
+        img.addEventListener('error', () => {
+          // Real 404/missing file: img has zero intrinsic size, so without
+          // this it silently disappears (worst in the one-time grid's
+          // min-content rows - see .req-picker-grid--onetime .req-picker-item
+          // min-height above). Flag it visibly instead of hiding the problem.
+          cell.classList.add('req-picker-item--broken-icon');
+          console.warn('[req-picker] missing icon for', item.key, '->', item.src);
+        }, { once: true });
+        img.src = item.src;
         const label = document.createElement('span');
         label.textContent = item.name;
         cell.appendChild(img);
