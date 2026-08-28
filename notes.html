@@ -479,7 +479,13 @@
     .req-picker-grid--onetime {
       display: grid !important;
       grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-      grid-auto-rows: min-content;
+      /* Fixed row height, not min-content - see comment above buildOnetimeGrid
+         usage / this rule's history: min-content let the browser size each
+         row off its own content's *minimum* size, and a flexed icon with
+         min-height:0 has a minimum size of zero, so some rows collapsed to
+         "just tall enough for the label" while others didn't. A concrete
+         height removes that ambiguity so every icon always has real room. */
+      grid-auto-rows: 96px !important;
       gap: 8px;
       overflow-y: auto;
       align-content: start;
@@ -493,6 +499,43 @@
     .req-picker-grid--onetime .req-picker-item span {
       font-size: .68rem !important;
       line-height: 1.15;
+    }
+
+    /* ── Shrink-to-fit icons, never crop them ────────────────────────────
+       Applies to the main Captures/Abilities grid (left side of the
+       Captures tab, and the whole Abilities tab - both reuse the same
+       .req-picker-grid element) and the One-Time Captures column. Each
+       cell becomes a column flexbox: the label sizes to its own text,
+       and the icon (flex:1, min-height:0, object-fit:contain) takes
+       whatever's left and scales itself down to fit rather than
+       overflowing past the cell's bottom edge and getting clipped. */
+    .req-picker-captures-wrap .req-picker-grid .req-picker-item,
+    .req-picker-grid--onetime .req-picker-item {
+      display: flex !important;
+      flex-direction: column !important;
+      align-items: center !important;
+      justify-content: center !important;
+      overflow: hidden !important;
+      box-sizing: border-box !important;
+    }
+    .req-picker-captures-wrap .req-picker-grid .req-picker-item img,
+    .req-picker-grid--onetime .req-picker-item img {
+      flex: 1 1 auto !important;
+      min-height: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+      max-width: 100% !important;
+      max-height: 100% !important;
+      object-fit: contain !important;
+    }
+    .req-picker-captures-wrap .req-picker-grid .req-picker-item span,
+    .req-picker-grid--onetime .req-picker-item span {
+      flex: 0 0 auto !important;
+      width: 100%;
+      text-align: center;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     /* Coin Grind is one tile that opens a tiny 3-option submenu (Snow /
