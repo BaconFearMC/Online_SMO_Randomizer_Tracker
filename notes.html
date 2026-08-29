@@ -1427,12 +1427,13 @@
       // Removes just ONE half (Capture or Ability) of a Shop's sale, leaving
       // the other half - and its own icon/text - completely untouched. The
       // full "sells" sentence ("Shop sells Ability & Capture") is removed
-      // first, then rebuilt depending on what's left:
-      //  - Capture removed, Ability remains -> "Shop sells Ability" (keeps "sells" -
-      //    it still refers to the surviving Ability)
-      //  - Ability removed, Capture remains -> "Shop Capture" (drops "sells" -
-      //    "sells" only ever describes the Ability half, so it means nothing
-      //    once that's gone, but the Capture itself must stay in the text)
+      // first (via shopSaleDisplayText, which reads the sale as it stood
+      // *before* this removal, so it can find the text whether it was the
+      // full pair or already just a single half), then rebuilt depending on
+      // what's left:
+      //  - Capture removed, Ability remains -> "Shop sells Ability"
+      //  - Ability removed, Capture remains -> "Shop sells Capture" ("sells"
+      //    always stays as long as anything is still for sale)
       //  - Neither remains -> the Shop requirement is no longer configured as
       //    anything, so it's dropped entirely (bare name and all), same as
       //    clicking the Shop icon itself - never left as a bare "Shop" with
@@ -1525,18 +1526,13 @@
             // sale isn't a state the note text can represent cleanly.
             if (req.kind === 'shops') {
               const sale = APC.getShopSale(fullState, req.key);
-              const onlyOneLeft = !!sale.ability !== !!sale.capture;
               ['ability', 'capture'].forEach((half) => {
                 const saleKind = half === 'ability' ? 'abilities' : 'captures';
                 const saleKey = sale[half];
                 if (!saleKey) return;
                 const saleItem = APC.findItem(saleKind, saleKey);
                 if (!saleItem) return;
-                // If this is the only half left, one click removes it AND
-                // the now-pointless Shop requirement together (via
-                // removeBoth) - never leaves it needing a second click to
-                // "catch up" and clean out the leftover Shop/text.
-                const removeSale = onlyOneLeft ? removeBoth : () => clearShopSaleHalf(req.key, half);
+                const removeSale = () => clearShopSaleHalf(req.key, half);
                 reqsWrap.appendChild(buildReqIconEl(saleKind, saleKey, saleItem, removeSale));
               });
             }
@@ -1760,16 +1756,23 @@
 
     // Text inserted into the note for a Shop's "for sale" pairing, e.g.
     // "Lost Shop sells Vault & Cactus" - shared between openShopSalePicker
-    // (which writes it) and anywhere a Shop requirement gets removed (which
-    // has to clean it back out again). Returns null while the sale is
-    // incomplete, since there's nothing to write or remove.
+    // (which writes it), the sale-half removal in clearShopSaleHalf, and
+    // clearShopSale (which has to clean it back out again). Handles partial
+    // sales too (only a Capture or only an Ability set) so the "sells" text
+    // can always be found and removed no matter how much of the pair is
+    // still configured - "sells" is used whenever anything remains, since
+    // it describes the sale as a whole, not just the Ability half. Returns
+    // null only when nothing is set at all, since there's nothing to write
+    // or remove in that case.
     function shopSaleDisplayText(shopKey, sale) {
       const shopItem = APC.findItem('shops', shopKey);
-      if (!shopItem || !sale || !sale.capture || !sale.ability) return null;
-      const capItem = APC.findItem('captures', sale.capture);
-      const ablItem = APC.findItem('abilities', sale.ability);
-      if (!capItem || !ablItem) return null;
-      return shopItem.name + ' sells ' + ablItem.name + ' & ' + capItem.name;
+      if (!shopItem || !sale) return null;
+      const capItem = sale.capture ? APC.findItem('captures', sale.capture) : null;
+      const ablItem = sale.ability ? APC.findItem('abilities', sale.ability) : null;
+      if (capItem && ablItem) return shopItem.name + ' sells ' + ablItem.name + ' & ' + capItem.name;
+      if (ablItem) return shopItem.name + ' sells ' + ablItem.name;
+      if (capItem) return shopItem.name + ' sells ' + capItem.name;
+      return null;
     }
 
     function toggleRequirement(zs, kind, key, noteArea) {
@@ -2047,20 +2050,19 @@
                     // the full sentence to nothing without this branch. The
                     // half that's still set needs its own text put back -
                     // "Shop sells Ability" if the Capture was the one just
-                    // cleared (keeps "sells", which still refers to the
-                    // Ability), or just "Shop Capture" if the Ability was
-                    // the one just cleared ("sells" only ever describes the
-                    // Ability half, so it has no meaning once that's gone).
-                    // If both halves are now empty there's nothing to write
-                    // back - the block below drops the Shop requirement and
-                    // its bare name text entirely in that case.
+                    // cleared, or "Shop sells Capture" if the Ability was
+                    // the one just cleared - "sells" always stays as long as
+                    // anything is still for sale. If both halves are now
+                    // empty there's nothing to write back - the block below
+                    // drops the Shop requirement and its bare name text
+                    // entirely in that case.
                     const shopItem = APC.findItem('shops', shopKey);
                     if (shopItem && activeKind === 'captures' && sale.ability) {
                       const ablItem = APC.findItem('abilities', sale.ability);
                       if (ablItem) appendRequirementText(noteArea, shopItem.name + ' sells ' + ablItem.name);
                     } else if (shopItem && activeKind === 'abilities' && sale.capture) {
                       const capItem = APC.findItem('captures', sale.capture);
-                      if (capItem) appendRequirementText(noteArea, shopItem.name + ' ' + capItem.name);
+                      if (capItem) appendRequirementText(noteArea, shopItem.name + ' sells ' + capItem.name);
                     }
                   }
                 } else if (newText && zs && zs.requirements.some(r => r.kind === 'shops' && r.key === shopKey)) {
