@@ -1425,14 +1425,14 @@
       }
 
       // Removes just ONE half (Capture or Ability) of a Shop's sale, leaving
-      // the other half (and its icon/text) untouched. The "sells" sentence
-      // is a single joined string ("Shop sells Ability & Capture"), so it
-      // can't be edited in place - the old full sentence is removed and, if
-      // the other half is still set, a fresh two-word fragment for just that
-      // remaining half ("Shop sells Ability" or "Shop sells Capture") is
-      // written back in its place. If this was the last half, nothing is
-      // written back - the Shop's own bare name text is restored instead so
-      // the Shop requirement doesn't lose its text entirely.
+      // the other half untouched. The full "sells" sentence ("Shop sells
+      // Ability & Capture") is removed first, then rebuilt depending on
+      // which half remains:
+      //  - Capture removed, Ability remains -> "Shop sells Ability" (keeps "sells")
+      //  - Ability removed, Capture remains -> just "Shop" (drops "sells" -
+      //    "sells" always refers to the Ability half, so it has no meaning
+      //    once the Ability is gone)
+      //  - Neither remains -> just "Shop"
       function clearShopSaleHalf(shopKey, half) {
         const shopItem = APC.findItem('shops', shopKey);
         const prevSale = APC.getShopSale(fullState, shopKey);
@@ -1442,17 +1442,18 @@
         APC.setShopSale(fullState, shopKey, half === 'ability' ? 'abilities' : 'captures', null);
         saveFullState();
 
-        const remainingKind = half === 'ability' ? 'captures' : 'abilities';
-        const remainingKey = half === 'ability' ? prevSale.capture : prevSale.ability;
-        const remainingItem = remainingKey ? APC.findItem(remainingKind, remainingKey) : null;
+        if (!shopItem) return;
 
-        if (shopItem && remainingItem) {
-          appendRequirementText(noteArea, shopItem.name + ' sells ' + remainingItem.name);
-        } else if (shopItem) {
-          // Nothing left for sale - fall back to the Shop's plain name so
-          // the requirement still has matching text in the note.
-          appendRequirementText(noteArea, shopItem.name);
+        if (half === 'capture' && prevSale.ability) {
+          const ablItem = APC.findItem('abilities', prevSale.ability);
+          if (ablItem) {
+            appendRequirementText(noteArea, shopItem.name + ' sells ' + ablItem.name);
+            return;
+          }
         }
+        // Ability removed (or nothing usable remains) - "sells" no longer
+        // applies, so fall back to the Shop's plain name only.
+        appendRequirementText(noteArea, shopItem.name);
       }
 
       function renderReqIcons() {
@@ -2017,11 +2018,36 @@
               if (newText !== prevText) {
                 if (prevText) {
                   removeRequirementText(noteArea, prevText);
+                  if (newText) {
+                    appendRequirementText(noteArea, newText);
+                  } else {
+                    // Deselecting a half here drops the note straight from
+                    // the full sentence to nothing without this branch. The
+                    // half that's still set needs its own text put back -
+                    // "Shop sells Ability" if the Capture was the one just
+                    // cleared (keeps "sells", which still refers to the
+                    // Ability), or just "Shop Capture" if the Ability was
+                    // the one just cleared ("sells" only ever describes the
+                    // Ability half, so it has no meaning once that's gone).
+                    // If both halves are now empty there's nothing to write
+                    // back - the block below drops the Shop requirement and
+                    // its bare name text entirely in that case.
+                    const shopItem = APC.findItem('shops', shopKey);
+                    if (shopItem && activeKind === 'captures' && sale.ability) {
+                      const ablItem = APC.findItem('abilities', sale.ability);
+                      if (ablItem) appendRequirementText(noteArea, shopItem.name + ' sells ' + ablItem.name);
+                    } else if (shopItem && activeKind === 'abilities' && sale.capture) {
+                      const capItem = APC.findItem('captures', sale.capture);
+                      if (capItem) appendRequirementText(noteArea, shopItem.name + ' ' + capItem.name);
+                    }
+                  }
                 } else if (newText && zs && zs.requirements.some(r => r.kind === 'shops' && r.key === shopKey)) {
                   const bareShopText = requirementDisplayText('shops', shopKey);
                   if (bareShopText) removeRequirementText(noteArea, bareShopText);
+                  appendRequirementText(noteArea, newText);
+                } else if (newText) {
+                  appendRequirementText(noteArea, newText);
                 }
-                if (newText) appendRequirementText(noteArea, newText);
               }
             }
 
