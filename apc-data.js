@@ -287,6 +287,8 @@
     'Banzai_Bill_Capture',
     'Picture_Match_Part_(Mario)_Capture',
     'Puzzle_Part_(Lake)_Capture',
+    'Scooter_Capture',
+    'Jaxi_Capture'
   ];
 
   function buildNotesList(keys) {
