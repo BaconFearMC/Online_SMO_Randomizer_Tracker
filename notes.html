@@ -1462,7 +1462,7 @@
         if (half === 'ability' && capKey) {
           const capItem = APC.findItem('captures', capKey);
           if (capItem) {
-            appendRequirementText(noteArea, shopItem.name + ' ' + capItem.name);
+            appendRequirementText(noteArea, shopItem.name + ' sells ' + capItem.name);
             return;
           }
         }
@@ -1525,13 +1525,18 @@
             // sale isn't a state the note text can represent cleanly.
             if (req.kind === 'shops') {
               const sale = APC.getShopSale(fullState, req.key);
+              const onlyOneLeft = !!sale.ability !== !!sale.capture;
               ['ability', 'capture'].forEach((half) => {
                 const saleKind = half === 'ability' ? 'abilities' : 'captures';
                 const saleKey = sale[half];
                 if (!saleKey) return;
                 const saleItem = APC.findItem(saleKind, saleKey);
                 if (!saleItem) return;
-                const removeSale = () => clearShopSaleHalf(req.key, half);
+                // If this is the only half left, one click removes it AND
+                // the now-pointless Shop requirement together (via
+                // removeBoth) - never leaves it needing a second click to
+                // "catch up" and clean out the leftover Shop/text.
+                const removeSale = onlyOneLeft ? removeBoth : () => clearShopSaleHalf(req.key, half);
                 reqsWrap.appendChild(buildReqIconEl(saleKind, saleKey, saleItem, removeSale));
               });
             }
