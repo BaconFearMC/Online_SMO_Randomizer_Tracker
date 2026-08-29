@@ -2786,9 +2786,13 @@
           menu.appendChild(btn);
         });
 
-        const rect = anchorEl.getBoundingClientRect();
-        menu.style.left = Math.min(rect.left, window.innerWidth - 220) + 'px';
-        menu.style.top = (rect.bottom + 6) + 'px';
+        // Center the submenu in the viewport rather than anchoring it to the
+        // Coin Grind tile - its 3 options (Snow/Cascade/Wooded) read better
+        // as a centered popup than a corner-anchored dropdown.
+        void menu.offsetWidth;
+        const menuRect = menu.getBoundingClientRect();
+        menu.style.left = Math.round((window.innerWidth - menuRect.width) / 2) + 'px';
+        menu.style.top = Math.round((window.innerHeight - menuRect.height) / 2) + 'px';
 
         function onDocClick(e) {
           if (!menu.contains(e.target) && e.target !== anchorEl) closeMenu();
