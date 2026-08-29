@@ -1425,14 +1425,19 @@
       }
 
       // Removes just ONE half (Capture or Ability) of a Shop's sale, leaving
-      // the other half untouched. The full "sells" sentence ("Shop sells
-      // Ability & Capture") is removed first, then rebuilt depending on
-      // which half remains:
-      //  - Capture removed, Ability remains -> "Shop sells Ability" (keeps "sells")
-      //  - Ability removed, Capture remains -> just "Shop" (drops "sells" -
-      //    "sells" always refers to the Ability half, so it has no meaning
-      //    once the Ability is gone)
-      //  - Neither remains -> just "Shop"
+      // the other half - and its own icon/text - completely untouched. The
+      // full "sells" sentence ("Shop sells Ability & Capture") is removed
+      // first, then rebuilt depending on what's left:
+      //  - Capture removed, Ability remains -> "Shop sells Ability" (keeps "sells" -
+      //    it still refers to the surviving Ability)
+      //  - Ability removed, Capture remains -> "Shop Capture" (drops "sells" -
+      //    "sells" only ever describes the Ability half, so it means nothing
+      //    once that's gone, but the Capture itself must stay in the text)
+      //  - Neither remains -> the Shop requirement is no longer configured as
+      //    anything, so it's dropped entirely (bare name and all), same as
+      //    clicking the Shop icon itself - never left as a bare "Shop" with
+      //    nothing backing it, and never re-added on top of itself (no
+      //    "Shop AND Shop").
       function clearShopSaleHalf(shopKey, half) {
         const shopItem = APC.findItem('shops', shopKey);
         const prevSale = APC.getShopSale(fullState, shopKey);
@@ -1444,16 +1449,28 @@
 
         if (!shopItem) return;
 
-        if (half === 'capture' && prevSale.ability) {
-          const ablItem = APC.findItem('abilities', prevSale.ability);
+        const ablKey = half === 'ability' ? null : prevSale.ability;
+        const capKey = half === 'capture' ? null : prevSale.capture;
+
+        if (half === 'capture' && ablKey) {
+          const ablItem = APC.findItem('abilities', ablKey);
           if (ablItem) {
             appendRequirementText(noteArea, shopItem.name + ' sells ' + ablItem.name);
             return;
           }
         }
-        // Ability removed (or nothing usable remains) - "sells" no longer
-        // applies, so fall back to the Shop's plain name only.
-        appendRequirementText(noteArea, shopItem.name);
+        if (half === 'ability' && capKey) {
+          const capItem = APC.findItem('captures', capKey);
+          if (capItem) {
+            appendRequirementText(noteArea, shopItem.name + ' ' + capItem.name);
+            return;
+          }
+        }
+
+        // Nothing left for sale - the Shop itself is no longer configured as
+        // anything, so it comes out of the requirements list too, exactly
+        // like clicking the Shop icon would do. No text is appended back.
+        if (zs) zs.requirements = zs.requirements.filter(r => !(r.kind === 'shops' && r.key === shopKey));
       }
 
       function renderReqIcons() {
