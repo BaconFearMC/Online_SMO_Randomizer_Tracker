@@ -1775,10 +1775,10 @@
       return null;
     }
 
-    function toggleRequirement(zs, kind, key, noteArea) {
+    function toggleRequirement(zs, kind, key, noteArea, overrideText) {
       if (!Array.isArray(zs.requirements)) zs.requirements = [];
       const idx = zs.requirements.findIndex(r => r.kind === kind && r.key === key);
-      const text = requirementDisplayText(kind, key);
+      const text = overrideText !== undefined ? overrideText : requirementDisplayText(kind, key);
       if (idx >= 0) {
         zs.requirements.splice(idx, 1);
         if (text) removeRequirementText(noteArea, text);
@@ -2749,6 +2749,18 @@
         return cell;
       }
 
+      // Text inserted into the note for a Coin Grind submenu pick, e.g.
+      // "Cascade Coin Grind (T-Rex)" - includes the underlying Capture's
+      // name in parens for the two kingdom-specific options (Cascade/
+      // Wooded), since those are gated by a specific Capture in-game, not
+      // just "Coin Grind" generically. Snow uses the generic Coin Grind
+      // capture itself, so its label alone is enough - no parenthetical.
+      function coinGrindDisplayText(opt) {
+        const shows = APC.findItem(opt.kind, opt.key);
+        if (shows && opt.key !== 'Coin_Grind_Capture') return opt.label + ' (' + shows.name + ')';
+        return opt.label;
+      }
+
       function openCoinGrindSubmenu(anchorEl, onDone) {
         document.querySelectorAll('.req-picker-coingrind-submenu').forEach(m => m.remove());
         const menu = document.createElement('div');
@@ -2778,7 +2790,7 @@
           btn.addEventListener('click', (e) => {
             e.stopPropagation();
             bounce(btn);
-            const nowSelected = toggleRequirement(zs, opt.kind, opt.key, noteArea);
+            const nowSelected = toggleRequirement(zs, opt.kind, opt.key, noteArea, coinGrindDisplayText(opt));
             btn.classList.toggle('selected', nowSelected);
             onChange();
             if (onDone) onDone();
