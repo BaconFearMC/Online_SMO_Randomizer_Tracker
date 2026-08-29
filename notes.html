@@ -1413,9 +1413,8 @@
       }
 
       // Fully removes a Shop requirement's "sells" sentence and the
-      // underlying sale data (both halves) - shared by every place a Shop
-      // requirement, or one of its two sold items, gets removed, so the
-      // note text and APC.getShopSale data never disagree with each other.
+      // underlying sale data (both halves) - used when the Shop icon itself
+      // is removed, since that drops everything tied to the Shop at once.
       function clearShopSale(shopKey) {
         const sale = APC.getShopSale(fullState, shopKey);
         const saleTxt = shopSaleDisplayText(shopKey, sale);
@@ -1423,6 +1422,37 @@
         APC.setShopSale(fullState, shopKey, 'captures', null);
         APC.setShopSale(fullState, shopKey, 'abilities', null);
         saveFullState();
+      }
+
+      // Removes just ONE half (Capture or Ability) of a Shop's sale, leaving
+      // the other half (and its icon/text) untouched. The "sells" sentence
+      // is a single joined string ("Shop sells Ability & Capture"), so it
+      // can't be edited in place - the old full sentence is removed and, if
+      // the other half is still set, a fresh two-word fragment for just that
+      // remaining half ("Shop sells Ability" or "Shop sells Capture") is
+      // written back in its place. If this was the last half, nothing is
+      // written back - the Shop's own bare name text is restored instead so
+      // the Shop requirement doesn't lose its text entirely.
+      function clearShopSaleHalf(shopKey, half) {
+        const shopItem = APC.findItem('shops', shopKey);
+        const prevSale = APC.getShopSale(fullState, shopKey);
+        const prevTxt = shopSaleDisplayText(shopKey, prevSale);
+        if (prevTxt) removeRequirementText(noteArea, prevTxt);
+
+        APC.setShopSale(fullState, shopKey, half === 'ability' ? 'abilities' : 'captures', null);
+        saveFullState();
+
+        const remainingKind = half === 'ability' ? 'captures' : 'abilities';
+        const remainingKey = half === 'ability' ? prevSale.capture : prevSale.ability;
+        const remainingItem = remainingKey ? APC.findItem(remainingKind, remainingKey) : null;
+
+        if (shopItem && remainingItem) {
+          appendRequirementText(noteArea, shopItem.name + ' sells ' + remainingItem.name);
+        } else if (shopItem) {
+          // Nothing left for sale - fall back to the Shop's plain name so
+          // the requirement still has matching text in the note.
+          appendRequirementText(noteArea, shopItem.name);
+        }
       }
 
       function renderReqIcons() {
@@ -1483,7 +1513,7 @@
                 if (!saleKey) return;
                 const saleItem = APC.findItem(saleKind, saleKey);
                 if (!saleItem) return;
-                const removeSale = () => clearShopSale(req.key);
+                const removeSale = () => clearShopSaleHalf(req.key, half);
                 reqsWrap.appendChild(buildReqIconEl(saleKind, saleKey, saleItem, removeSale));
               });
             }
@@ -2619,7 +2649,10 @@
         const list = APC.NOTES_CAPTURES_ONETIME;
         const filtered = q ? list.filter(i => i.name.toLowerCase().includes(q)) : list;
         filtered.forEach(item => onetimeGrid.appendChild(buildPickerCell(item, 'captures', 'req-picker-item--capture')));
-        if (!filtered.length) {
+        const coinMatches = !q || 'coin grind'.includes(q) || 'snow coin grind'.includes(q) ||
+          'cascade coin grind'.includes(q) || 'wooded coin grind'.includes(q);
+        if (coinMatches) onetimeGrid.appendChild(buildCoinGrindCell());
+        if (!filtered.length && !coinMatches) {
           const empty = document.createElement('div');
           empty.className = 'req-picker-empty';
           empty.textContent = 'No matches';
