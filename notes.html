@@ -1050,20 +1050,36 @@
           if (destKey) {
             const item = APC.findItem('kingdoms', destKey);
             if (item) {
+              const group = document.createElement('span');
+              group.className = 'zone-req-pair';
+
               const img = document.createElement('img');
               img.className = 'zone-req-icon zone-req-icon--kingdom';
               img.src = item.src;
               img.alt = item.name;
               img.title = 'Leads to ' + item.name + ' (click to remove)';
               if (item.color) img.style.setProperty('--kingdom-color', item.color);
-              img.addEventListener('click', (e) => {
+
+              const destLabel = document.createElement('span');
+              destLabel.className = 'zone-req-dest-name';
+              destLabel.textContent = item.name;
+              destLabel.style.cssText = 'margin-left:4px;font-weight:600;cursor:pointer;';
+              destLabel.style.color = item.color || '#e6e6ee';
+              destLabel.title = 'Leads to ' + item.name + ' (click to remove)';
+
+              const removeDest = (e) => {
                 e.stopPropagation();
                 bounce(img);
                 APC.setPaintingDestination(fullState, kingdom, null);
                 saveFullState();
                 renderDestChip();
-              });
-              reqsWrap.appendChild(img);
+              };
+              img.addEventListener('click', removeDest);
+              destLabel.addEventListener('click', removeDest);
+
+              group.appendChild(img);
+              group.appendChild(destLabel);
+              reqsWrap.appendChild(group);
             }
           }
         }
@@ -1396,6 +1412,19 @@
         return img;
       }
 
+      // Fully removes a Shop requirement's "sells" sentence and the
+      // underlying sale data (both halves) - shared by every place a Shop
+      // requirement, or one of its two sold items, gets removed, so the
+      // note text and APC.getShopSale data never disagree with each other.
+      function clearShopSale(shopKey) {
+        const sale = APC.getShopSale(fullState, shopKey);
+        const saleTxt = shopSaleDisplayText(shopKey, sale);
+        if (saleTxt) removeRequirementText(noteArea, saleTxt);
+        APC.setShopSale(fullState, shopKey, 'captures', null);
+        APC.setShopSale(fullState, shopKey, 'abilities', null);
+        saveFullState();
+      }
+
       function renderReqIcons() {
         reqsWrap.innerHTML = '';
         const addBtn = document.createElement('button');
@@ -1426,14 +1455,7 @@
             // sentence (if any) has to come out too, and before the shop's
             // own name text - see the matching cleanup in buildPickerCell.
             const removeBoth = () => {
-              if (req.kind === 'shops') {
-                const sale = APC.getShopSale(fullState, req.key);
-                const saleTxt = shopSaleDisplayText(req.key, sale);
-                if (saleTxt) removeRequirementText(noteArea, saleTxt);
-                APC.setShopSale(fullState, req.key, 'captures', null);
-                APC.setShopSale(fullState, req.key, 'abilities', null);
-                saveFullState();
-              }
+              if (req.kind === 'shops') clearShopSale(req.key);
               toggleRequirement(zs, req.kind, req.key, noteArea);
             };
             const group = document.createElement('span');
@@ -1446,6 +1468,25 @@
               }
             }
             reqsWrap.appendChild(group);
+
+            // The Shop's sold Capture and Ability ride alongside it too, so
+            // both halves are visible (and each removable with a single
+            // click) without having to open the sale picker again. Clicking
+            // either one clears the whole "sells" sentence and both halves
+            // of the sale - not just the one icon clicked - since a partial
+            // sale isn't a state the note text can represent cleanly.
+            if (req.kind === 'shops') {
+              const sale = APC.getShopSale(fullState, req.key);
+              ['ability', 'capture'].forEach((half) => {
+                const saleKind = half === 'ability' ? 'abilities' : 'captures';
+                const saleKey = sale[half];
+                if (!saleKey) return;
+                const saleItem = APC.findItem(saleKind, saleKey);
+                if (!saleItem) return;
+                const removeSale = () => clearShopSale(req.key);
+                reqsWrap.appendChild(buildReqIconEl(saleKind, saleKey, saleItem, removeSale));
+              });
+            }
             return;
           }
 
@@ -1454,13 +1495,21 @@
 
         // Auto-detected items: anything typed in the note text that matches
         // a Capture/Ability/Refight/Kingdom name, but wasn't explicitly
-        // picked. Shown faded; clicking pins it as a real requirement.
+        // picked. Shown faded; clicking pins it as a real requirement. A
+        // Capture/Ability currently sold by one of this zone's Shops is
+        // skipped here - it already got its own single-click-removable icon
+        // above, right next to that Shop.
         const explicitIds = new Set();
         zs.requirements.forEach((r) => {
           explicitIds.add(r.kind + ':' + r.key);
           if (r.kind === 'refights') {
             const item = APC.findItem('refights', r.key);
             if (item && item.pair) explicitIds.add(item.pair.kind + ':' + item.pair.key);
+          }
+          if (r.kind === 'shops') {
+            const sale = APC.getShopSale(fullState, r.key);
+            if (sale.capture) explicitIds.add('captures:' + sale.capture);
+            if (sale.ability) explicitIds.add('abilities:' + sale.ability);
           }
         });
         APC.detectItemsInText(noteArea.value).forEach((item) => {
@@ -1926,11 +1975,22 @@
             // Once both halves are set, write (or refresh) the "sells"
             // sentence into this zone's note, same as any other picked
             // requirement's name - and drop whatever the sentence used to
-            // say if this pick changed or cleared it.
+            // say if this pick changed or cleared it. The first time the
+            // sentence gets written, the shop's own bare name text (e.g.
+            // "Lost Shop") is already sitting in the note from when the
+            // Shop was first picked as a requirement - that has to come out
+            // too, or the note ends up with both ("Lost Shop AND Lost Shop
+            // sells X & Y") since the "sells" sentence starts with that same
+            // name text.
             if (noteArea) {
               const newText = saleText(sale);
               if (newText !== prevText) {
-                if (prevText) removeRequirementText(noteArea, prevText);
+                if (prevText) {
+                  removeRequirementText(noteArea, prevText);
+                } else if (newText && zs && zs.requirements.some(r => r.kind === 'shops' && r.key === shopKey)) {
+                  const bareShopText = requirementDisplayText('shops', shopKey);
+                  if (bareShopText) removeRequirementText(noteArea, bareShopText);
+                }
                 if (newText) appendRequirementText(noteArea, newText);
               }
             }
@@ -2559,10 +2619,7 @@
         const list = APC.NOTES_CAPTURES_ONETIME;
         const filtered = q ? list.filter(i => i.name.toLowerCase().includes(q)) : list;
         filtered.forEach(item => onetimeGrid.appendChild(buildPickerCell(item, 'captures', 'req-picker-item--capture')));
-        const coinMatches = !q || 'coin grind'.includes(q) || 'snow coin grind'.includes(q) ||
-          'cascade coin grind'.includes(q) || 'wooded coin grind'.includes(q);
-        if (coinMatches) onetimeGrid.appendChild(buildCoinGrindCell());
-        if (!filtered.length && !coinMatches) {
+        if (!filtered.length) {
           const empty = document.createElement('div');
           empty.className = 'req-picker-empty';
           empty.textContent = 'No matches';
