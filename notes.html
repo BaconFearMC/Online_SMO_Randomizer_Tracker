@@ -447,7 +447,7 @@
     }
     .req-picker-sale-extras-col {
       flex: 0 0 auto;
-      width: 130px;
+      width: 150px;
       display: flex;
       flex-direction: column;
       margin-left: 16px;
@@ -2316,6 +2316,24 @@
       onetimeCol.appendChild(onetimeGrid);
       capturesWrap.appendChild(onetimeCol);
 
+      // Abilities tab: same divider-column pattern as the Captures tab's
+      // "One-Time Captures" above, but for the 3 shop-sale-only abilities
+      // (Moon Gravity/Grab/Swim). These don't apply to zone requirements
+      // (they're sale-only), but they're shown here too so the full set of
+      // 21+3 abilities is browsable/searchable from one place, matching the
+      // "Items For Sale" picker's Ability tab layout.
+      const abilityExtrasCol = document.createElement('div');
+      abilityExtrasCol.className = 'req-picker-onetime-col';
+      abilityExtrasCol.style.display = 'none';
+      const abilityExtrasTitle = document.createElement('div');
+      abilityExtrasTitle.className = 'req-picker-onetime-title';
+      abilityExtrasTitle.textContent = 'Shop-Only Abilities';
+      const abilityExtrasGrid = document.createElement('div');
+      abilityExtrasGrid.className = 'req-picker-grid req-picker-grid--onetime';
+      abilityExtrasCol.appendChild(abilityExtrasTitle);
+      abilityExtrasCol.appendChild(abilityExtrasGrid);
+      capturesWrap.appendChild(abilityExtrasCol);
+
       // Kingdom tab: three side-by-side sections instead of the single grid -
       // Refights, Shops, and Reaching Kingdoms.
       const kingdomWrap = document.createElement('div');
@@ -2777,6 +2795,48 @@
         }
       }
 
+      // The 3 shop-sale-only abilities (Moon Gravity/Grab/Swim), top to
+      // bottom, past the divider on the Abilities tab. Reuses
+      // buildPickerCell purely for its icon/label/selected-styling - these
+      // never actually appear in zs.requirements (a real playthrough can't
+      // require one), so their click just opens the "Items For Sale"
+      // picker so equivalent shop context is one click away either way.
+      function buildAbilityExtrasGrid() {
+        abilityExtrasGrid.innerHTML = '';
+        const q = search.value.trim().toLowerCase();
+        const list = APC.SHOP_ABILITY_EXTRAS;
+        const filtered = q ? list.filter(i => i.name.toLowerCase().includes(q)) : list;
+        if (!filtered.length) {
+          const empty = document.createElement('div');
+          empty.className = 'req-picker-empty';
+          empty.textContent = 'No matches';
+          abilityExtrasGrid.appendChild(empty);
+          return;
+        }
+        filtered.forEach(item => {
+          const cell = document.createElement('button');
+          cell.type = 'button';
+          cell.className = 'req-picker-item req-picker-item--ability';
+          const img = document.createElement('img');
+          img.src = item.src;
+          img.alt = item.name;
+          img.addEventListener('error', () => {
+            cell.classList.add('req-picker-item--broken-icon');
+            console.warn('[req-picker] missing icon for', item.key, '->', item.src);
+          }, { once: true });
+          const label = document.createElement('span');
+          label.textContent = item.name;
+          cell.title = item.name + ' (shop-sale only - click to find a shop that sells it)';
+          cell.appendChild(img);
+          cell.appendChild(label);
+          cell.addEventListener('click', () => {
+            bounce(cell);
+            setActiveTab('kingdom');
+          });
+          abilityExtrasGrid.appendChild(cell);
+        });
+      }
+
       // Coin Grind isn't a single capture - it's a tile that opens a small
       // submenu (Snow / Cascade / Wooded), each toggling the requirement
       // that actually gates that kingdom's coin grind. Cascade and Wooded
@@ -2900,6 +2960,7 @@
         capturesWrap.style.display = '';
         kingdomWrap.style.display = 'none';
         onetimeCol.style.display = activeKind === 'captures' ? '' : 'none';
+        abilityExtrasCol.style.display = activeKind === 'abilities' ? '' : 'none';
 
         grid.innerHTML = '';
         const list = activeKind === 'captures' ? APC.NOTES_CAPTURES : APC.NOTES_ABILITIES;
@@ -2917,6 +2978,7 @@
         }
 
         if (activeKind === 'captures') buildOnetimeGrid();
+        if (activeKind === 'abilities') buildAbilityExtrasGrid();
       }
 
       const TAB_ORDER = ['captures', 'abilities', 'kingdom'];
