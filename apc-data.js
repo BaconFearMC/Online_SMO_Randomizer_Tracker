@@ -214,6 +214,9 @@
     'Knucklotec_Fist_Capture': "Knucklotec's Fist",
     'Rocket_Capture': 'Mini Rocket',
     'Puzzle_Part_(Lake)_Capture': 'Puzzle Part (Lake Kingdom)',
+    'AbilityMoonGravity': 'Moon Gravity',
+    'AbilityGrab': 'Grab',
+    'AbilitySwim': 'Swim',
   };
 
   // Captures whose image file doesn't follow the assets/capture/<key>.png
@@ -233,6 +236,22 @@
 
   const ABILITIES = ABILITY_KEYS.map((key, i) => ({
     key, order: i, name: labelFor(key), src: `assets/ability/${key}.png`,
+  }));
+
+  // ── Shop "for sale" picker extras (Notes Tab: Shop's "Items For Sale"
+  // popup, Ability tab only) ──────────────────────────────────────────────
+  // These 3 aren't part of the regular 21-entry Abilities list above - they
+  // never unlock/track on the main tracker or the apc.html progress panel,
+  // they only exist so a shop's "Ability for Sale" can be set to one of
+  // them. Rendered as their own column past a divider, to the right of the
+  // normal 21-ability grid, in that same order (top to bottom).
+  const SHOP_ABILITY_EXTRA_KEYS = [
+    'AbilityMoonGravity',
+    'AbilityGrab',
+    'AbilitySwim',
+  ];
+  const SHOP_ABILITY_EXTRAS = SHOP_ABILITY_EXTRA_KEYS.map((key, i) => ({
+    key, order: ABILITY_KEYS.length + i, name: labelFor(key), src: `assets/ability/${key}.png`,
   }));
 
   // ── Loading Zone Notes requirement picker: fixed, trimmed capture list ────
@@ -348,7 +367,14 @@
       :          kind === 'kingdoms'  ? KINGDOMS
       :          kind === 'shops'     ? SHOPS
       :          null;
-    return list ? (list.find((item) => item.key === key) || null) : null;
+    const found = list ? (list.find((item) => item.key === key) || null) : null;
+    if (found) return found;
+    // Shop-sale-only abilities (Moon Gravity/Grab/Swim) live outside the
+    // main 21-entry ABILITIES list - fall back to them here so anything
+    // that resolves a picked sale (e.g. the "Shop sells X" note text)
+    // still finds them.
+    if (kind === 'abilities') return SHOP_ABILITY_EXTRAS.find((item) => item.key === key) || null;
+    return null;
   }
 
   // Every pickable item across all four groups, tagged with its `kind` and
@@ -357,6 +383,7 @@
   const ALL_ITEMS = [
     ...CAPTURES.map((i) => Object.assign({ kind: 'captures' }, i)),
     ...ABILITIES.map((i) => Object.assign({ kind: 'abilities' }, i)),
+    ...SHOP_ABILITY_EXTRAS.map((i) => Object.assign({ kind: 'abilities' }, i)),
     ...REFIGHTS.map((i) => Object.assign({ kind: 'refights' }, i)),
     ...KINGDOMS.map((i) => Object.assign({ kind: 'kingdoms' }, i)),
     ...SHOPS.map((i) => Object.assign({ kind: 'shops' }, i)),
@@ -517,10 +544,11 @@
     };
   }
 
-  console.log('SMO tracker apc-data.js v5');
+  console.log('SMO tracker apc-data.js v6');
 
   global.APC = {
     CAPTURES, ABILITIES, REFIGHTS, KINGDOMS, SHOPS,
+    SHOP_ABILITY_EXTRAS,
     NOTES_CAPTURES, NOTES_CAPTURES_ONETIME, NOTES_ABILITIES,
     CAPTURE_LINKS, ABILITY_LINKS,
     linkedTrackerKey, findItem, detectItemsInText,

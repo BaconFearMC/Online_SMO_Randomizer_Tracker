@@ -429,6 +429,43 @@
       padding: 16px 20px 20px;
     }
 
+    /* ── Shop "Items For Sale" picker, Ability tab: regular 21-ability grid
+       on the left, 3 extra sale-only abilities (Moon Gravity/Grab/Swim) in
+       their own column on the right, past a divider line - same pattern as
+       the Notes-picker Captures tab's "One-Time Captures" column above. ── */
+    .req-picker-sale-wrap {
+      display: flex;
+      align-items: stretch;
+      width: 100%;
+      flex: 1 1 auto;
+      min-height: 0;
+      gap: 0;
+    }
+    .req-picker-sale-wrap .req-picker-grid {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+    .req-picker-sale-extras-col {
+      flex: 0 0 auto;
+      width: 130px;
+      display: flex;
+      flex-direction: column;
+      margin-left: 16px;
+      padding-left: 16px;
+      border-left: 1px solid var(--border, #444);
+    }
+    .req-picker-sale-extras-grid {
+      display: grid !important;
+      grid-template-columns: 1fr !important;
+      grid-auto-rows: min-content;
+      gap: 8px;
+      overflow-y: auto;
+      align-content: start;
+      flex: 1 1 auto;
+      min-height: 0;
+      padding-right: 4px;
+    }
+
     /* ── Bigger, more visible icons in the Shop "Items For Sale" picker
        (the only place all 52 Captures / 21 Abilities show at once) ──── */
     .req-picker-popup--shop-sale .req-picker-item {
@@ -601,7 +638,7 @@
     <div id="lz-content"></div>
   </div>
 
-  <script src="apc-data.js?v=5"></script>
+  <script src="apc-data.js?v=6"></script>
   <script>
     'use strict';
 
@@ -1986,40 +2023,45 @@
       search.placeholder = 'Search…';
       popup.appendChild(search);
 
+      // Ability tab only: wrapper holding the regular 21-ability grid on the
+      // left and the 3 sale-only extras (Moon Gravity/Grab/Swim) in their
+      // own column on the right, past a divider line. Wrapper is reused
+      // (not rebuilt) across tab switches; the extras column is just hidden
+      // for the Captures tab.
+      const saleWrap = document.createElement('div');
+      saleWrap.className = 'req-picker-sale-wrap';
+      popup.appendChild(saleWrap);
+
       const grid = document.createElement('div');
       grid.className = 'req-picker-grid';
-      popup.appendChild(grid);
+      saleWrap.appendChild(grid);
+
+      const extrasCol = document.createElement('div');
+      extrasCol.className = 'req-picker-sale-extras-col';
+      const extrasGrid = document.createElement('div');
+      extrasGrid.className = 'req-picker-grid req-picker-sale-extras-grid';
+      extrasCol.appendChild(extrasGrid);
+      saleWrap.appendChild(extrasCol);
 
       let activeKind = 'captures';
 
-      function render() {
-        grid.innerHTML = '';
-        const q = search.value.trim().toLowerCase();
-        const list = activeKind === 'captures' ? APC.CAPTURES : APC.ABILITIES;
-        const filtered = q ? list.filter(i => i.name.toLowerCase().includes(q)) : list;
+      // Shared cell builder so the regular grid and the extras column past
+      // the divider both get identical selection/click behavior.
+      function buildSaleCell(item) {
         const sale = APC.getShopSale(fullState, shopKey);
         const selectedKey = activeKind === 'captures' ? sale.capture : sale.ability;
-        fitPickerGrid(grid, filtered.length, 100);
-        if (!filtered.length) {
-          const empty = document.createElement('div');
-          empty.className = 'req-picker-empty';
-          empty.textContent = 'No matches';
-          grid.appendChild(empty);
-          return;
-        }
-        filtered.forEach(item => {
-          const cell = document.createElement('button');
-          cell.type = 'button';
-          cell.className = 'req-picker-item ' + (activeKind === 'captures' ? 'req-picker-item--capture' : 'req-picker-item--ability');
-          cell.classList.toggle('selected', item.key === selectedKey);
-          const img = document.createElement('img');
-          img.src = item.src;
-          img.alt = item.name;
-          const label = document.createElement('span');
-          label.textContent = item.name;
-          cell.appendChild(img);
-          cell.appendChild(label);
-          cell.addEventListener('click', () => {
+        const cell = document.createElement('button');
+        cell.type = 'button';
+        cell.className = 'req-picker-item ' + (activeKind === 'captures' ? 'req-picker-item--capture' : 'req-picker-item--ability');
+        cell.classList.toggle('selected', item.key === selectedKey);
+        const img = document.createElement('img');
+        img.src = item.src;
+        img.alt = item.name;
+        const label = document.createElement('span');
+        label.textContent = item.name;
+        cell.appendChild(img);
+        cell.appendChild(label);
+        cell.addEventListener('click', () => {
             bounce(cell);
             const alreadySelected = item.key === selectedKey;
             const prevSale = APC.getShopSale(fullState, shopKey);
@@ -2118,9 +2160,34 @@
             // Both halves are now set - the pairing is complete, so close
             // instead of leaving the user to notice and dismiss it manually.
             if (sale.capture && sale.ability) closePicker();
-          });
-          grid.appendChild(cell);
         });
+        return cell;
+      }
+
+      function render() {
+        grid.innerHTML = '';
+        extrasGrid.innerHTML = '';
+        extrasCol.style.display = activeKind === 'abilities' ? '' : 'none';
+
+        const q = search.value.trim().toLowerCase();
+        const list = activeKind === 'captures' ? APC.CAPTURES : APC.ABILITIES;
+        const filtered = q ? list.filter(i => i.name.toLowerCase().includes(q)) : list;
+        fitPickerGrid(grid, filtered.length, 100);
+        if (!filtered.length) {
+          const empty = document.createElement('div');
+          empty.className = 'req-picker-empty';
+          empty.textContent = 'No matches';
+          grid.appendChild(empty);
+        } else {
+          filtered.forEach(item => grid.appendChild(buildSaleCell(item)));
+        }
+
+        // Ability tab only: the 3 sale-only extras (Moon Gravity, Grab,
+        // Swim), past the divider, in that fixed top-to-bottom order.
+        if (activeKind === 'abilities') {
+          const extraList = q ? APC.SHOP_ABILITY_EXTRAS.filter(i => i.name.toLowerCase().includes(q)) : APC.SHOP_ABILITY_EXTRAS;
+          extraList.forEach(item => extrasGrid.appendChild(buildSaleCell(item)));
+        }
       }
 
       function setTab(kind) {
