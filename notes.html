@@ -547,6 +547,40 @@
       aspect-ratio: 1 / 1;
     }
 
+    /* ── "Add a Requirement" popup, Abilities tab: "Extra Abilities"
+       column, past the divider. Unlike "One-Time Captures" above, these
+       cells match the REGULAR grid's full size (not the shrunken onetime
+       size) - there are only ever 3 of them, so there's no need to shrink
+       them down to fit more per row. ─────────────────────────────────── */
+    .req-picker-grid--ability-extras {
+      display: grid !important;
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+      grid-auto-rows: min-content;
+      gap: 8px;
+      overflow-y: auto;
+      align-content: start;
+      flex: 1 1 auto;
+      min-height: 0;
+      padding-right: 4px;
+    }
+    .req-picker-grid--ability-extras .req-picker-item {
+      padding: 8px !important;
+      min-height: 130px;
+    }
+    .req-picker-grid--ability-extras .req-picker-item span {
+      font-size: .85rem !important;
+      line-height: 1.2;
+    }
+    .req-picker-grid--ability-extras .req-picker-item img {
+      flex: 0 0 auto !important;
+      width: 90% !important;
+      height: auto !important;
+      max-width: none !important;
+      max-height: none !important;
+      aspect-ratio: 1 / 1;
+      object-fit: contain;
+    }
+
     /* A capture/ability whose icon file genuinely 404s (see the img error
        listener in buildPickerCell): hide the broken-image glyph and show a
        plain "?" placeholder in the same reserved icon box, instead of the
@@ -2327,9 +2361,9 @@
       abilityExtrasCol.style.display = 'none';
       const abilityExtrasTitle = document.createElement('div');
       abilityExtrasTitle.className = 'req-picker-onetime-title';
-      abilityExtrasTitle.textContent = 'Shop-Only Abilities';
+      abilityExtrasTitle.textContent = 'Extra Abilities';
       const abilityExtrasGrid = document.createElement('div');
-      abilityExtrasGrid.className = 'req-picker-grid req-picker-grid--onetime';
+      abilityExtrasGrid.className = 'req-picker-grid req-picker-grid--ability-extras';
       abilityExtrasCol.appendChild(abilityExtrasTitle);
       abilityExtrasCol.appendChild(abilityExtrasGrid);
       capturesWrap.appendChild(abilityExtrasCol);
