@@ -254,6 +254,15 @@
     key, order: ABILITY_KEYS.length + i, name: labelFor(key), src: `assets/ability/${key}.png`,
   }));
 
+  // ── Coin Grind submenu extra (Notes Tab requirement picker: the "Coin
+  // Grind" tile's popup) ──────────────────────────────────────────────────
+  // Rocket Flower isn't a real capturable NPC, so it doesn't belong in the
+  // main 52-entry CAPTURES list above - it only exists so the "Rocket
+  // Flower Coin Grind" submenu option has a trackable requirement key.
+  const COIN_GRIND_EXTRAS = [
+    { key: 'Rocket_Flower_Coin_Grind', order: CAPTURE_KEYS.length, name: 'Rocket Flower', src: `assets/ability/Long_Jump.png` },
+  ];
+
   // ── Loading Zone Notes requirement picker: fixed, trimmed capture list ────
   // The full CAPTURES list above (52 entries) stays intact everywhere else
   // (main tracker, apc.html progress panel, save files). The Notes Tab
@@ -374,6 +383,7 @@
     // that resolves a picked sale (e.g. the "Shop sells X" note text)
     // still finds them.
     if (kind === 'abilities') return SHOP_ABILITY_EXTRAS.find((item) => item.key === key) || null;
+    if (kind === 'captures') return COIN_GRIND_EXTRAS.find((item) => item.key === key) || null;
     return null;
   }
 
@@ -544,11 +554,12 @@
     };
   }
 
-  console.log('SMO tracker apc-data.js v6');
+  console.log('SMO tracker apc-data.js v7');
 
   global.APC = {
     CAPTURES, ABILITIES, REFIGHTS, KINGDOMS, SHOPS,
     SHOP_ABILITY_EXTRAS,
+    COIN_GRIND_EXTRAS,
     NOTES_CAPTURES, NOTES_CAPTURES_ONETIME, NOTES_ABILITIES,
     CAPTURE_LINKS, ABILITY_LINKS,
     linkedTrackerKey, findItem, detectItemsInText,

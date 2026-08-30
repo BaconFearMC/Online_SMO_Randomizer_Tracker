@@ -604,10 +604,10 @@
       z-index: 10001;
       display: flex;
       flex-direction: column;
-      gap: 6px;
-      padding: 10px;
-      min-width: 200px;
-      border-radius: 12px;
+      gap: 10px;
+      padding: 16px;
+      min-width: 280px;
+      border-radius: 14px;
       border: 1px solid var(--border, #444);
       background: var(--bg, #1a1a22);
       box-shadow: 0 10px 34px rgba(0,0,0,.55);
@@ -624,13 +624,13 @@
     .req-picker-coingrind-opt {
       display: flex;
       align-items: center;
-      gap: 10px;
-      padding: 6px 8px;
-      border-radius: 8px;
+      gap: 14px;
+      padding: 10px 12px;
+      border-radius: 10px;
       border: 1px solid transparent;
       background: rgba(255,255,255,.04);
       color: inherit;
-      font-size: .82rem;
+      font-size: 1rem;
       text-align: left;
       cursor: pointer;
       transition: background .15s ease, border-color .15s ease;
@@ -643,18 +643,18 @@
       background: rgba(110,160,255,.16);
     }
     .req-picker-coingrind-opt img {
-      width: 26px;
-      height: 26px;
+      width: 44px;
+      height: 44px;
       object-fit: contain;
       flex-shrink: 0;
-      border-radius: 5px;
+      border-radius: 7px;
       background: rgba(0,0,0,.3);
-      padding: 2px;
+      padding: 3px;
     }
     .req-picker-coingrind-opt-sub {
       display: block;
       opacity: .6;
-      font-size: .78em;
+      font-size: .82em;
     }
     .req-picker-item--coingrind.selected {
       border-color: rgba(255,215,0,.6) !important;
@@ -672,7 +672,7 @@
     <div id="lz-content"></div>
   </div>
 
-  <script src="apc-data.js?v=6"></script>
+  <script src="apc-data.js?v=7"></script>
   <script>
     'use strict';
 
@@ -2877,9 +2877,10 @@
       // "say and show" T-Rex / Uproot respectively, since that's the real
       // requirement in-game; Snow uses the generic Coin Grind capture.
       const COIN_GRIND_OPTIONS = [
-        { label: 'Spinning Coin Grind',    kind: 'captures', key: 'Snow' },
-        { label: 'Dino Coin Grind', kind: 'captures', key: 'T-Rex_Capture' },
-        { label: 'Sky Coin Grind',  kind: 'captures', key: 'Uproot_Capture' },
+        { label: 'Spinning Coin Grind',      kind: 'captures', key: 'Snow', iconOverride: { kind: 'abilities', key: 'Spin' } },
+        { label: 'Dino Coin Grind',          kind: 'captures', key: 'T-Rex_Capture' },
+        { label: 'Sky Coin Grind',           kind: 'captures', key: 'Uproot_Capture' },
+        { label: 'Rocket Flower Coin Grind', kind: 'captures', key: 'Rocket_Flower_Coin_Grind', iconOverride: { kind: 'abilities', key: 'Long_Jump' } },
       ];
 
       function buildCoinGrindCell() {
@@ -2930,13 +2931,14 @@
 
         COIN_GRIND_OPTIONS.forEach(opt => {
           const shows = APC.findItem(opt.kind, opt.key);
+          const iconItem = opt.iconOverride ? APC.findItem(opt.iconOverride.kind, opt.iconOverride.key) : shows;
           const btn = document.createElement('button');
           btn.type = 'button';
           btn.className = 'req-picker-coingrind-opt';
           const selected = zs.requirements.some(r => r.kind === opt.kind && r.key === opt.key);
           btn.classList.toggle('selected', selected);
           const img = document.createElement('img');
-          img.src = shows ? shows.src : '';
+          img.src = iconItem ? iconItem.src : '';
           img.alt = opt.label;
           const text = document.createElement('span');
           text.textContent = opt.label;
