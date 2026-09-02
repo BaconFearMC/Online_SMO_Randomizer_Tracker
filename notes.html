@@ -430,9 +430,11 @@
     }
 
     /* ── Shop "Items For Sale" picker, Ability tab: regular 21-ability grid
-       on the left, 3 extra sale-only abilities (Moon Gravity/Grab/Swim) in
-       their own column on the right, past a divider line - same pattern as
-       the Notes-picker Captures tab's "One-Time Captures" column above. ── */
+       on the left, 9 extra sale-only abilities in their own column on the
+       right, past a divider line - same pattern as the Notes-picker
+       Captures tab's "One-Time Captures" column above. 2 columns (not 1) so
+       all 9 fit without scrolling by default; overflow-y stays auto as a
+       fallback only. ─────────────────────────────────────────────────── */
     .req-picker-sale-wrap {
       display: flex;
       align-items: stretch;
@@ -447,7 +449,7 @@
     }
     .req-picker-sale-extras-col {
       flex: 0 0 auto;
-      width: 150px;
+      width: 220px;
       display: flex;
       flex-direction: column;
       margin-left: 16px;
@@ -456,14 +458,29 @@
     }
     .req-picker-sale-extras-grid {
       display: grid !important;
-      grid-template-columns: 1fr !important;
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
       grid-auto-rows: min-content;
-      gap: 8px;
+      gap: 6px;
       overflow-y: auto;
       align-content: start;
       flex: 1 1 auto;
       min-height: 0;
       padding-right: 4px;
+    }
+    .req-picker-sale-extras-grid .req-picker-item {
+      padding: 4px !important;
+      min-height: 76px;
+    }
+    .req-picker-sale-extras-grid .req-picker-item img {
+      width: 44px !important;
+      height: 44px !important;
+      max-width: none !important;
+      max-height: none !important;
+      object-fit: contain;
+    }
+    .req-picker-sale-extras-grid .req-picker-item span {
+      font-size: .68rem !important;
+      line-height: 1.1;
     }
 
     /* ── Bigger, more visible icons in the Shop "Items For Sale" picker
@@ -499,7 +516,7 @@
     }
     .req-picker-onetime-col {
       flex: 0 0 auto;
-      width: 200px;
+      width: 260px;
       display: flex;
       flex-direction: column;
       margin-left: 16px;
@@ -516,9 +533,13 @@
     }
     .req-picker-grid--onetime {
       display: grid !important;
-      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+      /* 3 columns (was 2) so all 16 One-Time Captures fit in fewer, shorter
+         rows - the goal is for every entry to be visible without scrolling
+         by default. overflow-y stays auto as a fallback only (very short
+         windows, browser zoom, etc.) - never removed outright. */
+      grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
       grid-auto-rows: min-content;
-      gap: 8px;
+      gap: 6px;
       overflow-y: auto;
       align-content: start;
       flex: 1 1 auto;
@@ -526,37 +547,36 @@
       padding-right: 4px;
     }
     .req-picker-grid--onetime .req-picker-item {
-      padding: 5px !important;
+      padding: 4px !important;
       /* grid-auto-rows: min-content means this row's height comes purely
          from its content - if the icon <img> hasn't finished loading (or
          fails to load) it contributes 0 height and the cell collapses to
          a tiny text-only pill. Force a minimum so the cell always reserves
          room for the icon regardless of image load state/timing. */
-      min-height: 76px;
+      min-height: 64px;
     }
     .req-picker-grid--onetime .req-picker-item span {
-      font-size: .68rem !important;
-      line-height: 1.15;
+      font-size: .62rem !important;
+      line-height: 1.1;
     }
     .req-picker-grid--onetime .req-picker-item img {
       /* Independent of intrinsic image size (or lack thereof pre-load/on
          error) - always a consistent square icon slot. */
       flex: 0 0 auto !important;
-      width: 60% !important;
+      width: 58% !important;
       height: auto !important;
       aspect-ratio: 1 / 1;
     }
 
     /* ── "Add a Requirement" popup, Abilities tab: "Extra Abilities"
-       column, past the divider. Unlike "One-Time Captures" above, these
-       cells match the REGULAR grid's full size (not the shrunken onetime
-       size) - there are only ever 3 of them, so there's no need to shrink
-       them down to fit more per row. ─────────────────────────────────── */
+       column, past the divider. 9 entries (3x3) - sized down the same way
+       as "One-Time Captures" above so all of them fit without scrolling by
+       default; overflow-y stays auto as a fallback only. ──────────────── */
     .req-picker-grid--ability-extras {
       display: grid !important;
-      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+      grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
       grid-auto-rows: min-content;
-      gap: 8px;
+      gap: 6px;
       overflow-y: auto;
       align-content: start;
       flex: 1 1 auto;
@@ -564,16 +584,16 @@
       padding-right: 4px;
     }
     .req-picker-grid--ability-extras .req-picker-item {
-      padding: 8px !important;
-      min-height: 130px;
+      padding: 4px !important;
+      min-height: 76px;
     }
     .req-picker-grid--ability-extras .req-picker-item span {
-      font-size: .85rem !important;
-      line-height: 1.2;
+      font-size: .66rem !important;
+      line-height: 1.1;
     }
     .req-picker-grid--ability-extras .req-picker-item img {
       flex: 0 0 auto !important;
-      width: 90% !important;
+      width: 70% !important;
       height: auto !important;
       max-width: none !important;
       max-height: none !important;
@@ -3024,33 +3044,12 @@
         }
         filtered.forEach(item => {
           // Jaxi/Scooter are real Captures (moved here from "One-Time
-          // Captures") - they're genuine zone requirements, so they get the
-          // normal selectable picker cell (kind 'captures'), not the
-          // shop-sale-only shortcut used by the rest of this column.
-          if (item.isCapture) {
-            abilityExtrasGrid.appendChild(buildPickerCell(item, 'captures', 'req-picker-item--capture'));
-            return;
-          }
-          const cell = document.createElement('button');
-          cell.type = 'button';
-          cell.className = 'req-picker-item req-picker-item--ability';
-          const img = document.createElement('img');
-          img.src = item.src;
-          img.alt = item.name;
-          img.addEventListener('error', () => {
-            cell.classList.add('req-picker-item--broken-icon');
-            console.warn('[req-picker] missing icon for', item.key, '->', item.src);
-          }, { once: true });
-          const label = document.createElement('span');
-          label.textContent = item.name;
-          cell.title = item.name + ' (shop-sale only - click to find a shop that sells it)';
-          cell.appendChild(img);
-          cell.appendChild(label);
-          cell.addEventListener('click', () => {
-            bounce(cell);
-            setActiveTab('kingdom');
-          });
-          abilityExtrasGrid.appendChild(cell);
+          // Captures"); everything else here is a real Ability - either way
+          // these are genuine zone requirements now, so they all get the
+          // normal selectable picker cell.
+          const kind = item.isCapture ? 'captures' : 'abilities';
+          const kindClass = item.isCapture ? 'req-picker-item--capture' : 'req-picker-item--ability';
+          abilityExtrasGrid.appendChild(buildPickerCell(item, kind, kindClass));
         });
       }
 

@@ -246,7 +246,7 @@
   // (except Jaxi/Scooter, which do - see below), they only exist so this
   // "Extra Abilities" column has somewhere to live. Rendered as their own
   // column past a divider, to the right of the normal 21-ability grid, in
-  // that same order (top to bottom). 7 entries total:
+  // that same order (top to bottom). 9 entries total:
   //  - AbilityMoonGravity / AbilityGrab / AbilitySwim: shop-sale-only, never
   //    a real zone requirement (click just finds a shop that sells them).
   //  - Jaxi_Capture / Scooter_Capture: real Captures, still tracked/sold as
@@ -256,7 +256,8 @@
   //    that so callers know to keep treating the key as kind 'captures'
   //    instead of 'abilities', and so ALL_ITEMS below doesn't double them up
   //    against their real CAPTURES entry.
-  //  - AbilityRocketFlower / AbilityNPCTalking: new extra abilities.
+  //  - AbilityRocketFlower / AbilityNPCTalking / AbilityTimerChallenges /
+  //    Ability2DPipes: new extra abilities, shop-sale-only like the first 3.
   const SHOP_ABILITY_EXTRA_KEYS = [
     'AbilityMoonGravity',
     'AbilityGrab',
@@ -276,8 +277,13 @@
     };
   });
 
-  const SHOP_ABILITY_EXTRA_KEYS_NEW = ['AbilityRocketFlower', 'AbilityNPCTalking'];
-  const SHOP_ABILITY_EXTRA_NAMES_NEW = { AbilityRocketFlower: 'Rocket Flower', AbilityNPCTalking: 'NPC Talking' };
+  const SHOP_ABILITY_EXTRA_KEYS_NEW = ['AbilityRocketFlower', 'AbilityNPCTalking', 'AbilityTimerChallenges', 'Ability2DPipes'];
+  const SHOP_ABILITY_EXTRA_NAMES_NEW = {
+    AbilityRocketFlower: 'Rocket Flower',
+    AbilityNPCTalking: 'NPC Talking',
+    AbilityTimerChallenges: 'Timer Challenges',
+    Ability2DPipes: '2D Pipes',
+  };
   const SHOP_ABILITY_EXTRAS_NEW = SHOP_ABILITY_EXTRA_KEYS_NEW.map((key, i) => ({
     key,
     order: SHOP_ABILITY_EXTRA_KEYS.length + SHOP_ABILITY_EXTRAS_MOVED_CAPTURES.length + i,
@@ -596,7 +602,7 @@
     };
   }
 
-  console.log('SMO tracker apc-data.js v8');
+  console.log('SMO tracker apc-data.js v9');
 
   global.APC = {
     CAPTURES, ABILITIES, REFIGHTS, KINGDOMS, SHOPS,
