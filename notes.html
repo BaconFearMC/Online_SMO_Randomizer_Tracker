@@ -607,12 +607,23 @@
        rounded "chip" using that cell's --kingdom-color (set per-item in
        JS from APC's kingdom color), so the subarea name reads as a clear,
        on-brand label rather than blending into the button. ──────────── */
+    .req-picker-overlay--subarea .req-picker-item {
+      /* Flip visual order so the name (2nd DOM child, after the icon)
+         renders first/top and the icon sits below it - DOM order is left
+         alone (icon then label) so this is purely a visual reorder. */
+      display: flex !important;
+      flex-direction: column-reverse !important;
+      align-items: center !important;
+      justify-content: flex-start !important;
+    }
     .req-picker-overlay--subarea .req-picker-item span {
       display: inline-block !important;
-      margin-top: 6px !important;
-      padding: 3px 9px !important;
+      order: -1 !important;
+      margin-bottom: 8px !important;
+      padding: 5px 12px !important;
       border-radius: 999px !important;
       font-weight: 700 !important;
+      font-size: 1rem !important;
       color: var(--kingdom-color, #fff) !important;
       background: color-mix(in srgb, var(--kingdom-color, #888) 16%, transparent) !important;
       border: 1px solid color-mix(in srgb, var(--kingdom-color, #888) 55%, transparent) !important;
