@@ -1558,7 +1558,7 @@
           openRequirementPicker(e, zs, noteArea, () => {
             renderReqIcons();
             saveFullState();
-          });
+          }, kingdom, zone);
         });
         reqsWrap.appendChild(addBtn);
 
@@ -1986,6 +1986,156 @@
       search.focus();
     }
 
+    // ── Kingdom Destination subarea picker (Kingdom tab: picking one of the
+    // 18 Kingdoms as a zone's requirement) ──────────────────────────────────
+    // Only fires for the Kingdoms grid, never Captures/Abilities/Refights/
+    // Shops - see the `kind === 'kingdoms'` gate around its call site below.
+    // After picking a destination Kingdom on a zone (e.g. Snow's "Shop"
+    // leads to Seaside), this prompts for exactly which of that Kingdom's
+    // own loading zones you actually land in (e.g. Seaside's "Spinning
+    // Maze") - then auto-tags THAT zone with a Kingdom requirement pointing
+    // back the other way (Seaside's "Spinning Maze" -> Snow), since going
+    // back through the same door leads back where you came from.
+    function subareaIconSlug(text) {
+      return (text || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    }
+
+    function kingdomSubareaIconSrc(kingdomKey, zoneKey) {
+      const kItem = APC.findItem('kingdoms', kingdomKey);
+      const kSlug = subareaIconSlug(kItem ? kItem.name : kingdomKey);
+      const zSlug = subareaIconSlug(zoneKey);
+      return 'assets/kingdomsubicons/' + kSlug + zSlug + '.png';
+    }
+
+    // Ensures `targetZs` (some OTHER zone, not necessarily on screen) has a
+    // Kingdom requirement pointing at `kingdomKey`, tagged with the subarea
+    // (`viaZone`) you arrive at within it. Only writes the note text the
+    // first time this Kingdom gets added here - if it's already present
+    // (e.g. re-picking the same pairing), just refreshes which subarea it's
+    // tagged with. Works purely off the data (a fake noteArea stand-in for
+    // `appendRequirementText`) so it can target a zone that isn't currently
+    // rendered on screen.
+    function setReciprocalKingdomRequirement(targetZs, kingdomKey, viaZoneKey) {
+      if (!Array.isArray(targetZs.requirements)) targetZs.requirements = [];
+      let req = targetZs.requirements.find(r => r.kind === 'kingdoms' && r.key === kingdomKey);
+      if (!req) {
+        req = { kind: 'kingdoms', key: kingdomKey };
+        targetZs.requirements.push(req);
+        const text = requirementDisplayText('kingdoms', kingdomKey);
+        if (text) {
+          const fakeArea = { value: targetZs.note || '', focus() {}, setSelectionRange() {}, dispatchEvent() {} };
+          appendRequirementText(fakeArea, text);
+          targetZs.note = fakeArea.value;
+        }
+      }
+      req.viaZone = viaZoneKey;
+    }
+
+    // Grid of every loading zone belonging to `kingdomKey`, radio-select,
+    // each cell auto-iconed per subareaIconSlug/kingdomSubareaIconSrc above.
+    // Calls onPick(zoneKey) once, then closes; Escape/✕/outside-click closes
+    // with no pick (onPick is simply never called).
+    function openKingdomSubareaPicker(kingdomKey, onPick) {
+      // Only clear a previously-open subarea popup - NOT every
+      // .req-picker-overlay, since this is opened on top of the "Add a
+      // Requirement" picker (right after picking a Kingdom there), which
+      // must stay open underneath it (same pattern as openShopSalePicker).
+      document.querySelectorAll('.req-picker-overlay--subarea').forEach(p => p.remove());
+      const kingdomData = fullState.loading_zones[kingdomKey];
+      const kItem = APC.findItem('kingdoms', kingdomKey);
+      const zoneKeys = kingdomData ? Object.keys(kingdomData.zones) : [];
+
+      const overlay = document.createElement('div');
+      overlay.className = 'req-picker-overlay req-picker-overlay--subarea';
+      const popup = document.createElement('div');
+      popup.className = 'req-picker-popup req-picker-popup--scroll';
+      popup.addEventListener('click', (e) => e.stopPropagation());
+      overlay.appendChild(popup);
+
+      const header = document.createElement('div');
+      header.className = 'req-picker-header';
+      const title = document.createElement('div');
+      title.className = 'req-picker-title';
+      title.textContent = 'Which ' + (kItem ? kItem.name : kingdomKey) + ' area do you arrive at?';
+      const closeBtn = document.createElement('button');
+      closeBtn.type = 'button';
+      closeBtn.className = 'req-picker-close';
+      closeBtn.textContent = '✕';
+      closeBtn.title = 'Close';
+      closeBtn.addEventListener('click', () => closePicker());
+      header.appendChild(title);
+      header.appendChild(closeBtn);
+      popup.appendChild(header);
+
+      const search = document.createElement('input');
+      search.type = 'text';
+      search.className = 'req-picker-search';
+      search.placeholder = 'Search…';
+      popup.appendChild(search);
+
+      const grid = document.createElement('div');
+      grid.className = 'req-picker-grid';
+      popup.appendChild(grid);
+
+      function render() {
+        grid.innerHTML = '';
+        const q = search.value.trim().toLowerCase();
+        const list = q ? zoneKeys.filter(z => zoneDisplayName(kingdomKey, z).toLowerCase().includes(q)) : zoneKeys;
+        fitPickerGrid(grid, list.length);
+        if (!list.length) {
+          const empty = document.createElement('div');
+          empty.className = 'req-picker-empty';
+          empty.textContent = 'No matches';
+          grid.appendChild(empty);
+          return;
+        }
+        list.forEach(zoneKey => {
+          const cell = document.createElement('button');
+          cell.type = 'button';
+          cell.className = 'req-picker-item req-picker-item--capture';
+          if (kItem && kItem.color) cell.style.setProperty('--kingdom-color', kItem.color);
+          const img = document.createElement('img');
+          img.src = kingdomSubareaIconSrc(kingdomKey, zoneKey);
+          img.alt = zoneDisplayName(kingdomKey, zoneKey);
+          img.addEventListener('error', () => {
+            cell.classList.add('req-picker-item--broken-icon');
+            console.warn('[req-picker] missing subarea icon for', kingdomKey, zoneKey, '->', img.src);
+          }, { once: true });
+          const label = document.createElement('span');
+          label.textContent = zoneDisplayName(kingdomKey, zoneKey);
+          cell.appendChild(img);
+          cell.appendChild(label);
+          cell.addEventListener('click', () => {
+            bounce(cell);
+            onPick(zoneKey);
+            closePicker();
+          });
+          grid.appendChild(cell);
+        });
+      }
+
+      search.addEventListener('input', render);
+      document.body.appendChild(overlay);
+      render();
+      requestAnimationFrame(render);
+      const onResize = () => render();
+      window.addEventListener('resize', onResize);
+
+      function onKeyDown(e) { if (e.key === 'Escape') closePicker(); }
+      function closePicker() {
+        overlay.classList.remove('active');
+        document.removeEventListener('keydown', onKeyDown);
+        window.removeEventListener('resize', onResize);
+        setTimeout(() => overlay.remove(), 320);
+      }
+      overlay.addEventListener('click', (e) => { if (e.target === overlay) closePicker(); });
+      document.addEventListener('keydown', onKeyDown);
+
+      void overlay.offsetWidth;
+      requestAnimationFrame(() => overlay.classList.add('active'));
+      search.focus();
+    }
+
     // ── Shop "for sale" picker (Kingdom tab's Shop grid, and the Paintings
     // column's Shop rows) ──────────────────────────────────────────────
     // Every Shop always has exactly 1 Capture and 1 Ability for sale. Two
@@ -2204,7 +2354,11 @@
         extrasCol.style.display = activeKind === 'abilities' ? '' : 'none';
 
         const q = search.value.trim().toLowerCase();
-        const list = activeKind === 'captures' ? APC.CAPTURES : APC.ABILITIES;
+        // Jaxi/Scooter are picked from the Ability tab's extras column now
+        // (see below) - left out of the regular Captures grid here.
+        const list = activeKind === 'captures'
+          ? APC.CAPTURES.filter(i => !APC.SHOP_ABILITY_MOVED_CAPTURE_KEYS.includes(i.key))
+          : APC.ABILITIES;
         const filtered = q ? list.filter(i => i.name.toLowerCase().includes(q)) : list;
         fitPickerGrid(grid, filtered.length, 100);
         if (!filtered.length) {
@@ -2262,7 +2416,7 @@
     // adds its icon above the location and its name into the note text.
     // Presented as a fullscreen overlay (same fade+pop-in language as the
     // Dark Side map lightbox above) with a big, easy-to-click icon grid.
-    function openRequirementPicker(event, zs, noteArea, onChange) {
+    function openRequirementPicker(event, zs, noteArea, onChange, originKingdom, originZone) {
       document.querySelectorAll('.req-picker-overlay').forEach(p => p.remove());
 
       const overlay = document.createElement('div');
@@ -2763,6 +2917,27 @@
             refreshSaleTitle();
             closePicker();
           }
+
+          // Kingdom destinations only (never Captures/Abilities/Refights/
+          // Shops - see the file comment above openKingdomSubareaPicker):
+          // picking a Kingdom prompts which of ITS zones you actually land
+          // in, then auto-tags that zone with a Kingdom requirement pointing
+          // back here, so the reverse trip is recorded for free.
+          if (kind === 'kingdoms' && nowSelected && originKingdom && originZone) {
+            openKingdomSubareaPicker(item.key, (viaZoneKey) => {
+              const req = zs.requirements.find(r => r.kind === 'kingdoms' && r.key === item.key);
+              if (req) req.viaZone = viaZoneKey;
+
+              const destKingdomData = fullState.loading_zones[item.key];
+              const destZs = destKingdomData && destKingdomData.zones[viaZoneKey];
+              if (destZs) {
+                setReciprocalKingdomRequirement(destZs, originKingdom, originZone);
+              }
+
+              saveFullState();
+              buildLoadingZonesContent();
+            });
+          }
         });
         return cell;
       }
@@ -2848,6 +3023,14 @@
           return;
         }
         filtered.forEach(item => {
+          // Jaxi/Scooter are real Captures (moved here from "One-Time
+          // Captures") - they're genuine zone requirements, so they get the
+          // normal selectable picker cell (kind 'captures'), not the
+          // shop-sale-only shortcut used by the rest of this column.
+          if (item.isCapture) {
+            abilityExtrasGrid.appendChild(buildPickerCell(item, 'captures', 'req-picker-item--capture'));
+            return;
+          }
           const cell = document.createElement('button');
           cell.type = 'button';
           cell.className = 'req-picker-item req-picker-item--ability';
@@ -3049,11 +3232,12 @@
       window.addEventListener('resize', onResize);
 
       function onKeyDown(e) {
-        // If the "for sale" sub-picker is currently open on top of this one
-        // (see openShopSalePicker), let its own Escape handler close that
+        // If the "for sale" sub-picker OR the Kingdom-arrival subarea picker
+        // is currently open on top of this one (see openShopSalePicker /
+        // openKingdomSubareaPicker), let its own Escape handler close that
         // instead - otherwise both close at once and this picker vanishes
-        // out from under the sale popup while it's still on screen.
-        if (e.key === 'Escape' && !document.querySelector('.req-picker-overlay--sale')) closePicker();
+        // out from under the popup while it's still on screen.
+        if (e.key === 'Escape' && !document.querySelector('.req-picker-overlay--sale, .req-picker-overlay--subarea')) closePicker();
       }
       function closePicker() {
         overlay.classList.remove('active');

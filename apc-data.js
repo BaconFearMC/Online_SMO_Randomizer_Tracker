@@ -149,7 +149,7 @@
     { key: 'Moon',       name: 'Moon',        src: 'assets/MoonK.png',    color: '#b5c1cb' },
     { key: 'Mushroom',   name: 'Mushroom',    src: 'assets/Star.png',     color: '#fff672' },
     { key: 'Darkside',   name: 'Dark Side',   src: 'assets/Dark.png',     color: '#fff2c6' },
-    { key: 'Darkerside', name: 'Darker Side', src: 'assets/Dark.png',     color: '#fff2c6' },
+    { key: 'Darkerside', name: 'Darker Side', src: 'assets/Darker.png',   color: '#fff2c6' },
     { key: 'Deep Woods', name: 'Deep Woods',  src: 'assets/deepwoods.png', color: '#1e65e7' },
   ];
 
@@ -239,20 +239,57 @@
   }));
 
   // ── Shop "for sale" picker extras (Notes Tab: Shop's "Items For Sale"
-  // popup, Ability tab only) ──────────────────────────────────────────────
-  // These 3 aren't part of the regular 21-entry Abilities list above - they
-  // never unlock/track on the main tracker or the apc.html progress panel,
-  // they only exist so a shop's "Ability for Sale" can be set to one of
-  // them. Rendered as their own column past a divider, to the right of the
-  // normal 21-ability grid, in that same order (top to bottom).
+  // popup, Ability tab only; also the "Add a Requirement" popup's Abilities
+  // tab, "Extra Abilities" column) ────────────────────────────────────────
+  // These aren't part of the regular 21-entry Abilities list above - they
+  // never unlock/track on the main tracker or the apc.html progress panel
+  // (except Jaxi/Scooter, which do - see below), they only exist so this
+  // "Extra Abilities" column has somewhere to live. Rendered as their own
+  // column past a divider, to the right of the normal 21-ability grid, in
+  // that same order (top to bottom). 7 entries total:
+  //  - AbilityMoonGravity / AbilityGrab / AbilitySwim: shop-sale-only, never
+  //    a real zone requirement (click just finds a shop that sells them).
+  //  - Jaxi_Capture / Scooter_Capture: real Captures, still tracked/sold as
+  //    'captures' everywhere else (main tracker, apc.html panel) - moved
+  //    here purely so this is where they're picked from (both as a zone
+  //    requirement and as a shop's "for sale" pick). `isCapture: true` flags
+  //    that so callers know to keep treating the key as kind 'captures'
+  //    instead of 'abilities', and so ALL_ITEMS below doesn't double them up
+  //    against their real CAPTURES entry.
+  //  - AbilityRocketFlower / AbilityNPCTalking: new extra abilities.
   const SHOP_ABILITY_EXTRA_KEYS = [
     'AbilityMoonGravity',
     'AbilityGrab',
     'AbilitySwim',
   ];
-  const SHOP_ABILITY_EXTRAS = SHOP_ABILITY_EXTRA_KEYS.map((key, i) => ({
+  const SHOP_ABILITY_EXTRAS_BASE = SHOP_ABILITY_EXTRA_KEYS.map((key, i) => ({
     key, order: ABILITY_KEYS.length + i, name: labelFor(key), src: `assets/ability/${key}.png`,
   }));
+
+  const SHOP_ABILITY_MOVED_CAPTURE_KEYS = ['Scooter_Capture', 'Jaxi_Capture'];
+  const SHOP_ABILITY_EXTRAS_MOVED_CAPTURES = SHOP_ABILITY_MOVED_CAPTURE_KEYS.map((key, i) => {
+    const cap = CAPTURE_KEYS.includes(key)
+      ? { name: labelFor(key), src: SRC_OVERRIDES[key] || `assets/capture/${key}.png` }
+      : { name: labelFor(key), src: `assets/capture/${key}.png` };
+    return {
+      key, order: SHOP_ABILITY_EXTRA_KEYS.length + i, name: cap.name, src: cap.src, isCapture: true,
+    };
+  });
+
+  const SHOP_ABILITY_EXTRA_KEYS_NEW = ['AbilityRocketFlower', 'AbilityNPCTalking'];
+  const SHOP_ABILITY_EXTRA_NAMES_NEW = { AbilityRocketFlower: 'Rocket Flower', AbilityNPCTalking: 'NPC Talking' };
+  const SHOP_ABILITY_EXTRAS_NEW = SHOP_ABILITY_EXTRA_KEYS_NEW.map((key, i) => ({
+    key,
+    order: SHOP_ABILITY_EXTRA_KEYS.length + SHOP_ABILITY_EXTRAS_MOVED_CAPTURES.length + i,
+    name: SHOP_ABILITY_EXTRA_NAMES_NEW[key],
+    src: `assets/ability/${key}.png`,
+  }));
+
+  const SHOP_ABILITY_EXTRAS = [
+    ...SHOP_ABILITY_EXTRAS_BASE,
+    ...SHOP_ABILITY_EXTRAS_MOVED_CAPTURES,
+    ...SHOP_ABILITY_EXTRAS_NEW,
+  ];
 
   // ── Coin Grind submenu extra (Notes Tab requirement picker: the "Coin
   // Grind" tile's popup) ──────────────────────────────────────────────────
@@ -315,8 +352,9 @@
     'Banzai_Bill_Capture',
     'Picture_Match_Part_(Mario)_Capture',
     'Puzzle_Part_(Lake)_Capture',
-    'Scooter_Capture',
-    'Jaxi_Capture'
+    // Scooter_Capture and Jaxi_Capture moved out of here - they're now
+    // picked from the Abilities tab's "Extra Abilities" column instead (see
+    // SHOP_ABILITY_EXTRAS above).
   ];
 
   function buildNotesList(keys) {
@@ -393,7 +431,11 @@
   const ALL_ITEMS = [
     ...CAPTURES.map((i) => Object.assign({ kind: 'captures' }, i)),
     ...ABILITIES.map((i) => Object.assign({ kind: 'abilities' }, i)),
-    ...SHOP_ABILITY_EXTRAS.map((i) => Object.assign({ kind: 'abilities' }, i)),
+    // Jaxi_Capture/Scooter_Capture are excluded here - they're already
+    // present above (kind 'captures', via CAPTURES) so including them again
+    // under kind 'abilities' would detect/display every mention of "Jaxi" or
+    // "Scooter" twice.
+    ...SHOP_ABILITY_EXTRAS.filter((i) => !i.isCapture).map((i) => Object.assign({ kind: 'abilities' }, i)),
     ...REFIGHTS.map((i) => Object.assign({ kind: 'refights' }, i)),
     ...KINGDOMS.map((i) => Object.assign({ kind: 'kingdoms' }, i)),
     ...SHOPS.map((i) => Object.assign({ kind: 'shops' }, i)),
@@ -554,11 +596,12 @@
     };
   }
 
-  console.log('SMO tracker apc-data.js v7');
+  console.log('SMO tracker apc-data.js v8');
 
   global.APC = {
     CAPTURES, ABILITIES, REFIGHTS, KINGDOMS, SHOPS,
     SHOP_ABILITY_EXTRAS,
+    SHOP_ABILITY_MOVED_CAPTURE_KEYS,
     COIN_GRIND_EXTRAS,
     NOTES_CAPTURES, NOTES_CAPTURES_ONETIME, NOTES_ABILITIES,
     CAPTURE_LINKS, ABILITY_LINKS,
