@@ -575,17 +575,24 @@
     .req-picker-grid--ability-extras {
       display: grid !important;
       grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-      grid-auto-rows: min-content;
+      /* Exactly 3 rows, each sized to share the column's full height evenly
+         (was grid-auto-rows: min-content + align-content: start, which
+         shrink-wrapped the 3x3 grid to its content and left a big blank
+         gap below it inside the taller popup column). Still exactly 9
+         entries in a fixed 3x3, so this never needs to scroll or overflow -
+         it just now uses all of the space it's given instead of only the
+         top third of it. */
+      grid-template-rows: repeat(3, minmax(0, 1fr)) !important;
       gap: 6px;
       overflow-y: auto;
-      align-content: start;
+      align-content: stretch;
       flex: 1 1 auto;
       min-height: 0;
       padding-right: 4px;
     }
     .req-picker-grid--ability-extras .req-picker-item {
       padding: 4px !important;
-      min-height: 76px;
+      min-height: 0;
     }
     .req-picker-grid--ability-extras .req-picker-item span {
       font-size: .66rem !important;
@@ -593,7 +600,7 @@
     }
     .req-picker-grid--ability-extras .req-picker-item img {
       flex: 0 0 auto !important;
-      width: 70% !important;
+      width: 60% !important;
       height: auto !important;
       max-width: none !important;
       max-height: none !important;
@@ -630,6 +637,20 @@
       text-shadow: none !important;
       opacity: 1 !important;
       line-height: 1.3;
+    }
+    /* Some Kingdoms' subarea icon files (Seaside's 9, in particular) have
+       smaller native pixel dimensions than the rest, so left to the base
+       stylesheet's natural-size-based img rule they render tiny inside an
+       otherwise same-sized cell. Force every subarea icon to a consistent
+       size here regardless of its source file's own dimensions. */
+    .req-picker-overlay--subarea .req-picker-item img {
+      flex: 0 0 auto !important;
+      width: 65% !important;
+      height: auto !important;
+      max-width: none !important;
+      max-height: none !important;
+      aspect-ratio: 1 / 1;
+      object-fit: contain;
     }
 
     /* A capture/ability whose icon file genuinely 404s (see the img error
@@ -824,7 +845,7 @@
       'Wooded':     { color:'#1e65e7', icon:'Wooded.png',   zones:{ "Deep Woods Fall":{num:0},"Rocket":{num:2},"Sheep":{num:2},"Tank":{num:2},"Vine Clouds":{num:2},"Breakdown":{num:2},"Invisible":{num:2},"Flooded Pipes":{num:2},"Flower Road":{num:2},"Treasure Room":{num:1}}},
       'Lost':       { color:'#e71edd', icon:'Lost.png',     zones:{ 'Wiggler':{num:2},'Shop':{num:1},'Klepto':{num:2} }},
       'Metro':      { color:'#de7d5e', icon:'Metro.png',    zones:{ "Yellow Shop":{num:1},"Purple Shop":{num:1},"Dino":{num:2},"Bullet Billding":{num:2},"Taxi":{num:2},"Notes":{num:1},"2D":{num:2},"Slots":{num:1},"People":{num:2},"Outfit":{num:2},"Rocket":{num:2},"Dark":{num:2},"Scaffolding":{num:2},"Scooter":{num:2},"Rotating Maze":{num:2},"RC Car":{num:2}}},
-      'Snow':       { color:'#e7930a', icon:'Snow.png',     zones:{ "Puzzle":{num:1},"Capless":{num:2},"Rocket Flower":{num:2},"Iceburn":{num:2},"Flower Road":{num:2},"Tracewalking":{num:1},"Clouds":{num:2},"Outfit":{num:2},"Shop":{num:1}}},
+      'Snow':       { color:'#e7930a', icon:'Snow.png',     zones:{ "Puzzle":{num:1},"Capless":{num:2},"Rocket Flower":{num:2},"Iceburn Circuit":{num:2},"Flower Road":{num:2},"Tracewalking":{num:1},"Clouds":{num:2},"Outfit":{num:2},"Shop":{num:1}}},
       'Seaside':    { color:'#b36fe9', icon:'Seaside.png',  zones:{ "Rumble":{num:1},"Rocket":{num:2},"Outfit":{num:1},"Gushen":{num:2},"Sphynx":{num:1},"Pokio":{num:2},"Lava Rising":{num:2},"Sandy Bottom":{num:1},"Spinning Maze":{num:2}}},
       'Luncheon':   { color:'#3fddbb', icon:'Luncheon.png', zones:{ "Magma Swamp":{num:2},"Forks":{num:2},"Cheese Rocks":{num:2},"Veggie Room":{num:1},"Slots":{num:1},"Shop":{num:1},"Outfit":{num:2},"Spinning Athletics":{num:2},"Lava Islands":{num:2},"Volcano Cave":{num:2},"Gears":{num:2},"Magma Path":{num:2}}},
       'Ruined':     { color:'#ffd7e2', icon:'Ruin.png',     zones:{ "Chargin' Chuck":{num:2},'Rocket':{num:2} }},
@@ -836,6 +857,66 @@
       'Cloud':      { color:'#65ceff', icon:'Cloud.png',    zones:{ '2D Cube': {num:2},'Picture Match': {num:2} } },
       'Deep Woods': { color:'#1e65e7', icon:'deepwoods.png', zones:{ "Vine #1 (Dino)":{num:0},"Vine #2 (Peculiar Pipes)":{num:0},"Vine #3 (Babbling Brook)":{num:0},"Vine #4 (Creek)":{num:0},"Treasure":{num:1},"Outfit":{num:1}}},
     };
+
+    // ═══════════════════════════════════════════════════════════════════
+    // ── Subarea Reordering ────────────────────────────────────────────
+    // ═══════════════════════════════════════════════════════════════════
+    // EDIT HERE to change what order a Kingdom's subareas appear in - this
+    // controls BOTH:
+    //   1) top-to-bottom order in the Notes column list, and
+    //   2) left-to-right/top-to-bottom order in the "Which X area do you
+    //      arrive at?" picker grid.
+    // Just reorder the names within a kingdom's array (don't need to touch
+    // anything else). Right now every list below is a placeholder that
+    // matches the current/default layout, so nothing changes on its own -
+    // reorder away. If a kingdom's zones ever change (a name gets added,
+    // renamed, or removed) and this list falls out of sync, any zone not
+    // found here just gets appended at the end in whatever order it
+    // already had - nothing breaks or disappears, it just won't be sorted
+    // until you add/update its entry here.
+    const SUBAREA_ORDER = {
+      'Cap':        ['Orange','Paragoomba','Frog','Rolling On'],
+      'Cascade':    ['Dino','2D','Chain Chomp','Swings','Windy'],
+      'Sand':       ['Icy Cave','Moe-eye','Shop','Employees','Slots','Rumble','Outfit','Jaxi Ruins','Bullet Bill','Gushen','Sphynx','Moving Platform','Rocket','Colossal Ruins'],
+      'Lake':       ['Poison Waves','Zipper','Grab Climb','Shop','Puzzle'],
+      'Wooded':     ['Deep Woods Fall','Rocket','Sheep','Tank','Vine Clouds','Breakdown','Invisible','Flooded Pipes','Flower Road','Treasure Room'],
+      'Lost':       ['Wiggler','Shop','Klepto'],
+      'Metro':      ['Yellow Shop','Purple Shop','Dino','Bullet Billding','Taxi','Notes','2D','Slots','People','Outfit','Rocket','Dark','Scaffolding','Scooter','Rotating Maze','RC Car'],
+      'Snow':       ['Puzzle','Capless','Rocket Flower','Iceburn Circuit','Flower Road','Tracewalking','Clouds','Outfit','Shop'],
+      'Seaside':    ['Rumble','Rocket','Outfit','Gushen','Sphynx','Pokio','Lava Rising','Sandy Bottom','Spinning Maze'],
+      'Luncheon':   ['Magma Swamp','Forks','Cheese Rocks','Veggie Room','Slots','Shop','Outfit','Spinning Athletics','Lava Islands','Volcano Cave','Gears','Magma Path'],
+      'Ruined':     ["Chargin' Chuck",'Rocket'],
+      "Bowser's":   ['Jizo','Shop','Outfit','Treasure Room','Spinning Tower','Vine Clouds','Hexagon Tower','Wooden Tower'],
+      'Mushroom':   ['Shop','Castle Door','Outfit','Cloud Sea','Well','Knucklotec','Torkdrift','Mechawiggler','Octopus','Cookatiel','Dragon','Rocket'],
+      'Darkside':   ['Breakdown','Invisible','Vanishing','Yoshi Siege','Lava Rising','Magma Swamp'],
+      'Darkerside': ['End'],
+      'Moon':       ['2D Snowman','Shop','Swings','Sphynx'],
+      'Cloud':      ['2D Cube','Picture Match'],
+      // Deep Woods: both the 4 individual Vine entries AND the merged
+      // 'Vines' entry are listed - only one set ever actually exists at a
+      // time (see the merge_deep_woods_vines setting), so whichever is
+      // present just slots in at this position.
+      'Deep Woods': ['Vine #1 (Dino)','Vine #2 (Peculiar Pipes)','Vine #3 (Babbling Brook)','Vine #4 (Creek)','Vines','Treasure','Outfit'],
+    };
+
+    // Returns [zoneKey, zoneData] pairs for `zonesObj`, sorted per
+    // SUBAREA_ORDER[kingdom] above. Any zone key present in the data but
+    // missing from that order list is appended at the end, in whatever
+    // order it already had - so this never hides or drops a zone.
+    function orderedZoneEntries(kingdom, zonesObj) {
+      const order = SUBAREA_ORDER[kingdom];
+      const keys = Object.keys(zonesObj);
+      if (!order) return keys.map(k => [k, zonesObj[k]]);
+      const known = order.filter(k => k in zonesObj);
+      const rest = keys.filter(k => !order.includes(k));
+      return known.concat(rest).map(k => [k, zonesObj[k]]);
+    }
+
+    // Same as above, but just the ordered keys (used by the subarea
+    // arrival picker, which doesn't need each zone's data).
+    function orderedZoneKeys(kingdom, zonesObj) {
+      return orderedZoneEntries(kingdom, zonesObj).map(([k]) => k);
+    }
 
     // Mirrors the map in app.js keep them in sync when adding a new
     // toggleable kingdom (see the comment next to KINGDOM_VISIBILITY_SETTINGS
@@ -914,6 +995,15 @@
         delete seaside.zones['Well Enter'];
         delete seaside.zones['Well Exit'];
       }
+
+      // Snow's "Iceburn" was renamed to its full name "Iceburn Circuit" -
+      // carry over any existing note/requirements data under the old key
+      // instead of losing it.
+      const snow = fullState.loading_zones['Snow'];
+      if (snow && snow.zones['Iceburn'] && !snow.zones['Iceburn Circuit']) {
+        snow.zones['Iceburn Circuit'] = snow.zones['Iceburn'];
+      }
+      if (snow) delete snow.zones['Iceburn'];
 
       // Deep Woods "Vines" merge (mirrors app.js applyVinesMergeSetting).
       const dw = fullState.loading_zones['Deep Woods'];
@@ -1161,7 +1251,22 @@
             bounce(addBtn);
             const current = APC.getPaintingDestination(fullState, kingdom);
             openKingdomOnlyPicker(current, (kingdomKey) => {
+              // Swap the note text: drop whatever the old destination's
+              // name was written in (if any), then write the new one -
+              // same pattern buildReqIconEl/toggleRequirement use for a
+              // regular zone requirement, so this row's Note area is the
+              // one place the destination name shows up (no duplicate
+              // label rendered next to the icon itself).
+              const prevKey = APC.getPaintingDestination(fullState, kingdom);
+              if (prevKey) {
+                const prevItem = APC.findItem('kingdoms', prevKey);
+                if (prevItem) removeRequirementText(noteArea, prevItem.name);
+              }
               APC.setPaintingDestination(fullState, kingdom, kingdomKey);
+              if (kingdomKey) {
+                const item = APC.findItem('kingdoms', kingdomKey);
+                if (item) appendRequirementText(noteArea, item.name);
+              }
               saveFullState();
               renderDestChip();
             });
@@ -1172,36 +1277,21 @@
           if (destKey) {
             const item = APC.findItem('kingdoms', destKey);
             if (item) {
-              const group = document.createElement('span');
-              group.className = 'zone-req-pair';
-
               const img = document.createElement('img');
               img.className = 'zone-req-icon zone-req-icon--kingdom';
               img.src = item.src;
               img.alt = item.name;
               img.title = 'Leads to ' + item.name + ' (click to remove)';
               if (item.color) img.style.setProperty('--kingdom-color', item.color);
-
-              const destLabel = document.createElement('span');
-              destLabel.className = 'zone-req-dest-name';
-              destLabel.textContent = item.name;
-              destLabel.style.cssText = 'margin-left:4px;font-weight:600;cursor:pointer;';
-              destLabel.style.color = item.color || '#e6e6ee';
-              destLabel.title = 'Leads to ' + item.name + ' (click to remove)';
-
-              const removeDest = (e) => {
+              img.addEventListener('click', (e) => {
                 e.stopPropagation();
                 bounce(img);
                 APC.setPaintingDestination(fullState, kingdom, null);
+                removeRequirementText(noteArea, item.name);
                 saveFullState();
                 renderDestChip();
-              };
-              img.addEventListener('click', removeDest);
-              destLabel.addEventListener('click', removeDest);
-
-              group.appendChild(img);
-              group.appendChild(destLabel);
-              reqsWrap.appendChild(group);
+              });
+              reqsWrap.appendChild(img);
             }
           }
         }
@@ -1232,14 +1322,6 @@
         zonesRoot.appendChild(row);
       });
 
-      // Extra per-kingdom Shops that only live here in the Paintings column
-      // (Cap, Cascade, Wooded, Seaside - see PAINTING_SHOP_KINGDOMS above).
-      // Unlike a Painting row, a Shop row's + button skips straight to the
-      // Capture-for-sale/Ability-for-sale picker - never the Kingdom grid.
-      PAINTING_SHOP_KINGDOMS.forEach(kingdom => {
-        zonesRoot.appendChild(buildPaintingShopRow(kingdom));
-      });
-
       if (fullState.kingdom_collapsed[PAINTINGS_NOTES_KEY]) {
         zonesRoot.style.display = 'none';
         header.classList.add('collapsed');
@@ -1257,7 +1339,12 @@
       return col;
     }
 
-    // One row for a Paintings-column-only Shop (Cap/Cascade/Wooded/Seaside).
+    // One row for a Kingdom-column-only Shop (Cap/Cascade/Wooded/Seaside -
+    // see PAINTING_SHOP_KINGDOMS above). Rendered at the very top of that
+    // Kingdom's own zones list (see buildKingdomColumn) rather than in the
+    // Paintings column - it's still not a real loading-zone gate, so it's
+    // never picked up by the "Which X area do you arrive at?" subarea
+    // picker, which only ever reads from that Kingdom's `zones` object.
     // No note box - just the shop's name and a + that opens the Capture &
     // Ability "for sale" picker directly (see openShopSalePicker).
     function buildPaintingShopRow(kingdomName) {
@@ -1360,7 +1447,7 @@
       header.appendChild(title);
       header.appendChild(chevron);
 
-      const zoneEntries = Object.entries(data.zones);
+      const zoneEntries = orderedZoneEntries(kingdom, data.zones);
       const needsSplit  = zoneEntries.length > ZONE_SPLIT_THRESHOLD;
 
       let zonesRoot;
@@ -1379,6 +1466,10 @@
         zoneEntries.slice(mid).forEach(([zone, zd]) =>
           col2.appendChild(buildZoneRow(kingdom, zone, zd, data.color)));
 
+        if (PAINTING_SHOP_KINGDOMS.includes(kingdom)) {
+          col1.insertBefore(buildPaintingShopRow(kingdom), col1.firstChild);
+        }
+
         zonesRoot.appendChild(col1);
         zonesRoot.appendChild(col2);
       } else {
@@ -1386,6 +1477,10 @@
         zonesRoot.className = 'zones-container';
         zoneEntries.forEach(([zone, zd]) =>
           zonesRoot.appendChild(buildZoneRow(kingdom, zone, zd, data.color)));
+
+        if (PAINTING_SHOP_KINGDOMS.includes(kingdom)) {
+          zonesRoot.insertBefore(buildPaintingShopRow(kingdom), zonesRoot.firstChild);
+        }
       }
 
       // Dark Side gets a map thumbnail under its zones. It lives inside
@@ -1943,6 +2038,15 @@
     // A single grid of all 18 Kingdoms, radio-select. Picking one calls
     // onPick(kingdomKey) and closes; there's no Captures/Abilities/Refights/
     // Shops here at all - a Painting only ever needs one destination.
+    // These Kingdoms are never a valid "which Kingdom does this Painting
+    // lead to?" answer (Paintings don't lead to them in-game), so they're
+    // left out of that picker specifically - every other Kingdom picker
+    // (Kingdom tab's "Reaching Kingdoms" grid, etc.) still shows all 18.
+    const PAINTING_DEST_EXCLUDED_KINGDOMS = new Set([
+      'Cap', 'Cloud', 'Lost', 'Ruined', 'Moon', 'Darkside', 'Darkerside', 'Deep Woods',
+    ]);
+    const PAINTING_DEST_KINGDOMS = APC.KINGDOMS.filter(k => !PAINTING_DEST_EXCLUDED_KINGDOMS.has(k.key));
+
     function openKingdomOnlyPicker(currentKey, onPick) {
       document.querySelectorAll('.req-picker-overlay').forEach(p => p.remove());
 
@@ -1981,7 +2085,7 @@
       function render() {
         grid.innerHTML = '';
         const q = search.value.trim().toLowerCase();
-        const list = q ? APC.KINGDOMS.filter(i => i.name.toLowerCase().includes(q)) : APC.KINGDOMS;
+        const list = q ? PAINTING_DEST_KINGDOMS.filter(i => i.name.toLowerCase().includes(q)) : PAINTING_DEST_KINGDOMS;
         fitPickerGrid(grid, list.length);
         if (!list.length) {
           const empty = document.createElement('div');
@@ -2094,7 +2198,7 @@
       document.querySelectorAll('.req-picker-overlay--subarea').forEach(p => p.remove());
       const kingdomData = fullState.loading_zones[kingdomKey];
       const kItem = APC.findItem('kingdoms', kingdomKey);
-      const zoneKeys = kingdomData ? Object.keys(kingdomData.zones) : [];
+      const zoneKeys = kingdomData ? orderedZoneKeys(kingdomKey, kingdomData.zones) : [];
 
       const overlay = document.createElement('div');
       overlay.className = 'req-picker-overlay req-picker-overlay--subarea';
