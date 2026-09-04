@@ -600,8 +600,8 @@
     }
     .req-picker-grid--ability-extras .req-picker-item img {
       flex: 0 0 auto !important;
-      width: 60% !important;
-      height: auto !important;
+      width: 82% !important;
+      height: 82% !important;
       max-width: none !important;
       max-height: none !important;
       aspect-ratio: 1 / 1;
@@ -637,20 +637,6 @@
       text-shadow: none !important;
       opacity: 1 !important;
       line-height: 1.3;
-    }
-    /* Some Kingdoms' subarea icon files (Seaside's 9, in particular) have
-       smaller native pixel dimensions than the rest, so left to the base
-       stylesheet's natural-size-based img rule they render tiny inside an
-       otherwise same-sized cell. Force every subarea icon to a consistent
-       size here regardless of its source file's own dimensions. */
-    .req-picker-overlay--subarea .req-picker-item img {
-      flex: 0 0 auto !important;
-      width: 65% !important;
-      height: auto !important;
-      max-width: none !important;
-      max-height: none !important;
-      aspect-ratio: 1 / 1;
-      object-fit: contain;
     }
 
     /* A capture/ability whose icon file genuinely 404s (see the img error
@@ -1350,6 +1336,7 @@
     function buildPaintingShopRow(kingdomName) {
       const shopKey = PAINTING_SHOP_KEYS[kingdomName];
       const kd = LOADING_ZONES_TEMPLATE[kingdomName] || { color: '#ffd700' };
+      if (!fullState.painting_shop_notes) fullState.painting_shop_notes = {};
       const row = document.createElement('div');
       row.className = 'zone-row';
 
@@ -1358,6 +1345,23 @@
 
       const reqsWrap = document.createElement('div');
       reqsWrap.className = 'zone-reqs';
+
+      // Note textarea built first (but appended later) so the + button's
+      // picker below can write "<Shop> sells X & Y" into it, same as a
+      // regular Kingdom-tab Shop row.
+      const noteArea = document.createElement('textarea');
+      noteArea.className = 'zone-note';
+      noteArea.value = fullState.painting_shop_notes[shopKey] || '';
+      noteArea.placeholder = 'Note…';
+      noteArea.rows = 1;
+      noteArea.addEventListener('input', () => {
+        fullState.painting_shop_notes[shopKey] = noteArea.value;
+        saveFullState();
+        requestAnimationFrame(() => {
+          noteArea.style.height = 'auto';
+          noteArea.style.height = noteArea.scrollHeight + 'px';
+        });
+      });
 
       function buildSaleChip(kind, key) {
         const item = APC.findItem(kind, key);
@@ -1370,7 +1374,13 @@
         img.addEventListener('click', (e) => {
           e.stopPropagation();
           bounce(img);
+          const prevSale = APC.getShopSale(fullState, shopKey);
+          const prevTxt = shopSaleDisplayText(shopKey, prevSale);
+          if (prevTxt) removeRequirementText(noteArea, prevTxt);
           APC.setShopSale(fullState, shopKey, kind, null);
+          const nextSale = APC.getShopSale(fullState, shopKey);
+          const nextTxt = shopSaleDisplayText(shopKey, nextSale);
+          if (nextTxt) appendRequirementText(noteArea, nextTxt);
           saveFullState();
           renderChips();
         });
@@ -1387,7 +1397,7 @@
         addBtn.addEventListener('click', (e) => {
           e.stopPropagation();
           bounce(addBtn);
-          openShopSalePicker(shopKey, renderChips);
+          openShopSalePicker(shopKey, renderChips, noteArea);
         });
         reqsWrap.appendChild(addBtn);
 
@@ -1418,6 +1428,7 @@
       nameLabel.style.color = kd.color;
       top.appendChild(nameLabel);
       row.appendChild(top);
+      row.appendChild(noteArea);
 
       return row;
     }
