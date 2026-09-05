@@ -1808,6 +1808,15 @@
             if (sale.capture) explicitIds.add('captures:' + sale.capture);
             if (sale.ability) explicitIds.add('abilities:' + sale.ability);
           }
+          // Rocket Flower Coin Grind's note text ("Rocket Flower Coin
+          // Grind") contains "Rocket Flower" as a substring, which the
+          // auto-detect scanner below also matches against the real,
+          // separate Ability entry (AbilityRocketFlower) - same icon as a
+          // second "detected" match. Suppress that specific pairing so the
+          // icon only ever shows once, from the explicit requirement.
+          if (r.kind === 'captures' && r.key === 'Rocket_Flower_Coin_Grind') {
+            explicitIds.add('abilities:AbilityRocketFlower');
+          }
         });
         APC.detectItemsInText(noteArea.value).forEach((item) => {
           const id = item.kind + ':' + item.key;
