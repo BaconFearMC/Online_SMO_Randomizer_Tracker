@@ -303,7 +303,7 @@
   // main 52-entry CAPTURES list above - it only exists so the "Rocket
   // Flower Coin Grind" submenu option has a trackable requirement key.
   const COIN_GRIND_EXTRAS = [
-    { key: 'Rocket_Flower_Coin_Grind', order: CAPTURE_KEYS.length, name: 'Rocket Flower', src: `assets/ability/Long_Jump.png` },
+    { key: 'Rocket_Flower_Coin_Grind', order: CAPTURE_KEYS.length, name: 'Rocket Flower', src: `assets/ability/AbilityRocketFlower.png` },
   ];
 
   // ── Loading Zone Notes requirement picker: fixed, trimmed capture list ────
