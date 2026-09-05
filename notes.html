@@ -723,18 +723,15 @@
       opacity: .6;
       font-size: .82em;
     }
-    /* Coin Grind now lives in the Reaching Kingdoms grid, styled exactly
-       like the adjacent Refight/Shop tiles: a gradient ring in its own
-       colors (--refight-c1/--refight-c2, set in JS), with a small paired
-       icon badge (the active option's ability/capture) riding in the
-       corner once one of the 4 options is picked - see
-       .req-picker-item-pair-icon above for that badge's own styling. */
+    /* Coin Grind sits in the "Reaching Kingdoms" column but is not a
+       Kingdom button - shrink it down relative to its Kingdom siblings so
+       it doesn't read as one of the 18 real Kingdoms. */
+    .req-picker-item--coingrind {
+      transform: scale(.82);
+      transform-origin: center;
+    }
     .req-picker-item--coingrind.selected {
-      background:
-        linear-gradient(var(--bg-card2), var(--bg-card2)) padding-box,
-        linear-gradient(135deg, var(--refight-c1, #ffd700), var(--refight-c2, #e7930a)) border-box;
-      box-shadow: 0 0 0 3px color-mix(in srgb, var(--refight-c1, #ffd700) 30%, transparent),
-                  0 6px 20px color-mix(in srgb, var(--refight-c2, #e7930a) 30%, transparent);
+      border-color: rgba(255,215,0,.6) !important;
     }
   </style>
 </head>
@@ -3160,11 +3157,14 @@
           shops.forEach(item => shopGrid.appendChild(buildPickerCell(item, 'shops', 'req-picker-item--shop')));
         }
 
-        // Coin Grind rides at the end of the Reaching Kingdoms grid (after
-        // Deep Woods, the last real Kingdom) - it isn't a Kingdom itself,
-        // just parked in that section since it doesn't fit anywhere else.
-        // Still searchable: matches "coin grind" and each of its 4 options.
-        const coinMatches = !q || COIN_GRIND_SEARCH_TERMS.some(t => t.includes(q));
+        // Coin Grind isn't a Kingdom (never in APC.KINGDOMS), but it lives in
+        // this same "Reaching Kingdoms" column, positioned right after Deep
+        // Woods - so it's appended after the Kingdom buttons render rather
+        // than filtered/sorted alongside them.
+        const coinMatches = !q || 'coin grind'.includes(q) || 'snow coin grind'.includes(q) ||
+          'cascade coin grind'.includes(q) || 'wooded coin grind'.includes(q) ||
+          'dino coin grind'.includes(q) || 'sky coin grind'.includes(q) ||
+          'rocket flower coin grind'.includes(q);
 
         if (!kingdoms.length && !coinMatches) {
           const empty = document.createElement('div');
@@ -3223,211 +3223,76 @@
       }
 
       // Coin Grind isn't a single capture - it's a tile that opens a small
-      // submenu (Spin / Dino / Sky / Rocket Flower), each toggling the
-      // requirement that actually gates that kingdom's coin grind. Dino and
-      // Sky "say and show" T-Rex / Uproot respectively, since that's the
-      // real requirement in-game; Spinning and Rocket Flower use their own
-      // dedicated keys below (neither is a real capturable NPC, so they
-      // don't live in the main Captures list - see COIN_GRIND_EXTRAS in
-      // apc-data.js). Lives in the Reaching Kingdoms grid (after Deep
-      // Woods) purely for shelf space - it isn't a Kingdom itself.
+      // submenu (Snow / Cascade / Wooded), each toggling the requirement
+      // that actually gates that kingdom's coin grind. Cascade and Wooded
+      // "say and show" T-Rex / Uproot respectively, since that's the real
+      // requirement in-game; Snow uses the generic Coin Grind capture.
       const COIN_GRIND_OPTIONS = [
-        { label: 'Spinning Coin Grind',      kind: 'captures', key: 'Coin_Grind_Capture',        iconOverride: { kind: 'abilities', key: 'Spin' } },
+        { label: 'Spinning Coin Grind',      kind: 'captures', key: 'Snow', iconOverride: { kind: 'abilities', key: 'Spin' }, hideText: true },
         { label: 'Dino Coin Grind',          kind: 'captures', key: 'T-Rex_Capture' },
         { label: 'Sky Coin Grind',           kind: 'captures', key: 'Uproot_Capture' },
         { label: 'Rocket Flower Coin Grind', kind: 'captures', key: 'Rocket_Flower_Coin_Grind', iconOverride: { kind: 'abilities', key: 'AbilityRocketFlower' } },
       ];
 
-      // The tile's own gradient colors (independent of whatever option is
-      // currently picked) - a warm coin-gold pair, styled exactly like a
-      // Refight's --refight-c1/--refight-c2 pair.
-      const COIN_GRIND_COLORS = ['#ffd700', '#e7930a'];
-
-      // Search matches on "coin grind" plus each individual option's label,
-      // so typing e.g. "dino" or "rocket flower" still surfaces the tile.
-      const COIN_GRIND_SEARCH_TERMS = ['coin grind', ...COIN_GRIND_OPTIONS.map(o => o.label.toLowerCase())];
-
-      function coinGrindActiveOption() {
-        return COIN_GRIND_OPTIONS.find(o => zs.requirements.some(r => r.kind === o.kind && r.key === o.key)) || null;
-      }
-
-      // Styled and built exactly like a Refight tile: a gradient ring in
-      // its own colors, plus - once one of the 4 options is picked - a
-      // second, smaller "paired" icon riding beside the main Coin icon
-      // (that option's ability/capture icon), matching .zone-req-pair /
-      // .zone-req-icon--pair. Clicking EITHER icon removes the whole thing
-      // (the picked option and its note text), same as a Refight pair.
+      // Coin Grind lives in the "Reaching Kingdoms" column, right after Deep
+      // Woods - it's shown alongside Kingdom buttons but is NOT itself a
+      // Kingdom (it never appears in APC.KINGDOMS, doesn't add to any
+      // kingdom count, and isn't wired into leadsTo/reciprocal logic).
+      // Styled like a Refight (gradient ring via --refight-c1/--refight-c2)
+      // but sized down to sit comfortably next to the Kingdom buttons.
       function buildCoinGrindCell() {
         const coinItem = APC.findItem('captures', 'Coin_Grind_Capture');
         const cell = document.createElement('button');
         cell.type = 'button';
         cell.className = 'req-picker-item req-picker-item--refight req-picker-item--coingrind';
-        cell.style.setProperty('--refight-c1', COIN_GRIND_COLORS[0]);
-        cell.style.setProperty('--refight-c2', COIN_GRIND_COLORS[1]);
-
+        cell.style.setProperty('--refight-c1', '#ffd700');
+        cell.style.setProperty('--refight-c2', '#ff9900');
         const img = document.createElement('img');
         img.src = coinItem ? coinItem.src : 'assets/capture/Coin.png';
         img.alt = 'Coin Grind';
-        cell.appendChild(img);
-
         const label = document.createElement('span');
+        label.textContent = 'Coin Grind';
+        cell.appendChild(img);
         cell.appendChild(label);
+        cell.title = 'Coin Grind';
 
-        const pairImg = document.createElement('img');
-        pairImg.className = 'req-picker-item-pair-icon';
-        pairImg.alt = '';
-        pairImg.style.display = 'none';
-        cell.appendChild(pairImg);
-
-        function refresh() {
-          const active = coinGrindActiveOption();
-          cell.classList.toggle('selected', !!active);
-          if (active) {
-            const iconItem = active.iconOverride ? APC.findItem(active.iconOverride.kind, active.iconOverride.key) : APC.findItem(active.kind, active.key);
-            pairImg.src = iconItem ? iconItem.src : '';
-            pairImg.alt = active.label;
-            pairImg.style.display = '';
-            label.textContent = active.label;
-          } else {
-            pairImg.style.display = 'none';
-            label.textContent = 'Coin Grind';
-          }
+        function refreshSelected() {
+          const anySelected = COIN_GRIND_OPTIONS.some(o =>
+            zs.requirements.some(r => r.kind === o.kind && r.key === o.key));
+          cell.classList.toggle('selected', anySelected);
         }
-        refresh();
-
-        // Clicking either icon while an option is active removes it (and
-        // its note text) directly, exactly like clicking half of a Refight
-        // pair; clicking with nothing active opens the picker submenu.
-        function removeActive() {
-          const active = coinGrindActiveOption();
-          if (!active) return;
-          toggleRequirement(zs, active.kind, active.key, noteArea, coinGrindDisplayText(active));
-          refresh();
-          onChange();
-        }
+        refreshSelected();
 
         cell.addEventListener('click', (e) => {
           e.stopPropagation();
-          if (findModeActive) {
-            setFindMode(false);
-            showCoinGrindFindResultsPopup();
-            return;
-          }
           bounce(cell);
-          if (coinGrindActiveOption()) {
-            removeActive();
+          // Refight-style behavior: if any option is already selected,
+          // clicking the tile itself deletes that Coin Grind pick (and its
+          // note text) outright instead of reopening the submenu. Only open
+          // the submenu to pick one when nothing is currently selected.
+          const activeOpt = COIN_GRIND_OPTIONS.find(o =>
+            zs.requirements.some(r => r.kind === o.kind && r.key === o.key));
+          if (activeOpt) {
+            toggleRequirement(zs, activeOpt.kind, activeOpt.key, noteArea, coinGrindDisplayText(activeOpt));
+            refreshSelected();
+            onChange();
           } else {
-            openCoinGrindSubmenu(cell, refresh);
+            openCoinGrindSubmenu(cell, refreshSelected);
           }
         });
         return cell;
       }
 
       // Text inserted into the note for a Coin Grind submenu pick, e.g.
-      // "Dino Coin Grind (T-Rex)" - includes the underlying Capture's name
-      // in parens for the two kingdom-specific options (Dino/Sky), since
-      // those are gated by a specific Capture in-game, not just "Coin
-      // Grind" generically. Spinning and Rocket Flower show their own
-      // dedicated icon/ability and never need that parenthetical.
+      // "Cascade Coin Grind (T-Rex)" - includes the underlying Capture's
+      // name in parens for the two kingdom-specific options (Cascade/
+      // Wooded), since those are gated by a specific Capture in-game, not
+      // just "Coin Grind" generically. Snow uses the generic Coin Grind
+      // capture itself, so its label alone is enough - no parenthetical.
       function coinGrindDisplayText(opt) {
         const shows = APC.findItem(opt.kind, opt.key);
-        if (shows && opt.key !== 'Coin_Grind_Capture' && opt.key !== 'Rocket_Flower_Coin_Grind') return opt.label + ' (' + shows.name + ')';
+        if (shows && opt.key !== 'Coin_Grind_Capture') return opt.label + ' (' + shows.name + ')';
         return opt.label;
-      }
-
-      // Aggregated Find popup across all 4 Coin Grind options at once,
-      // reusing the same popup shell as showFindResultsPopup below but
-      // combining every matching zone from every option into one list.
-      function showCoinGrindFindResultsPopup() {
-        document.querySelectorAll('.req-find-popup-overlay').forEach(p => p.remove());
-        const popupColor = COIN_GRIND_COLORS[0];
-
-        const popOverlay = document.createElement('div');
-        popOverlay.className = 'req-find-popup-overlay';
-        const pop = document.createElement('div');
-        pop.className = 'req-find-popup';
-        pop.style.setProperty('--popup-color', popupColor);
-        pop.addEventListener('click', (e) => e.stopPropagation());
-        popOverlay.appendChild(pop);
-
-        const head = document.createElement('div');
-        head.className = 'req-find-popup-head';
-        const headIcon = document.createElement('img');
-        headIcon.className = 'req-find-popup-head-icon';
-        const coinItem = APC.findItem('captures', 'Coin_Grind_Capture');
-        headIcon.src = coinItem ? coinItem.src : 'assets/capture/Coin.png';
-        headIcon.alt = 'Coin Grind';
-        const label = document.createElement('div');
-        label.className = 'req-find-popup-head-text';
-        label.textContent = 'Which Loading Zone has a Coin Grind?';
-        const closeBtn = document.createElement('button');
-        closeBtn.type = 'button';
-        closeBtn.className = 'req-find-popup-close';
-        closeBtn.textContent = '✕';
-        closeBtn.title = 'Close';
-        closeBtn.addEventListener('click', () => closeFindPopup());
-        head.appendChild(headIcon);
-        head.appendChild(label);
-        head.appendChild(closeBtn);
-        pop.appendChild(head);
-
-        const lines = COIN_GRIND_OPTIONS.flatMap(opt => buildRequirementLines(opt.kind, opt.key));
-        const body = document.createElement('div');
-        body.className = 'req-find-popup-body';
-        if (lines.length) {
-          lines.forEach(line => {
-            const row = document.createElement('div');
-            row.className = 'req-picker-reach-line';
-            row.style.setProperty('--line-color', line.fromColor || popupColor);
-            if (line.fromIcon) {
-              const fromImg = document.createElement('img');
-              fromImg.className = 'req-picker-reach-line-icon req-picker-reach-line-icon--from';
-              fromImg.src = line.fromIcon;
-              fromImg.alt = line.kingdomLabel;
-              row.appendChild(fromImg);
-            }
-            const text = document.createElement('span');
-            text.className = 'req-picker-reach-line-text';
-            const kingdomSpan = document.createElement('span');
-            kingdomSpan.className = 'req-picker-reach-line-kingdom';
-            kingdomSpan.textContent = ' (' + line.kingdomLabel + ')';
-            text.textContent = line.fromLabel;
-            text.appendChild(kingdomSpan);
-            row.appendChild(text);
-            const arrow = document.createElement('span');
-            arrow.className = 'req-picker-reach-line-arrow';
-            arrow.textContent = '→';
-            row.appendChild(arrow);
-            if (line.toIcon) {
-              const toImg = document.createElement('img');
-              toImg.className = 'req-picker-reach-line-icon req-picker-reach-line-icon--to';
-              toImg.src = line.toIcon;
-              toImg.alt = line.toLabel;
-              row.appendChild(toImg);
-            }
-            body.appendChild(row);
-          });
-        } else {
-          const empty = document.createElement('div');
-          empty.className = 'req-picker-reach-empty';
-          empty.textContent = 'No loading zone has a Coin Grind picked as a requirement yet. Add one to a zone via its + button in the main Notes view.';
-          body.appendChild(empty);
-        }
-        pop.appendChild(body);
-
-        document.body.appendChild(popOverlay);
-
-        function onPopKeyDown(e) { if (e.key === 'Escape') closeFindPopup(); }
-        function closeFindPopup() {
-          popOverlay.classList.remove('active');
-          document.removeEventListener('keydown', onPopKeyDown);
-          setTimeout(() => popOverlay.remove(), 300);
-        }
-        popOverlay.addEventListener('click', (e) => { if (e.target === popOverlay) closeFindPopup(); });
-        document.addEventListener('keydown', onPopKeyDown);
-
-        void popOverlay.offsetWidth;
-        requestAnimationFrame(() => popOverlay.classList.add('active'));
       }
 
       function openCoinGrindSubmenu(anchorEl, onDone) {
@@ -3447,40 +3312,32 @@
           const img = document.createElement('img');
           img.src = iconItem ? iconItem.src : '';
           img.alt = opt.label;
-          const text = document.createElement('span');
-          text.textContent = opt.label;
-          if (shows && opt.key !== 'Coin_Grind_Capture' && opt.key !== 'Rocket_Flower_Coin_Grind') {
-            const sub = document.createElement('span');
-            sub.className = 'req-picker-coingrind-opt-sub';
-            sub.textContent = shows.name;
-            text.appendChild(sub);
-          }
           btn.appendChild(img);
-          btn.appendChild(text);
+          if (!opt.hideText) {
+            const text = document.createElement('span');
+            text.textContent = opt.label;
+            if (shows && opt.key !== 'Coin_Grind_Capture') {
+              const sub = document.createElement('span');
+              sub.className = 'req-picker-coingrind-opt-sub';
+              sub.textContent = shows.name;
+              text.appendChild(sub);
+            }
+            btn.appendChild(text);
+          }
           btn.addEventListener('click', (e) => {
             e.stopPropagation();
             bounce(btn);
-            // Only one Coin Grind option applies at a time - picking a new
-            // one clears out any previous pick first, same radio-group
-            // behavior as Refights/Shops.
-            COIN_GRIND_OPTIONS.forEach(other => {
-              if (other === opt) return;
-              const wasSelected = zs.requirements.some(r => r.kind === other.kind && r.key === other.key);
-              if (wasSelected) toggleRequirement(zs, other.kind, other.key, noteArea, coinGrindDisplayText(other));
-            });
             const nowSelected = toggleRequirement(zs, opt.kind, opt.key, noteArea, coinGrindDisplayText(opt));
             btn.classList.toggle('selected', nowSelected);
-            menu.querySelectorAll('.req-picker-coingrind-opt').forEach(b => { if (b !== btn) b.classList.remove('selected'); });
             onChange();
             if (onDone) onDone();
-            closeMenu();
           });
           menu.appendChild(btn);
         });
 
         // Center the submenu in the viewport rather than anchoring it to the
-        // Coin Grind tile - its 4 options read better as a centered popup
-        // than a corner-anchored dropdown.
+        // Coin Grind tile - its 3 options (Snow/Cascade/Wooded) read better
+        // as a centered popup than a corner-anchored dropdown.
         void menu.offsetWidth;
         const menuRect = menu.getBoundingClientRect();
         menu.style.left = Math.round((window.innerWidth - menuRect.width) / 2) + 'px';
