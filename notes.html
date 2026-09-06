@@ -1941,12 +1941,11 @@
             if (sale.capture) explicitIds.add('captures:' + sale.capture);
             if (sale.ability) explicitIds.add('abilities:' + sale.ability);
           }
-          // Rocket Flower Coin Grind's note text ("Rocket Flower Coin
-          // Grind") contains "Rocket Flower" as a substring, which the
-          // auto-detect scanner below also matches against the real,
-          // separate Ability entry (AbilityRocketFlower) - same icon as a
-          // second "detected" match. Suppress that specific pairing so the
-          // icon only ever shows once, from the explicit requirement.
+          // "Above the Clouds Coin Grind" is shown with the Rocket Flower
+          // ability icon riding alongside it. Suppress the auto-detect
+          // scanner's own separate match on that same Ability entry
+          // (AbilityRocketFlower) so the icon only ever shows once, from
+          // the explicit requirement, not twice.
           if (r.kind === 'captures' && r.key === 'Rocket_Flower_Coin_Grind') {
             explicitIds.add('abilities:AbilityRocketFlower');
           }
@@ -3307,10 +3306,9 @@
         // this same "Reaching Kingdoms" column, positioned right after Deep
         // Woods - so it's appended after the Kingdom buttons render rather
         // than filtered/sorted alongside them.
-        const coinMatches = !q || 'coin grind'.includes(q) || 'snow coin grind'.includes(q) ||
-          'cascade coin grind'.includes(q) || 'wooded coin grind'.includes(q) ||
-          'dino coin grind'.includes(q) || 'sky coin grind'.includes(q) ||
-          'rocket flower coin grind'.includes(q);
+        const coinMatches = !q || 'coin grind'.includes(q) || 'spinning coin grind'.includes(q) ||
+          'dino coin grind'.includes(q) || 'stretching coin grind'.includes(q) ||
+          'above the clouds coin grind'.includes(q);
 
         if (!kingdoms.length && !coinMatches) {
           const empty = document.createElement('div');
@@ -3376,8 +3374,8 @@
       const COIN_GRIND_OPTIONS = [
         { label: 'Spinning Coin Grind',      kind: 'captures', key: 'Coin_Grind_Capture', iconOverride: { kind: 'abilities', key: 'Spin' }, hideSub: true, colors: ['#e7930a', '#ffd700'] },
         { label: 'Dino Coin Grind',          kind: 'captures', key: 'T-Rex_Capture', colors: ['#ff9900', '#ffd700'] },
-        { label: 'Sky Coin Grind',           kind: 'captures', key: 'Uproot_Capture', colors: ['#1e65e7', '#ffd700'] },
-        { label: 'Rocket Flower Coin Grind', kind: 'captures', key: 'Rocket_Flower_Coin_Grind', iconOverride: { kind: 'abilities', key: 'AbilityRocketFlower' }, hideSub: true, colors: ['#fff500', '#ffd700'] },
+        { label: 'Stretching Coin Grind',    kind: 'captures', key: 'Uproot_Capture', colors: ['#1e65e7', '#ffd700'] },
+        { label: 'Above the Clouds Coin Grind', kind: 'captures', key: 'Rocket_Flower_Coin_Grind', iconOverride: { kind: 'abilities', key: 'AbilityRocketFlower' }, hideSub: true, colors: ['#fff500', '#ffd700'] },
       ];
 
       // Coin Grind lives in the "Reaching Kingdoms" column, right after Deep
