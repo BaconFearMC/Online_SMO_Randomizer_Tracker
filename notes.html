@@ -806,6 +806,7 @@
     <h2>Loading Zone Notes</h2>
     <div class="modal-header-actions">
       <button class="modal-icon-btn-red" id="notes-page-clear" title="Clear all notes">Clear</button>
+      <button class="ctrl-btn gear-btn" id="notes-page-settings" title="Settings">⚙</button>
     </div>
   </div>
   <div class="lz-scroll-wrap">
@@ -3703,6 +3704,13 @@
 
     // ── Init ────────────────────────────────────────────────────────
     document.getElementById('notes-page-clear').addEventListener('click', clearAllNotes);
+    document.getElementById('notes-page-settings').addEventListener('click', () => {
+      try {
+        if (window.parent && window.parent !== window && typeof window.parent.openSettings === 'function') {
+          window.parent.openSettings();
+        }
+      } catch (e) { console.warn('Could not reach parent to open Settings:', e); }
+    });
 
     document.addEventListener('DOMContentLoaded', () => {
       loadFullState();
