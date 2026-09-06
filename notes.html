@@ -964,6 +964,29 @@
       return COIN_GRIND_OPTIONS.find(o => o.kind === kind && o.key === key) || null;
     }
 
+    // Text inserted into the note for a Coin Grind pick, e.g. "Dino Coin
+    // Grind (T-Rex)" - includes the underlying Capture's name in parens for
+    // the two kingdom-specific options (Dino/Stretching), since those are
+    // gated by a specific Capture in-game, not just "Coin Grind"
+    // generically. Snow and Rocket Flower use their own dedicated proxy key
+    // directly (Coin_Grind_Capture / Rocket_Flower_Coin_Grind) whose name
+    // IS the label already, so no parenthetical is added for them - doing
+    // so would insert the same name twice into the note text and cause the
+    // auto-detect scanner to pick it up as a second, separate match (double
+    // icon on the zone row). Declared at top level (not just inside
+    // openRequirementPicker) so renderReqIcons's removeBoth can pass the
+    // exact same text back into removeRequirementText when an icon is
+    // clicked to delete a Coin Grind requirement - otherwise it falls back
+    // to the plain Capture name and the inserted label text never actually
+    // gets removed.
+    const COIN_GRIND_NO_PAREN_KEYS = new Set(['Coin_Grind_Capture', 'Rocket_Flower_Coin_Grind']);
+    function coinGrindDisplayText(opt) {
+      if (COIN_GRIND_NO_PAREN_KEYS.has(opt.key)) return opt.label;
+      const shows = APC.findItem(opt.kind, opt.key);
+      if (shows) return opt.label + ' (' + shows.name + ')';
+      return opt.label;
+    }
+
     function bounce(el) {
       if (!el) return;
       el.classList.remove('click-bounce');
@@ -2160,7 +2183,7 @@
             // own name text - see the matching cleanup in buildPickerCell.
             const removeBoth = () => {
               if (req.kind === 'shops') clearShopSale(req.key);
-              toggleRequirement(zs, req.kind, req.key, noteArea);
+              toggleRequirement(zs, req.kind, req.key, noteArea, coinGrindOpt ? coinGrindDisplayText(coinGrindOpt) : undefined);
             };
             const group = document.createElement('span');
             group.className = 'zone-req-pair';
@@ -3714,23 +3737,6 @@
         return cell;
       }
 
-      // Text inserted into the note for a Coin Grind submenu pick, e.g.
-      // "Dino Coin Grind (T-Rex)" - includes the underlying Capture's name
-      // in parens for the two kingdom-specific options (Dino/Sky), since
-      // those are gated by a specific Capture in-game, not just "Coin
-      // Grind" generically. Snow and Rocket Flower use their own dedicated
-      // proxy key directly (Coin_Grind_Capture / Rocket_Flower_Coin_Grind)
-      // whose name IS the label already, so no parenthetical is added for
-      // them - doing so would insert the same name twice into the note
-      // text and cause the auto-detect scanner to pick it up as a second,
-      // separate match (double icon on the zone row).
-      const COIN_GRIND_NO_PAREN_KEYS = new Set(['Coin_Grind_Capture', 'Rocket_Flower_Coin_Grind']);
-      function coinGrindDisplayText(opt) {
-        if (COIN_GRIND_NO_PAREN_KEYS.has(opt.key)) return opt.label;
-        const shows = APC.findItem(opt.kind, opt.key);
-        if (shows) return opt.label + ' (' + shows.name + ')';
-        return opt.label;
-      }
 
       function openCoinGrindSubmenu(anchorEl, onDone) {
         document.querySelectorAll('.req-picker-coingrind-submenu').forEach(m => m.remove());

@@ -346,6 +346,17 @@ function applyTabVisibility() {
       activateMainTab('notes');
     }
   });
+
+  // Notes itself can't be turned off from Settings, but if every other tab
+  // IS turned off, Notes becomes the only thing left to switch to/from - so
+  // there's nothing for a tab bar to actually do anymore. Hide the Notes
+  // button (and the label it shows) in that one case, rather than leaving
+  // a single, permanently-active "Notes" button with no other tabs beside it.
+  const notesBtn = document.querySelector('.main-tab[data-main-tab="notes"]');
+  if (notesBtn) {
+    const anyOtherVisible = TAB_VISIBILITY_SETTINGS.some(({ key }) => state.settings[key] !== false);
+    notesBtn.classList.toggle('hidden', !anyOtherVisible);
+  }
 }
 
 // ── Deep Woods "Vines" merge ────────────────────────────────────────────────

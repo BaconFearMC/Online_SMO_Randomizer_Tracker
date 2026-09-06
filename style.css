@@ -59,6 +59,16 @@ body {
   align-self: flex-start;
   margin-bottom: 4px;
 }
+/* When every .main-tab button is hidden (Notes is the only tab and it just
+   hid itself too, since there's nothing left to switch between), the bar
+   itself has nothing to show - drop its reserved margin so it doesn't leave
+   a blank gap where the tab row used to be. */
+#main-tabs:has(> .main-tab:not(.hidden)) {
+  margin-bottom: 4px;
+}
+#main-tabs:not(:has(> .main-tab:not(.hidden))) {
+  margin-bottom: 0;
+}
 .main-tab {
   background: var(--btn-bg);
   color: var(--text-dim);
