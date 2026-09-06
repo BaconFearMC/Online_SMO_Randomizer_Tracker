@@ -130,10 +130,10 @@ const DEFAULT_SETTINGS = {
   show_painting_notes: true,   // Paintings notes column (before Cascade); default on
 
   // Individually show/hide each top-left main tab (Notes itself can't be
-  // hidden). Default true = all tabs visible, matching current behavior.
-  show_tab_tracker: true,
-  show_tab_map: true,
-  show_tab_apc: true,
+  // hidden). Default false = only Notes visible until turned on.
+  show_tab_tracker: false,
+  show_tab_map: false,
+  show_tab_apc: false,
   merge_deep_woods_vines: true, // Merge the 4 Deep Woods "Vine" zones into one "Vines" zone
   kingdom_order: null,         // custom moon-row display order (array of KINGDOMS indices) or null
 };
