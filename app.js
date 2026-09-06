@@ -135,6 +135,7 @@ const DEFAULT_SETTINGS = {
   show_tab_map: false,
   show_tab_apc: false,
   merge_deep_woods_vines: true, // Merge the 4 Deep Woods "Vine" zones into one "Vines" zone
+  _tabs_default_off_migrated: true, // internal: see the one-time migration in loadState()
   kingdom_order: null,         // custom moon-row display order (array of KINGDOMS indices) or null
 };
 
@@ -483,6 +484,21 @@ function loadState() {
                                 : 'none';
     }
     syncLegacyPanelFlags();
+
+    // Tracker / Connection Map / Abilities & Captures flipped from
+    // default-on to default-off. That new default only ever reaches
+    // brand-new visitors, though - anyone who already has a saved state
+    // (from before this change) already has these three keys explicitly
+    // written as `true`, so the new DEFAULT_SETTINGS value can never reach
+    // them via the normal merge above. Force them off exactly once for any
+    // save that predates this migration, then stamp the save so it's never
+    // forced again after that - a later manual re-enable sticks.
+    if (!saved.settings || !saved.settings._tabs_default_off_migrated) {
+      state.settings.show_tab_tracker = false;
+      state.settings.show_tab_map = false;
+      state.settings.show_tab_apc = false;
+    }
+    state.settings._tabs_default_off_migrated = true;
 
     // Loading zones merge saved per-zone data, keep template structure for new zones
     if (saved.loading_zones) {
