@@ -127,14 +127,14 @@ const DEFAULT_SETTINGS = {
                                // 'vertical'   = multi-column pack (vertical scroll)
   notes_columns: 2,            // kingdoms side-by-side in vertical mode (1 | 2 | 3)
   notes_compact: false,        // tighter spacing + shorter note boxes
-  show_painting_notes: false,  // Paintings notes column (before Cascade); default off
+  show_painting_notes: true,   // Paintings notes column (before Cascade); default on
 
   // Individually show/hide each top-left main tab (Notes itself can't be
   // hidden). Default true = all tabs visible, matching current behavior.
   show_tab_tracker: true,
   show_tab_map: true,
   show_tab_apc: true,
-  merge_deep_woods_vines: false, // Merge the 4 Deep Woods "Vine" zones into one "Vines" zone
+  merge_deep_woods_vines: true, // Merge the 4 Deep Woods "Vine" zones into one "Vines" zone
   kingdom_order: null,         // custom moon-row display order (array of KINGDOMS indices) or null
 };
 
