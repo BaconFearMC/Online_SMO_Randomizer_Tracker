@@ -128,6 +128,12 @@ const DEFAULT_SETTINGS = {
   notes_columns: 2,            // kingdoms side-by-side in vertical mode (1 | 2 | 3)
   notes_compact: false,        // tighter spacing + shorter note boxes
   show_painting_notes: false,  // Paintings notes column (before Cascade); default off
+
+  // Individually show/hide each top-left main tab (Notes itself can't be
+  // hidden). Default true = all tabs visible, matching current behavior.
+  show_tab_tracker: true,
+  show_tab_map: true,
+  show_tab_apc: true,
   merge_deep_woods_vines: false, // Merge the 4 Deep Woods "Vine" zones into one "Vines" zone
   kingdom_order: null,         // custom moon-row display order (array of KINGDOMS indices) or null
 };
@@ -316,7 +322,31 @@ const TOGGLE_SETTINGS = [
   { id: 'toggle-moon-updater', key: 'show_moon_updater' },
   { id: 'toggle-painting-notes', key: 'show_painting_notes' },
   { id: 'toggle-merge-vines', key: 'merge_deep_woods_vines' },
+  { id: 'toggle-tab-tracker', key: 'show_tab_tracker' },
+  { id: 'toggle-tab-map', key: 'show_tab_map' },
+  { id: 'toggle-tab-apc', key: 'show_tab_apc' },
 ];
+
+// Which top-left main tabs are individually enabled/disabled from Settings
+// (Notes itself can never be hidden - it's the tab this control lives in).
+const TAB_VISIBILITY_SETTINGS = [
+  { tab: 'tracker', key: 'show_tab_tracker' },
+  { tab: 'map',     key: 'show_tab_map' },
+  { tab: 'apc',     key: 'show_tab_apc' },
+];
+
+function applyTabVisibility() {
+  TAB_VISIBILITY_SETTINGS.forEach(({ tab, key }) => {
+    const btn = document.querySelector('.main-tab[data-main-tab="' + tab + '"]');
+    if (!btn) return;
+    const visible = state.settings[key] !== false; // default true
+    btn.classList.toggle('hidden', !visible);
+    // If the tab currently being shown just got hidden, fall back to Notes.
+    if (!visible && btn.classList.contains('active')) {
+      activateMainTab('notes');
+    }
+  });
+}
 
 // ── Deep Woods "Vines" merge ────────────────────────────────────────────────
 // The 4 Deep Woods vine zones (Vine #1-4) can optionally be collapsed into a
@@ -1309,6 +1339,7 @@ function applyAllSettings() {
 
   updateMoonTotal();
   applySidePanel();
+  applyTabVisibility();
 }
 
 // ── Zone name overrides ───────────────────────────────────────────
@@ -1471,7 +1502,10 @@ document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('.main-tab').forEach(btn => {
     btn.addEventListener('click', () => activateMainTab(btn.dataset.mainTab));
   });
-  const initialTab = getPanelMode() === 'none' ? 'tracker' : getPanelMode();
+  // Notes is the default tab on first load (no panel_mode saved yet); once
+  // the user has picked any tab, that saved panel_mode is respected as before.
+  const hasSavedPanelMode = !!(state.settings && state.settings.panel_mode && state.settings.panel_mode !== 'none');
+  const initialTab = hasSavedPanelMode ? state.settings.panel_mode : 'notes';
   activateMainTab(initialTab);
 });
 
@@ -1533,8 +1567,8 @@ function refreshMoonRangeLabels() {
 // ─────────────────────────────────────────────────────────────────────────────
 // Reset
 // ─────────────────────────────────────────────────────────────────────────────
-function resetAll() {
-  if (!confirm('Clear all progress? Settings will be kept.')) return;
+function resetAll(skipConfirm) {
+  if (!skipConfirm && !confirm('Clear all progress? Settings will be kept.')) return;
   const savedSettings = JSON.parse(JSON.stringify(state.settings)); // deep clone and avoid sharing nested binding objects
   savedSettings.kingdom_order = null; // restore the original kingdom order
   state = getDefaultState();
@@ -2153,21 +2187,38 @@ function ensureNotesToolbar() {
 }
 
 // Clears the note text and the selected Captures/Abilities requirements in
-// every zone, leaving collapsed/expanded state untouched.
-function clearAllNotes() {
-  if (!confirm('Clear all loading zone notes? This cannot be undone.')) return;
+// every zone, then resets every Kingdom back to its default collapsed state
+// (all inner sections uncollapsed, the outer Kingdom itself collapsed).
+function clearAllNotes(skipConfirm) {
+  if (!skipConfirm && !confirm('Clear all loading zone notes? This cannot be undone.')) return;
   for (const kingdom of Object.values(state.loading_zones)) {
     for (const zone of Object.values(kingdom.zones)) {
       zone.note = '';
       zone.requirements = [];
+      zone.collapsed = false; // uncollapse every section inside the Kingdom
     }
   }
   if (state.painting_notes) {
     for (const k of Object.keys(state.painting_notes)) state.painting_notes[k] = '';
   }
+  if (state.kingdom_collapsed) {
+    for (const k of Object.keys(state.kingdom_collapsed)) state.kingdom_collapsed[k] = true; // collapse each overall Kingdom
+  }
   saveState();
   buildLoadingZonesContent();
 }
+
+// Full "Clear" reachable from the Notes tab: clears Notes (with the visible
+// animated per-note progress bar handled by notes.html), then also resets
+// the Tracker, Connection Map, and Abilities & Captures tabs, matching the
+// main Clear button - but without re-showing those three tabs on screen.
+// A single confirm() covers both, and skipConfirm avoids a second prompt.
+function clearAllFromNotesTab(skipConfirm) {
+  if (!skipConfirm && !confirm('Clear everything - Notes, Tracker, Connection Map, and Abilities & Captures? This cannot be undone.')) return;
+  clearAllNotes(true);
+  if (typeof resetAll === 'function') resetAll(true);
+}
+window.clearAllFromNotesTab = clearAllFromNotesTab;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Zone Names editor

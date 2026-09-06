@@ -737,6 +737,68 @@
     .req-picker-item--coingrind.selected {
       border-color: rgba(255,215,0,.6) !important;
     }
+
+    /* ── Notes tab "Clear" animated progress overlay ──────────────────── */
+    .notes-clear-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 20000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,0);
+      opacity: 0;
+      transition: opacity .18s ease, background .18s ease;
+      pointer-events: none;
+    }
+    .notes-clear-overlay.active {
+      opacity: 1;
+      background: rgba(0,0,0,.55);
+      pointer-events: auto;
+    }
+    .notes-clear-box {
+      min-width: 280px;
+      padding: 20px 24px;
+      border-radius: 14px;
+      background: var(--bg, #1a1a22);
+      border: 1px solid var(--border, #444);
+      box-shadow: 0 10px 34px rgba(0,0,0,.6);
+      text-align: center;
+      transform: translateY(-6px) scale(.97);
+      transition: transform .18s ease;
+    }
+    .notes-clear-overlay.active .notes-clear-box {
+      transform: translateY(0) scale(1);
+    }
+    .notes-clear-label {
+      font-weight: 700;
+      font-size: 1rem;
+      margin-bottom: 12px;
+      color: var(--text);
+    }
+    .notes-clear-track {
+      width: 100%;
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.08);
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+    .notes-clear-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #ff9900, #ffd700);
+      transition: width .12s linear;
+    }
+    .notes-clear-count {
+      font-size: .8rem;
+      color: var(--text-dim);
+    }
+    .notes-clear-fading {
+      transition: opacity .1s ease;
+      opacity: .25;
+    }
   </style>
 </head>
 <body class="notes-page">
@@ -1066,13 +1128,16 @@
     }
 
     // Clears the note text and the selected Captures/Abilities requirements
-    // in every zone, leaving collapsed/expanded state untouched.
-    function clearAllNotes() {
-      if (!confirm('Clear all loading zone notes? This cannot be undone.')) return;
+    // in every zone, then resets every Kingdom back to its default collapsed
+    // state: every section INSIDE a Kingdom is uncollapsed first, then the
+    // overall Kingdom itself is collapsed (e.g. uncollapse Cap Shop, Orange,
+    // Paragoomba, Frog, and Rolling On, then collapse Cap Kingdom overall).
+    function resetNotesDataOnly() {
       for (const kingdom of Object.values(fullState.loading_zones)) {
         for (const zone of Object.values(kingdom.zones)) {
           zone.note = '';
           zone.requirements = [];
+          zone.collapsed = false; // uncollapse every inner section
         }
       }
       if (fullState.painting_notes) {
@@ -1080,8 +1145,76 @@
       }
       fullState.painting_destinations = {};
       fullState.shop_sales = {};
+      if (fullState.kingdom_collapsed) {
+        for (const k of Object.keys(fullState.kingdom_collapsed)) fullState.kingdom_collapsed[k] = true; // collapse each overall Kingdom
+      }
       saveFullState();
-      buildLoadingZonesContent();
+    }
+
+    // Full Notes-tab Clear button: this is the ONLY clear action that also
+    // wipes the Tracker, Connection Map, and Abilities & Captures tabs (like
+    // the main Clear button), and the ONLY one that visually animates -
+    // notes disappear one-by-one behind a small progress bar while this tab
+    // is doing it. The other three tabs are cleared afterward silently, with
+    // no visual/tab-switch of their own.
+    function clearAllNotes() {
+      if (!confirm('Clear everything - Notes, Tracker, Connection Map, and Abilities & Captures? This cannot be undone.')) return;
+
+      const noteEls = Array.from(document.querySelectorAll('.lz-note, textarea.zone-note, .zone-note-area'))
+        .filter(el => (el.value || el.textContent || '').trim().length > 0);
+
+      function finishClear() {
+        resetNotesDataOnly();
+        buildLoadingZonesContent();
+        // Ask the parent tracker window (app.js) to also reset the Tracker,
+        // Connection Map, and Abilities & Captures data. skipConfirm=true
+        // since this button already confirmed once above.
+        try {
+          if (window.parent && window.parent !== window && typeof window.parent.clearAllFromNotesTab === 'function') {
+            window.parent.clearAllFromNotesTab(true);
+          }
+        } catch (e) { console.warn('Could not reach parent to clear other tabs:', e); }
+      }
+
+      if (!noteEls.length) { finishClear(); return; }
+
+      // ── Animated progress bar: quickly "remove" each note one by one ──
+      const overlay = document.createElement('div');
+      overlay.className = 'notes-clear-overlay';
+      overlay.innerHTML =
+        '<div class="notes-clear-box">' +
+        '  <div class="notes-clear-label">Clearing notes…</div>' +
+        '  <div class="notes-clear-track"><div class="notes-clear-fill"></div></div>' +
+        '  <div class="notes-clear-count"></div>' +
+        '</div>';
+      document.body.appendChild(overlay);
+      const fill = overlay.querySelector('.notes-clear-fill');
+      const count = overlay.querySelector('.notes-clear-count');
+      requestAnimationFrame(() => overlay.classList.add('active'));
+
+      const total = noteEls.length;
+      let i = 0;
+      const stepMs = Math.max(12, Math.min(45, Math.floor(900 / total)));
+
+      function step() {
+        if (i < total) {
+          const el = noteEls[i];
+          el.classList.add('notes-clear-fading');
+          if ('value' in el) el.value = ''; else el.textContent = '';
+          i++;
+          const pct = Math.round((i / total) * 100);
+          fill.style.width = pct + '%';
+          count.textContent = i + ' / ' + total;
+          setTimeout(step, stepMs);
+        } else {
+          setTimeout(() => {
+            overlay.classList.remove('active');
+            setTimeout(() => overlay.remove(), 220);
+            finishClear();
+          }, 150);
+        }
+      }
+      step();
     }
 
     // ── Notes layout: orientation / column count / compact ───────────
