@@ -753,50 +753,158 @@
     }
     .notes-clear-overlay.active {
       opacity: 1;
-      background: rgba(0,0,0,.55);
+      background: rgba(0,0,0,.65);
       pointer-events: auto;
     }
     .notes-clear-box {
-      min-width: 280px;
-      padding: 20px 24px;
-      border-radius: 14px;
+      width: min(920px, 92vw);
+      max-height: 86vh;
+      padding: 22px 26px 24px;
+      border-radius: 16px;
       background: var(--bg, #1a1a22);
       border: 1px solid var(--border, #444);
-      box-shadow: 0 10px 34px rgba(0,0,0,.6);
+      box-shadow: 0 10px 44px rgba(0,0,0,.65), 0 0 60px rgba(255,180,20,.08);
       text-align: center;
       transform: translateY(-6px) scale(.97);
       transition: transform .18s ease;
+      display: flex;
+      flex-direction: column;
     }
     .notes-clear-overlay.active .notes-clear-box {
       transform: translateY(0) scale(1);
     }
     .notes-clear-label {
       font-weight: 700;
-      font-size: 1rem;
-      margin-bottom: 12px;
+      font-size: 1.05rem;
+      margin-bottom: 4px;
       color: var(--text);
+      letter-spacing: .01em;
     }
-    .notes-clear-track {
+    .notes-clear-sublabel {
+      font-size: .78rem;
+      color: var(--text-dim);
+      margin-bottom: 14px;
+    }
+    /* Overall progress: the one bar that tracks total notes cleared across
+       every Kingdom combined, sitting above the per-Kingdom grid. */
+    .notes-clear-overall-track {
       width: 100%;
-      height: 10px;
+      height: 14px;
       border-radius: 999px;
       background: rgba(255,255,255,.08);
       overflow: hidden;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
+      position: relative;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.06);
     }
-    .notes-clear-fill {
+    .notes-clear-overall-fill {
       height: 100%;
       width: 0%;
       border-radius: 999px;
-      background: linear-gradient(90deg, #ff9900, #ffd700);
-      transition: width .12s linear;
+      background: linear-gradient(90deg, #ff9900, #ffd700, #fff59d);
+      background-size: 200% 100%;
+      animation: notes-clear-shimmer 1.4s linear infinite;
+      transition: width .25s linear;
+      position: relative;
     }
-    .notes-clear-count {
-      font-size: .8rem;
+    @keyframes notes-clear-shimmer {
+      0%   { background-position: 0% 0%; }
+      100% { background-position: -200% 0%; }
+    }
+    .notes-clear-overall-count {
+      font-size: .82rem;
       color: var(--text-dim);
+      margin-bottom: 16px;
+      font-variant-numeric: tabular-nums;
+    }
+    /* Per-Kingdom grid: every Kingdom shown at once, each with its own
+       mini progress ring + bar, updating live as its own notes clear. */
+    .notes-clear-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+      gap: 12px;
+      overflow-y: auto;
+      padding: 4px 2px 2px;
+    }
+    .notes-clear-kingdom {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 6px 8px;
+      border-radius: 12px;
+      background: rgba(255,255,255,.03);
+      border: 1px solid rgba(255,255,255,.06);
+      opacity: .55;
+      transform: scale(.94);
+      transition: opacity .3s ease, transform .3s ease, border-color .3s ease, background .3s ease;
+    }
+    .notes-clear-kingdom.is-active {
+      opacity: 1;
+      transform: scale(1);
+      border-color: color-mix(in srgb, var(--kc, #ffd700) 45%, transparent);
+      background: color-mix(in srgb, var(--kc, #ffd700) 8%, rgba(255,255,255,.03));
+    }
+    .notes-clear-kingdom.is-done {
+      opacity: .85;
+      transform: scale(1);
+    }
+    .notes-clear-kingdom.is-empty {
+      opacity: .3;
+    }
+    /* Circular ring per Kingdom, filled via conic-gradient driven by a CSS
+       variable (--p, 0-100) set from JS on every tick. */
+    .notes-clear-ring {
+      --p: 0;
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background:
+        radial-gradient(circle, var(--bg-card, #22222c) 62%, transparent 63%),
+        conic-gradient(var(--kc, #ffd700) calc(var(--p) * 1%), rgba(255,255,255,.12) 0);
+      transition: background .18s linear;
+      position: relative;
+      flex-shrink: 0;
+    }
+    .notes-clear-kingdom.is-done .notes-clear-ring {
+      box-shadow: 0 0 10px color-mix(in srgb, var(--kc, #ffd700) 60%, transparent);
+    }
+    .notes-clear-ring img {
+      width: 22px;
+      height: 22px;
+      object-fit: contain;
+      filter: drop-shadow(0 1px 2px rgba(0,0,0,.5));
+    }
+    .notes-clear-ring-check {
+      font-size: 1.1rem;
+      color: var(--kc, #ffd700);
+      font-weight: 700;
+    }
+    .notes-clear-kingdom-name {
+      font-size: .68rem;
+      font-weight: 600;
+      color: var(--text-dim);
+      text-align: center;
+      line-height: 1.15;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .notes-clear-kingdom.is-active .notes-clear-kingdom-name,
+    .notes-clear-kingdom.is-done .notes-clear-kingdom-name {
+      color: var(--text);
+    }
+    .notes-clear-kingdom-pct {
+      font-size: .66rem;
+      color: var(--text-dim);
+      font-variant-numeric: tabular-nums;
     }
     .notes-clear-fading {
-      transition: opacity .1s ease;
+      transition: opacity .25s ease;
       opacity: .25;
     }
   </style>
@@ -821,6 +929,31 @@
     // the class first (and forcing a reflow) means rapid repeat clicks each
     // get their own fresh bounce instead of the animation silently no-op'ing
     // because the class was already present.
+    // Coin Grind isn't a single capture - it's a tile that opens a small
+    // submenu (Snow / Cascade / Wooded / Sky), each toggling the requirement
+    // that actually gates that kingdom's coin grind. Cascade and Wooded
+    // "say and show" T-Rex / Uproot respectively, since that's the real
+    // requirement in-game; Snow and Sky use their own dedicated proxy keys.
+    // Declared at top-level (rather than inside openRequirementPicker) so
+    // renderReqIcons can also reuse it to give a zone's Coin Grind
+    // requirement icon the same paired-icon + gradient-ring treatment a
+    // Refight gets, instead of falling through to the plain generic-capture
+    // icon path.
+    const COIN_GRIND_OPTIONS = [
+      { label: 'Spinning Coin Grind',      kind: 'captures', key: 'Coin_Grind_Capture', iconOverride: { kind: 'abilities', key: 'Spin' }, hideSub: true, colors: ['#e7930a', '#ffd700'] },
+      { label: 'Dino Coin Grind',          kind: 'captures', key: 'T-Rex_Capture', colors: ['#ff9900', '#ffd700'] },
+      { label: 'Stretching Coin Grind',    kind: 'captures', key: 'Uproot_Capture', colors: ['#1e65e7', '#ffd700'] },
+      { label: 'Above the Clouds Coin Grind', kind: 'captures', key: 'Rocket_Flower_Coin_Grind', iconOverride: { kind: 'abilities', key: 'AbilityRocketFlower' }, hideSub: true, colors: ['#fff500', '#ffd700'] },
+    ];
+
+    // Looks up a zone requirement {kind,key} against COIN_GRIND_OPTIONS -
+    // used by renderReqIcons to detect "this requirement is a Coin Grind
+    // pick" and pull its colors/iconOverride, exactly like a Refight's own
+    // `item.colors`/`item.pair` drive its paired-icon rendering.
+    function findCoinGrindOption(kind, key) {
+      return COIN_GRIND_OPTIONS.find(o => o.kind === kind && o.key === key) || null;
+    }
+
     function bounce(el) {
       if (!el) return;
       el.classList.remove('click-bounce');
@@ -1158,64 +1291,179 @@
     // notes disappear one-by-one behind a small progress bar while this tab
     // is doing it. The other three tabs are cleared afterward silently, with
     // no visual/tab-switch of their own.
+    // Total wall-clock time the Clear animation takes, start to finish.
+    // The only knob you need to touch to change how long it runs - every
+    // Kingdom's per-note timing is derived from this, not hardcoded, so
+    // changing this one number is enough (no animation-logic rewrite).
+    const NOTES_CLEAR_DURATION_MS = 20000;
+
     function clearAllNotes() {
       if (!confirm('Clear everything - Notes, Tracker, Connection Map, and Abilities & Captures? This cannot be undone.')) return;
-
-      const noteEls = Array.from(document.querySelectorAll('.lz-note, textarea.zone-note, .zone-note-area'))
-        .filter(el => (el.value || el.textContent || '').trim().length > 0);
 
       function finishClear() {
         resetNotesDataOnly();
         buildLoadingZonesContent();
-        // Ask the parent tracker window (app.js) to also reset the Tracker,
+        // Ask the tracker window (app.js) to also reset the Tracker,
         // Connection Map, and Abilities & Captures data. skipConfirm=true
-        // since this button already confirmed once above.
+        // since this button already confirmed once above. Works whether
+        // notes.html is an iframe side panel (window.parent) or a
+        // popped-out window (window.opener).
         try {
           if (window.parent && window.parent !== window && typeof window.parent.clearAllFromNotesTab === 'function') {
             window.parent.clearAllFromNotesTab(true);
+          } else if (window.opener && !window.opener.closed && typeof window.opener.clearAllFromNotesTab === 'function') {
+            window.opener.clearAllFromNotesTab(true);
           }
-        } catch (e) { console.warn('Could not reach parent to clear other tabs:', e); }
+        } catch (e) { console.warn('Could not reach tracker window to clear other tabs:', e); }
       }
 
-      if (!noteEls.length) { finishClear(); return; }
+      // Group every note element by the Kingdom column it lives in (this
+      // also covers the Paintings pseudo-kingdom, which uses the exact same
+      // .kingdom-col/.kingdom-col-header markup). Kingdoms with no text in
+      // any of their notes are still shown (as already-"done"/empty), so
+      // every Kingdom appears in the grid up front rather than popping in.
+      const cols = Array.from(document.querySelectorAll('#lz-content > .kingdom-col'));
+      const kingdoms = cols.map((col) => {
+        const nameEl = col.querySelector('.kingdom-col-header .col-title');
+        const iconEl = col.querySelector('.kingdom-col-header img');
+        const colorEl = col.querySelector('.kingdom-col-header .col-title');
+        const allNotes = Array.from(col.querySelectorAll('.lz-note, textarea.zone-note, .zone-note-area'));
+        const filledNotes = allNotes.filter(el => (el.value || el.textContent || '').trim().length > 0);
+        return {
+          name: nameEl ? nameEl.textContent : 'Kingdom',
+          color: colorEl && colorEl.style.color ? colorEl.style.color : '#ffd700',
+          iconSrc: iconEl ? iconEl.src : '',
+          notes: filledNotes,
+        };
+      }).filter(k => k.notes.length || true); // keep every kingdom, even empty ones
 
-      // ── Animated progress bar: quickly "remove" each note one by one ──
+      const totalNotes = kingdoms.reduce((sum, k) => sum + k.notes.length, 0);
+
+      if (!totalNotes) { finishClear(); return; }
+
+      // ── Build the overlay: overall bar + a live per-Kingdom grid ──────
       const overlay = document.createElement('div');
       overlay.className = 'notes-clear-overlay';
       overlay.innerHTML =
         '<div class="notes-clear-box">' +
-        '  <div class="notes-clear-label">Clearing notes…</div>' +
-        '  <div class="notes-clear-track"><div class="notes-clear-fill"></div></div>' +
-        '  <div class="notes-clear-count"></div>' +
+        '  <div class="notes-clear-label">Clearing all notes…</div>' +
+        '  <div class="notes-clear-sublabel"></div>' +
+        '  <div class="notes-clear-overall-track"><div class="notes-clear-overall-fill"></div></div>' +
+        '  <div class="notes-clear-overall-count"></div>' +
+        '  <div class="notes-clear-grid"></div>' +
         '</div>';
       document.body.appendChild(overlay);
-      const fill = overlay.querySelector('.notes-clear-fill');
-      const count = overlay.querySelector('.notes-clear-count');
+
+      const sublabel = overlay.querySelector('.notes-clear-sublabel');
+      const overallFill = overlay.querySelector('.notes-clear-overall-fill');
+      const overallCount = overlay.querySelector('.notes-clear-overall-count');
+      const grid = overlay.querySelector('.notes-clear-grid');
+
+      sublabel.textContent = totalNotes + ' note' + (totalNotes === 1 ? '' : 's') + ' across ' + kingdoms.length + ' Kingdoms';
+
+      const kState = kingdoms.map((k) => {
+        const card = document.createElement('div');
+        card.className = 'notes-clear-kingdom' + (k.notes.length ? '' : ' is-empty');
+        card.style.setProperty('--kc', k.color);
+
+        const ring = document.createElement('div');
+        ring.className = 'notes-clear-ring';
+        if (k.iconSrc) {
+          const img = document.createElement('img');
+          img.src = k.iconSrc;
+          img.alt = '';
+          ring.appendChild(img);
+        }
+
+        const nameEl = document.createElement('div');
+        nameEl.className = 'notes-clear-kingdom-name';
+        nameEl.textContent = k.name;
+
+        const pctEl = document.createElement('div');
+        pctEl.className = 'notes-clear-kingdom-pct';
+        pctEl.textContent = k.notes.length ? '0%' : '—';
+
+        card.appendChild(ring);
+        card.appendChild(nameEl);
+        card.appendChild(pctEl);
+        grid.appendChild(card);
+
+        return { def: k, card, ring, pctEl, cleared: 0 };
+      });
+
       requestAnimationFrame(() => overlay.classList.add('active'));
 
-      const total = noteEls.length;
-      let i = 0;
-      const stepMs = Math.max(12, Math.min(45, Math.floor(900 / total)));
+      // ── Drive every Kingdom's clearing in parallel ────────────────────
+      // Each Kingdom gets its own note-clearing schedule spread evenly
+      // across the shared NOTES_CLEAR_DURATION_MS, all running at once
+      // (rather than one Kingdom finishing before the next starts) so the
+      // whole grid visibly progresses together. A Kingdom with more notes
+      // simply clears them more frequently within the same window, not
+      // faster overall - every Kingdom's bar reaches 100% together, at the
+      // very end of NOTES_CLEAR_DURATION_MS.
+      let totalCleared = 0;
+      let rafId = null;
+      const startTime = performance.now();
 
-      function step() {
-        if (i < total) {
-          const el = noteEls[i];
+      function updateKingdom(ks, elapsed) {
+        const n = ks.def.notes.length;
+        if (!n) return;
+        const frac = Math.min(1, elapsed / NOTES_CLEAR_DURATION_MS);
+        const shouldBeCleared = Math.floor(frac * n);
+        while (ks.cleared < shouldBeCleared) {
+          const el = ks.def.notes[ks.cleared];
           el.classList.add('notes-clear-fading');
           if ('value' in el) el.value = ''; else el.textContent = '';
-          i++;
-          const pct = Math.round((i / total) * 100);
-          fill.style.width = pct + '%';
-          count.textContent = i + ' / ' + total;
-          setTimeout(step, stepMs);
+          ks.cleared++;
+          totalCleared++;
+        }
+        const pct = Math.round((ks.cleared / n) * 100);
+        ks.ring.style.setProperty('--p', pct);
+        ks.pctEl.textContent = pct + '%';
+        ks.card.classList.toggle('is-active', ks.cleared > 0 && ks.cleared < n);
+        ks.card.classList.toggle('is-done', ks.cleared >= n);
+      }
+
+      function tick(now) {
+        const elapsed = now - startTime;
+        kState.forEach(ks => updateKingdom(ks, elapsed));
+
+        const overallPct = Math.round((totalCleared / totalNotes) * 100);
+        overallFill.style.width = overallPct + '%';
+        overallCount.textContent = totalCleared + ' / ' + totalNotes;
+
+        if (elapsed < NOTES_CLEAR_DURATION_MS && totalCleared < totalNotes) {
+          rafId = requestAnimationFrame(tick);
         } else {
+          // Snap everything to fully complete in case rounding left any
+          // Kingdom's last note or the overall bar just short of 100%.
+          kState.forEach(ks => {
+            const n = ks.def.notes.length;
+            while (ks.cleared < n) {
+              const el = ks.def.notes[ks.cleared];
+              el.classList.add('notes-clear-fading');
+              if ('value' in el) el.value = ''; else el.textContent = '';
+              ks.cleared++;
+              totalCleared++;
+            }
+            if (n) {
+              ks.ring.style.setProperty('--p', 100);
+              ks.pctEl.textContent = '100%';
+            }
+            ks.card.classList.remove('is-active');
+            ks.card.classList.toggle('is-done', n > 0);
+          });
+          overallFill.style.width = '100%';
+          overallCount.textContent = totalNotes + ' / ' + totalNotes;
+
           setTimeout(() => {
             overlay.classList.remove('active');
             setTimeout(() => overlay.remove(), 220);
             finishClear();
-          }, 150);
+          }, 400);
         }
       }
-      step();
+      rafId = requestAnimationFrame(tick);
     }
 
     // ── Notes layout: orientation / column count / compact ───────────
@@ -1877,7 +2125,16 @@
           const item = APC.findItem(req.kind, req.key);
           if (!item) return;
 
-          if (req.kind === 'refights' || req.kind === 'shops') {
+          // A Coin Grind pick (one of the four COIN_GRIND_OPTIONS) is stored
+          // as a plain `captures` requirement, but should render exactly
+          // like a Refight: its own icon (using the option's iconOverride,
+          // e.g. Spin/Rocket Flower, when it has one) plus a gradient ring
+          // in the option's colors. It has no paired second icon, so it's
+          // routed through the same removeBoth/group scaffolding as a
+          // Refight/Shop but with only one icon in the group.
+          const coinGrindOpt = req.kind === 'captures' ? findCoinGrindOption(req.kind, req.key) : null;
+
+          if (req.kind === 'refights' || req.kind === 'shops' || coinGrindOpt) {
             // A Refight shows its own icon plus the paired Capture/Ability
             // icon riding right beside it (matching the "(Name)" text pair);
             // a Shop shows its shop.png icon plus its kingdom's icon the
@@ -1891,6 +2148,16 @@
             };
             const group = document.createElement('span');
             group.className = 'zone-req-pair';
+
+            if (coinGrindOpt) {
+              const iconItem = coinGrindOpt.iconOverride
+                ? APC.findItem(coinGrindOpt.iconOverride.kind, coinGrindOpt.iconOverride.key)
+                : item;
+              group.appendChild(buildReqIconEl(req.kind, req.key, iconItem || item, removeBoth, null, coinGrindOpt.colors));
+              reqsWrap.appendChild(group);
+              return;
+            }
+
             group.appendChild(buildReqIconEl(req.kind, req.key, item, removeBoth, null, item.colors));
             if (item.pair) {
               const pairItem = APC.findItem(item.pair.kind, item.pair.key);
@@ -3367,18 +3634,6 @@
         });
       }
 
-      // Coin Grind isn't a single capture - it's a tile that opens a small
-      // submenu (Snow / Cascade / Wooded), each toggling the requirement
-      // that actually gates that kingdom's coin grind. Cascade and Wooded
-      // "say and show" T-Rex / Uproot respectively, since that's the real
-      // requirement in-game; Snow uses the generic Coin Grind capture.
-      const COIN_GRIND_OPTIONS = [
-        { label: 'Spinning Coin Grind',      kind: 'captures', key: 'Coin_Grind_Capture', iconOverride: { kind: 'abilities', key: 'Spin' }, hideSub: true, colors: ['#e7930a', '#ffd700'] },
-        { label: 'Dino Coin Grind',          kind: 'captures', key: 'T-Rex_Capture', colors: ['#ff9900', '#ffd700'] },
-        { label: 'Stretching Coin Grind',    kind: 'captures', key: 'Uproot_Capture', colors: ['#1e65e7', '#ffd700'] },
-        { label: 'Above the Clouds Coin Grind', kind: 'captures', key: 'Rocket_Flower_Coin_Grind', iconOverride: { kind: 'abilities', key: 'AbilityRocketFlower' }, hideSub: true, colors: ['#fff500', '#ffd700'] },
-      ];
-
       // Coin Grind lives in the "Reaching Kingdoms" column, right after Deep
       // Woods - it's shown alongside Kingdom buttons but is NOT itself a
       // Kingdom (it never appears in APC.KINGDOMS, doesn't add to any
@@ -3705,11 +3960,25 @@
     // ── Init ────────────────────────────────────────────────────────
     document.getElementById('notes-page-clear').addEventListener('click', clearAllNotes);
     document.getElementById('notes-page-settings').addEventListener('click', () => {
+      // Notes can be viewed two ways: embedded as an iframe side panel
+      // (reach the tracker via window.parent) or popped out into its own
+      // window via window.open (reach it via window.opener instead - it
+      // has no parent of its own). Try both so Settings works either way.
       try {
         if (window.parent && window.parent !== window && typeof window.parent.openSettings === 'function') {
           window.parent.openSettings();
+          window.parent.focus();
+          return;
         }
       } catch (e) { console.warn('Could not reach parent to open Settings:', e); }
+      try {
+        if (window.opener && !window.opener.closed && typeof window.opener.openSettings === 'function') {
+          window.opener.openSettings();
+          window.opener.focus();
+          return;
+        }
+      } catch (e) { console.warn('Could not reach opener to open Settings:', e); }
+      alert('Open the main Moon Tracker tab/window to access Settings.');
     });
 
     document.addEventListener('DOMContentLoaded', () => {
