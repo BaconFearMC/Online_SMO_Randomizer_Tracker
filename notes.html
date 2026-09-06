@@ -1391,7 +1391,10 @@
         return { def: k, card, ring, pctEl, cleared: 0 };
       });
 
-      requestAnimationFrame(() => overlay.classList.add('active'));
+      void overlay.offsetWidth; // force layout so the transition below actually plays
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => overlay.classList.add('active'));
+      });
 
       // ── Drive every Kingdom's clearing in parallel ────────────────────
       // Each Kingdom gets its own note-clearing schedule spread evenly
@@ -2150,10 +2153,25 @@
             group.className = 'zone-req-pair';
 
             if (coinGrindOpt) {
-              const iconItem = coinGrindOpt.iconOverride
-                ? APC.findItem(coinGrindOpt.iconOverride.kind, coinGrindOpt.iconOverride.key)
-                : item;
-              group.appendChild(buildReqIconEl(req.kind, req.key, iconItem || item, removeBoth, null, coinGrindOpt.colors));
+              // Always show the Coin Grind's own coin icon first (matching
+              // "Coin Grind" as the base concept), then - just like a
+              // Refight's paired Capture/Ability icon - the option's
+              // iconOverride (Spin / T-Rex / Uproot / Rocket Flower) riding
+              // right beside it when it has one. Either icon removes the
+              // whole pair (both icons + note text), same as a Refight.
+              const coinIcon = APC.findItem('captures', 'Coin_Grind_Capture') || item;
+              group.appendChild(buildReqIconEl(req.kind, req.key, coinIcon, removeBoth, null, coinGrindOpt.colors));
+              if (coinGrindOpt.iconOverride) {
+                const overrideItem = APC.findItem(coinGrindOpt.iconOverride.kind, coinGrindOpt.iconOverride.key);
+                if (overrideItem) {
+                  group.appendChild(buildReqIconEl(coinGrindOpt.iconOverride.kind, coinGrindOpt.iconOverride.key, overrideItem, removeBoth, 'zone-req-icon--pair', coinGrindOpt.colors));
+                }
+              } else if (item.key !== 'Coin_Grind_Capture') {
+                // Dino/Stretching Coin Grind: no iconOverride, but the
+                // underlying capture (T-Rex/Uproot) itself is the "paired"
+                // icon riding next to the coin, exactly like a Refight's pair.
+                group.appendChild(buildReqIconEl(req.kind, req.key, item, removeBoth, 'zone-req-icon--pair', coinGrindOpt.colors));
+              }
               reqsWrap.appendChild(group);
               return;
             }
