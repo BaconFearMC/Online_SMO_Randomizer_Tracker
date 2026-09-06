@@ -817,6 +817,16 @@
       margin-bottom: 16px;
       font-variant-numeric: tabular-nums;
     }
+    .notes-clear-overall-count.notes-clear-times-up {
+      color: #ffd700;
+      font-weight: 800;
+      font-size: 1rem;
+      animation: notes-clear-times-up-pulse .5s ease 2;
+    }
+    @keyframes notes-clear-times-up-pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.12); }
+    }
     /* Per-Kingdom grid: every Kingdom shown at once, each with its own
        mini progress ring + bar, updating live as its own notes clear. */
     .notes-clear-grid {
@@ -1295,7 +1305,7 @@
     // The only knob you need to touch to change how long it runs - every
     // Kingdom's per-note timing is derived from this, not hardcoded, so
     // changing this one number is enough (no animation-logic rewrite).
-    const NOTES_CLEAR_DURATION_MS = 20000;
+    const NOTES_CLEAR_DURATION_MS = 5000;
 
     function clearAllNotes() {
       if (!confirm('Clear everything - Notes, Tracker, Connection Map, and Abilities & Captures? This cannot be undone.')) return;
@@ -1432,8 +1442,10 @@
         kState.forEach(ks => updateKingdom(ks, elapsed));
 
         const overallPct = Math.round((totalCleared / totalNotes) * 100);
-        overallFill.style.width = overallPct + '%';
-        overallCount.textContent = totalCleared + ' / ' + totalNotes;
+        const remainingMs = Math.max(0, NOTES_CLEAR_DURATION_MS - elapsed);
+        const remainingSec = (remainingMs / 1000).toFixed(1);
+        overallFill.style.width = (100 - overallPct) + '%';
+        overallCount.textContent = remainingMs > 50 ? remainingSec + 's remaining…' : "Time's up!";
 
         if (elapsed < NOTES_CLEAR_DURATION_MS && totalCleared < totalNotes) {
           rafId = requestAnimationFrame(tick);
@@ -1456,8 +1468,9 @@
             ks.card.classList.remove('is-active');
             ks.card.classList.toggle('is-done', n > 0);
           });
-          overallFill.style.width = '100%';
-          overallCount.textContent = totalNotes + ' / ' + totalNotes;
+          overallFill.style.width = '0%';
+          overallCount.textContent = "Time's up!";
+          overallCount.classList.add('notes-clear-times-up');
 
           setTimeout(() => {
             overlay.classList.remove('active');
