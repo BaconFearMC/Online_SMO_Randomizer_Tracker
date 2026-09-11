@@ -727,6 +727,111 @@
       opacity: .6;
       font-size: .82em;
     }
+    /* One-Way Chain question: asked right after picking which subarea you
+       arrive at in a destination Kingdom (openKingdomSubareaPicker). Three
+       side-by-side choices, each with an icon and a short description of
+       what picking it does. */
+    .req-picker-oneway-submenu {
+      position: fixed;
+      z-index: 10002;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      padding: 18px;
+      min-width: 320px;
+      max-width: 92vw;
+      border-radius: 14px;
+      border: 1px solid var(--border, #444);
+      background: var(--bg, #1a1a22);
+      box-shadow: 0 10px 34px rgba(0,0,0,.55);
+      opacity: 0;
+      transform: translateY(-4px) scale(.97);
+      transition: opacity .16s ease, transform .16s ease;
+      pointer-events: none;
+    }
+    .req-picker-oneway-submenu.active {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      pointer-events: auto;
+    }
+    .req-picker-oneway-title {
+      font-weight: 700;
+      text-align: center;
+      font-size: 1.02rem;
+    }
+    .req-picker-oneway-opts {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .req-picker-oneway-opt {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      width: 150px;
+      padding: 12px 10px;
+      border-radius: 10px;
+      border: 1px solid var(--border, #444);
+      background: rgba(255,255,255,.04);
+      color: inherit;
+      text-align: center;
+      cursor: pointer;
+      transition: background .15s ease, border-color .15s ease;
+    }
+    .req-picker-oneway-opt:hover {
+      background: rgba(255,255,255,.09);
+    }
+    .req-picker-oneway-opt-icon {
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      background: rgba(0,0,0,.3);
+      flex-shrink: 0;
+    }
+    .req-picker-oneway-opt-icon img {
+      width: 28px;
+      height: 28px;
+      object-fit: contain;
+    }
+    .req-picker-oneway-opt-icon--yes { color: #4ee06a; font-size: 1.5rem; font-weight: 800; }
+    .req-picker-oneway-opt-icon--no { color: #ff5a5a; font-size: 1.5rem; font-weight: 800; }
+    .req-picker-oneway-opt-label {
+      font-weight: 700;
+    }
+    .req-picker-oneway-opt-desc {
+      font-size: .78em;
+      opacity: .75;
+      line-height: 1.25;
+    }
+
+    /* Direction marker on a Kingdom requirement placed via the One-Way
+       Chain "No" / "I don't remember" answers (see renderReqIcons /
+       openOneWayChainPicker). */
+    .zone-req-oneway-arrow {
+      display: inline-flex;
+      align-items: center;
+      font-weight: 700;
+      opacity: .8;
+      margin-right: 2px;
+      font-size: .95em;
+    }
+    .zone-req-icon--oneway-unknown {
+      width: 16px !important;
+      height: 16px !important;
+      min-width: 0 !important;
+      min-height: 0 !important;
+      margin-left: 2px;
+      border-radius: 50%;
+      background: #1a1a22;
+      border: 1px solid rgba(255,255,255,.35);
+      padding: 1px;
+    }
+
     /* Coin Grind sits in the "Reaching Kingdoms" column but is not a
        Kingdom button - shrink it down relative to its Kingdom siblings so
        it doesn't read as one of the 18 real Kingdoms. */
@@ -1296,6 +1401,9 @@
       if (fullState.painting_notes) {
         for (const k of Object.keys(fullState.painting_notes)) fullState.painting_notes[k] = '';
       }
+      if (fullState.painting_shop_collapsed) {
+        for (const k of Object.keys(fullState.painting_shop_collapsed)) fullState.painting_shop_collapsed[k] = false;
+      }
       fullState.painting_destinations = {};
       fullState.shop_sales = {};
       if (fullState.kingdom_collapsed) {
@@ -1764,6 +1872,7 @@
       const shopKey = PAINTING_SHOP_KEYS[kingdomName];
       const kd = LOADING_ZONES_TEMPLATE[kingdomName] || { color: '#ffd700' };
       if (!fullState.painting_shop_notes) fullState.painting_shop_notes = {};
+      if (!fullState.painting_shop_collapsed) fullState.painting_shop_collapsed = {};
       const row = document.createElement('div');
       row.className = 'zone-row';
 
@@ -1772,6 +1881,7 @@
 
       const reqsWrap = document.createElement('div');
       reqsWrap.className = 'zone-reqs';
+      if (fullState.painting_shop_collapsed[shopKey]) reqsWrap.style.display = 'none';
 
       // Note textarea built first (but appended later) so the + button's
       // picker below can write "<Shop> sells X & Y" into it, same as a
@@ -1781,6 +1891,7 @@
       noteArea.value = fullState.painting_shop_notes[shopKey] || '';
       noteArea.placeholder = 'Note…';
       noteArea.rows = 1;
+      if (fullState.painting_shop_collapsed[shopKey]) noteArea.style.display = 'none';
       noteArea.addEventListener('input', () => {
         fullState.painting_shop_notes[shopKey] = noteArea.value;
         saveFullState();
@@ -1852,10 +1963,19 @@
       const nameLabel = document.createElement('span');
       nameLabel.className = 'zone-name';
       nameLabel.textContent = kingdomName + ' Shop';
-      nameLabel.style.color = kd.color;
+      nameLabel.style.color = fullState.painting_shop_collapsed[shopKey] ? '#888' : kd.color;
       top.appendChild(nameLabel);
       row.appendChild(top);
       row.appendChild(noteArea);
+
+      nameLabel.addEventListener('click', () => {
+        const collapsed = !fullState.painting_shop_collapsed[shopKey];
+        fullState.painting_shop_collapsed[shopKey] = collapsed;
+        nameLabel.style.color = collapsed ? '#888' : kd.color;
+        noteArea.style.display = collapsed ? 'none' : '';
+        reqsWrap.style.display = collapsed ? 'none' : '';
+        saveFullState();
+      });
 
       return row;
     }
@@ -1978,6 +2098,7 @@
       noteArea.placeholder = 'Note…';
       noteArea.rows = 1;
       if (zs.collapsed) noteArea.style.display = 'none';
+      if (zs.collapsed) reqsWrap.style.display = 'none';
 
       noteArea.addEventListener('input', () => {
         zs.note = noteArea.value;
@@ -2228,6 +2349,32 @@
             return;
           }
 
+          // A Kingdom requirement placed here via the One-Way Chain question
+          // (see openOneWayChainPicker) - "No" and "I don't remember" both
+          // place the Starting Area's Kingdom in the Destination with a
+          // leading "→" to show the direction of the connection; "I don't
+          // remember" additionally rides a trailing "?" icon, matching the
+          // "?" appended to the note text for that same pick.
+          if (req.kind === 'kingdoms' && (req.oneWay === 'no' || req.oneWay === 'unknown')) {
+            const group = document.createElement('span');
+            group.className = 'zone-req-pair';
+            const arrow = document.createElement('span');
+            arrow.className = 'zone-req-oneway-arrow';
+            arrow.textContent = '→';
+            group.appendChild(arrow);
+            group.appendChild(buildReqIconEl(req.kind, req.key, item));
+            if (req.oneWay === 'unknown') {
+              const q = document.createElement('img');
+              q.className = 'zone-req-icon zone-req-icon--oneway-unknown';
+              q.src = 'assets/DeadEnd.png';
+              q.alt = '?';
+              q.title = 'I don\'t remember (click the Kingdom icon to remove)';
+              group.appendChild(q);
+            }
+            reqsWrap.appendChild(group);
+            return;
+          }
+
           reqsWrap.appendChild(buildReqIconEl(req.kind, req.key, item));
         });
 
@@ -2300,6 +2447,7 @@
         zs.collapsed = !zs.collapsed;
         nameLabel.style.color = zs.collapsed ? '#888' : color;
         noteArea.style.display = zs.collapsed ? 'none' : '';
+        reqsWrap.style.display = zs.collapsed ? 'none' : '';
         saveFullState();
       });
 
@@ -2650,7 +2798,7 @@
     // tagged with. Works purely off the data (a fake noteArea stand-in for
     // `appendRequirementText`) so it can target a zone that isn't currently
     // rendered on screen.
-    function setReciprocalKingdomRequirement(targetZs, kingdomKey, viaZoneKey) {
+    function setReciprocalKingdomRequirement(targetZs, kingdomKey, viaZoneKey, unsure) {
       if (!Array.isArray(targetZs.requirements)) targetZs.requirements = [];
       let req = targetZs.requirements.find(r => r.kind === 'kingdoms' && r.key === kingdomKey);
       if (!req) {
@@ -2658,8 +2806,12 @@
         targetZs.requirements.push(req);
         const text = requirementDisplayText('kingdoms', kingdomKey);
         if (text) {
+          // "I don't remember" tags the written name itself with a trailing
+          // "?" (e.g. Starting Kingdom "Cap" -> note text "Cap?"), on top of
+          // the "?" icon renderReqIcons draws next to the requirement icon.
+          const noteText = unsure ? text + '?' : text;
           const fakeArea = { value: targetZs.note || '', focus() {}, setSelectionRange() {}, dispatchEvent() {} };
-          appendRequirementText(fakeArea, text);
+          appendRequirementText(fakeArea, noteText);
           targetZs.note = fakeArea.value;
         }
       }
@@ -2769,6 +2921,96 @@
       void overlay.offsetWidth;
       requestAnimationFrame(() => overlay.classList.add('active'));
       search.focus();
+    }
+
+    // ── One-Way Chain question (asked right after openKingdomSubareaPicker
+    // resolves) ─────────────────────────────────────────────────────────
+    // "Was there a One-Way in that chain?" - Yes/No/I don't remember, each
+    // with its own icon and one-line description of what picking it does.
+    // Calls onAnswer('yes' | 'no' | 'unknown') once, then closes; Escape/
+    // outside-click closes with no answer (onAnswer is simply never called).
+    const ONE_WAY_OPTIONS = [
+      { key: 'yes',     label: 'Yes',              desc: 'Will hide the destination' },
+      { key: 'no',      label: 'No',               desc: "Will place the Starting Area's Kingdom in the Destination" },
+      { key: 'unknown', label: "I don't remember",  desc: "Will place the Starting Area's Kingdom in the Destination with a question mark" },
+    ];
+
+    function openOneWayChainPicker(onAnswer) {
+      document.querySelectorAll('.req-picker-oneway-submenu').forEach(m => m.remove());
+      const menu = document.createElement('div');
+      menu.className = 'req-picker-oneway-submenu';
+      document.body.appendChild(menu);
+
+      const title = document.createElement('div');
+      title.className = 'req-picker-oneway-title';
+      title.textContent = 'Was there a One-Way in that chain?';
+      menu.appendChild(title);
+
+      const opts = document.createElement('div');
+      opts.className = 'req-picker-oneway-opts';
+      menu.appendChild(opts);
+
+      ONE_WAY_OPTIONS.forEach(opt => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'req-picker-oneway-opt';
+
+        const iconWrap = document.createElement('span');
+        iconWrap.className = 'req-picker-oneway-opt-icon';
+        if (opt.key === 'yes') {
+          iconWrap.classList.add('req-picker-oneway-opt-icon--yes');
+          iconWrap.textContent = '✓';
+        } else if (opt.key === 'no') {
+          iconWrap.classList.add('req-picker-oneway-opt-icon--no');
+          iconWrap.textContent = '✕';
+        } else {
+          const img = document.createElement('img');
+          img.src = 'assets/DeadEnd.png';
+          img.alt = "I don't remember";
+          iconWrap.appendChild(img);
+        }
+        btn.appendChild(iconWrap);
+
+        const label = document.createElement('span');
+        label.className = 'req-picker-oneway-opt-label';
+        label.textContent = opt.label;
+        btn.appendChild(label);
+
+        const desc = document.createElement('span');
+        desc.className = 'req-picker-oneway-opt-desc';
+        desc.textContent = opt.desc;
+        btn.appendChild(desc);
+
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          bounce(btn);
+          closeMenu();
+          onAnswer(opt.key);
+        });
+        opts.appendChild(btn);
+      });
+
+      // Center in the viewport, same as the Coin Grind submenu.
+      void menu.offsetWidth;
+      const menuRect = menu.getBoundingClientRect();
+      menu.style.left = Math.round((window.innerWidth - menuRect.width) / 2) + 'px';
+      menu.style.top = Math.round((window.innerHeight - menuRect.height) / 2) + 'px';
+
+      function onDocClick(e) {
+        if (!menu.contains(e.target)) closeMenu();
+      }
+      function onKeyDown(e) { if (e.key === 'Escape') closeMenu(); }
+      function closeMenu() {
+        menu.classList.remove('active');
+        document.removeEventListener('click', onDocClick, true);
+        document.removeEventListener('keydown', onKeyDown);
+        setTimeout(() => menu.remove(), 200);
+      }
+      setTimeout(() => document.addEventListener('click', onDocClick, true), 0);
+      document.addEventListener('keydown', onKeyDown);
+
+      void menu.offsetWidth;
+      requestAnimationFrame(() => menu.classList.add('active'));
     }
 
     // ── Shop "for sale" picker (Kingdom tab's Shop grid, and the Paintings
@@ -3556,8 +3798,9 @@
           // Kingdom destinations only (never Captures/Abilities/Refights/
           // Shops - see the file comment above openKingdomSubareaPicker):
           // picking a Kingdom prompts which of ITS zones you actually land
-          // in, then auto-tags that zone with a Kingdom requirement pointing
-          // back here, so the reverse trip is recorded for free.
+          // in, then asks whether that chain had a One-Way in it (see
+          // openOneWayChainPicker), which decides what - if anything - gets
+          // auto-tagged back on the destination zone.
           if (kind === 'kingdoms' && nowSelected && originKingdom && originZone) {
             openKingdomSubareaPicker(item.key, (viaZoneKey) => {
               const req = zs.requirements.find(r => r.kind === 'kingdoms' && r.key === item.key);
@@ -3565,12 +3808,33 @@
 
               const destKingdomData = fullState.loading_zones[item.key];
               const destZs = destKingdomData && destKingdomData.zones[viaZoneKey];
-              if (destZs) {
-                setReciprocalKingdomRequirement(destZs, originKingdom, originZone);
-              }
 
-              saveFullState();
-              buildLoadingZonesContent();
+              openOneWayChainPicker((answer) => {
+                if (destZs) {
+                  if (answer === 'yes') {
+                    // "Will hide the destination" - grey it out exactly as
+                    // if the user had clicked the destination zone itself.
+                    destZs.collapsed = true;
+                  } else if (answer === 'no') {
+                    // "Will place the Starting Area's Kingdom in the
+                    // Destination" - the normal reciprocal tag, undecorated.
+                    setReciprocalKingdomRequirement(destZs, originKingdom, originZone);
+                    const backReq = destZs.requirements.find(r => r.kind === 'kingdoms' && r.key === originKingdom);
+                    if (backReq) backReq.oneWay = 'no';
+                  } else if (answer === 'unknown') {
+                    // "I don't remember" - same reciprocal tag, but flagged
+                    // so it renders with a leading "→", a trailing "?" icon,
+                    // and a "?" appended to the Kingdom's name in the note
+                    // text (e.g. "Cap?").
+                    setReciprocalKingdomRequirement(destZs, originKingdom, originZone, /* unsure */ true);
+                    const backReq = destZs.requirements.find(r => r.kind === 'kingdoms' && r.key === originKingdom);
+                    if (backReq) backReq.oneWay = 'unknown';
+                  }
+                }
+
+                saveFullState();
+                buildLoadingZonesContent();
+              });
             });
           }
         });
@@ -3618,7 +3882,14 @@
           'dino coin grind'.includes(q) || 'stretching coin grind'.includes(q) ||
           'above the clouds coin grind'.includes(q);
 
-        if (!kingdoms.length && !coinMatches) {
+        // Dead-End isn't a Kingdom either (never in APC.KINGDOMS) - it's an
+        // organizational tile in this same "Reaching Kingdoms" column,
+        // appended last, purely so "this loading zone doesn't lead
+        // anywhere/I don't want to track it" has a one-click home here
+        // alongside the real Kingdoms and Coin Grind.
+        const deadEndMatches = !q || 'dead-end'.includes(q) || 'dead end'.includes(q);
+
+        if (!kingdoms.length && !coinMatches && !deadEndMatches) {
           const empty = document.createElement('div');
           empty.className = 'req-picker-empty';
           empty.textContent = 'No matches';
@@ -3626,6 +3897,7 @@
         } else {
           kingdoms.forEach(item => kingdomGrid.appendChild(buildPickerCell(item, 'kingdoms', 'req-picker-item--kingdom')));
           if (coinMatches) kingdomGrid.appendChild(buildCoinGrindCell());
+          if (deadEndMatches) kingdomGrid.appendChild(buildDeadEndCell());
         }
 
         applyFindTargetStyling();
@@ -3723,6 +3995,40 @@
         return cell;
       }
 
+      // Dead-End: not a Kingdom (never in APC.KINGDOMS, never wired into
+      // leadsTo/reciprocal logic) - it lives in the "Reaching Kingdoms"
+      // column purely for convenience, same slot as Coin Grind. Clicking it
+      // does exactly one thing: hides (collapses) the zone that was clicked
+      // to open this picker in the first place - identical to clicking that
+      // zone's own name label - and nothing else. It carries no requirement
+      // data of its own, so it's never "selected"/removable like a real pick.
+      function buildDeadEndCell() {
+        const cell = document.createElement('button');
+        cell.type = 'button';
+        cell.className = 'req-picker-item req-picker-item--kingdom';
+        const img = document.createElement('img');
+        img.src = 'assets/DeadEnd.png';
+        img.alt = 'Dead-End';
+        img.addEventListener('error', () => {
+          cell.classList.add('req-picker-item--broken-icon');
+          console.warn('[req-picker] missing icon for Dead-End -> assets/DeadEnd.png');
+        }, { once: true });
+        const label = document.createElement('span');
+        label.textContent = 'Dead-End';
+        cell.appendChild(img);
+        cell.appendChild(label);
+        cell.title = 'Dead-End (hides this area)';
+
+        cell.addEventListener('click', (e) => {
+          e.stopPropagation();
+          bounce(cell);
+          zs.collapsed = true;
+          saveFullState();
+          closePicker();
+          buildLoadingZonesContent();
+        });
+        return cell;
+      }
 
       function openCoinGrindSubmenu(anchorEl, onDone) {
         document.querySelectorAll('.req-picker-coingrind-submenu').forEach(m => m.remove());
