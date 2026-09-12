@@ -2868,14 +2868,7 @@
       const title = document.createElement('div');
       title.className = 'req-picker-title';
       title.textContent = 'Which ' + (kItem ? kItem.name : kingdomKey) + ' area do you arrive at?';
-      const closeBtn = document.createElement('button');
-      closeBtn.type = 'button';
-      closeBtn.className = 'req-picker-close';
-      closeBtn.textContent = '✕';
-      closeBtn.title = 'Close';
-      closeBtn.addEventListener('click', () => closePicker());
       header.appendChild(title);
-      header.appendChild(closeBtn);
       popup.appendChild(header);
 
       const search = document.createElement('input');
@@ -2932,15 +2925,13 @@
       const onResize = () => render();
       window.addEventListener('resize', onResize);
 
-      function onKeyDown(e) { if (e.key === 'Escape') closePicker(); }
       function closePicker() {
         overlay.classList.remove('active');
-        document.removeEventListener('keydown', onKeyDown);
         window.removeEventListener('resize', onResize);
         setTimeout(() => overlay.remove(), 320);
       }
-      overlay.addEventListener('click', (e) => { if (e.target === overlay) closePicker(); });
-      document.addEventListener('keydown', onKeyDown);
+      // Intentionally no outside-click or Escape handler here - this picker
+      // must stay open until one of the subarea buttons above is clicked.
 
       void overlay.offsetWidth;
       requestAnimationFrame(() => overlay.classList.add('active'));
