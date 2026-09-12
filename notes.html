@@ -1041,12 +1041,28 @@
       transition: opacity .25s ease;
       opacity: .25;
     }
+    /* Area name always renders immediately after the + button (both are
+       appended to .zone-reqs in that order on every rebuild - see
+       renderReqIcons/renderDestChip/renderChips) - this just keeps it from
+       shrinking or wrapping oddly inside the flex row. */
+    .zone-reqs .zone-name {
+      flex: 0 0 auto;
+      white-space: nowrap;
+    }
+    /* Darkerside "End" zone's Extra + (Multimoon picker) - same shape as
+       the normal + but a subtly different color so it reads as a second,
+       distinct add-action rather than a duplicate of the main +. */
+    .zone-req-add--extra {
+      border-color: #fff2c6;
+      color: #fff2c6;
+    }
   </style>
 </head>
 <body class="notes-page">
   <div class="notes-page-header">
     <h2>Loading Zone Notes</h2>
     <div class="modal-header-actions">
+      <button class="ctrl-btn" id="notes-page-collapse-all" title="Collapse all Kingdoms">⊟ Collapse</button>
       <button class="modal-icon-btn-red" id="notes-page-clear" title="Clear all notes">Clear</button>
       <button class="ctrl-btn gear-btn" id="notes-page-settings" title="Settings">⚙</button>
     </div>
@@ -1294,7 +1310,7 @@
           // entries picked from the Abilities & Captures list (apc-data.js).
           // Their icons render above the location; their names are copied
           // into the note text but the text stays freely editable afterward.
-          result[kingdom].zones[zone] = { note:'', requirements:[], collapsed:false, num: zd.num };
+          result[kingdom].zones[zone] = { note:'', requirements:[], multimoons:[], collapsed:false, num: zd.num };
         }
       }
       return result;
@@ -1370,6 +1386,11 @@
       for (const kingdom of Object.values(fullState.loading_zones)) {
         for (const zone of Object.values(kingdom.zones)) {
           if (!Array.isArray(zone.requirements)) zone.requirements = [];
+          // multimoons: only ever populated on Darkerside's "End" zone (see
+          // MULTIMOON_KINGDOMS / openMultimoonPicker) - an ordered list of
+          // Kingdom keys, one per Multimoon painting seen there. Harmless
+          // (and unused) on every other zone.
+          if (!Array.isArray(zone.multimoons)) zone.multimoons = [];
           delete zone.leadsTo;
           delete zone.icon;
           delete zone.icon2;
@@ -1414,6 +1435,7 @@
         for (const zone of Object.values(kingdom.zones)) {
           zone.note = '';
           zone.requirements = [];
+          zone.multimoons = [];
           zone.collapsed = false; // uncollapse every inner section
         }
       }
@@ -1784,6 +1806,11 @@
         const reqsWrap = document.createElement('div');
         reqsWrap.className = 'zone-reqs';
 
+        const nameLabel = document.createElement('span');
+        nameLabel.className = 'zone-name';
+        nameLabel.textContent = kingdom;
+        nameLabel.style.color = kd.color;
+
         function renderDestChip() {
           reqsWrap.innerHTML = '';
           const addBtn = document.createElement('button');
@@ -1817,6 +1844,9 @@
             });
           });
           reqsWrap.appendChild(addBtn);
+          // Area name always sits immediately to the right of the + button,
+          // ahead of the destination icon, so its position never shifts.
+          reqsWrap.appendChild(nameLabel);
 
           const destKey = APC.getPaintingDestination(fullState, kingdom);
           if (destKey) {
@@ -1842,12 +1872,6 @@
         }
         renderDestChip();
         top.appendChild(reqsWrap);
-
-        const nameLabel = document.createElement('span');
-        nameLabel.className = 'zone-name';
-        nameLabel.textContent = kingdom;
-        nameLabel.style.color = kd.color;
-        top.appendChild(nameLabel);
         row.appendChild(top);
 
         const noteArea = document.createElement('textarea');
@@ -1949,6 +1973,26 @@
         return img;
       }
 
+      const icon = document.createElement('img');
+      icon.className = 'zone-req-icon--shop';
+      icon.src = 'assets/shop.png';
+      icon.alt = 'Shop';
+      icon.height = 16;
+      icon.style.marginRight = '4px';
+
+      const nameLabel = document.createElement('span');
+      nameLabel.className = 'zone-name';
+      nameLabel.textContent = kingdomName + ' Shop';
+      nameLabel.style.color = fullState.painting_shop_collapsed[shopKey] ? '#888' : kd.color;
+      nameLabel.addEventListener('click', () => {
+        const collapsed = !fullState.painting_shop_collapsed[shopKey];
+        fullState.painting_shop_collapsed[shopKey] = collapsed;
+        nameLabel.style.color = collapsed ? '#888' : kd.color;
+        noteArea.style.display = collapsed ? 'none' : '';
+        reqsWrap.style.display = collapsed ? 'none' : '';
+        saveFullState();
+      });
+
       function renderChips() {
         reqsWrap.innerHTML = '';
         const addBtn = document.createElement('button');
@@ -1962,6 +2006,10 @@
           openShopSalePicker(shopKey, renderChips, noteArea);
         });
         reqsWrap.appendChild(addBtn);
+        // Shop icon + area name always sit immediately to the right of the +
+        // button, ahead of the for-sale chips, so their position never shifts.
+        reqsWrap.appendChild(icon);
+        reqsWrap.appendChild(nameLabel);
 
         const sale = APC.getShopSale(fullState, shopKey);
         if (sale.ability) {
@@ -1975,31 +2023,8 @@
       }
       renderChips();
       top.appendChild(reqsWrap);
-
-      const icon = document.createElement('img');
-      icon.className = 'zone-req-icon--shop';
-      icon.src = 'assets/shop.png';
-      icon.alt = 'Shop';
-      icon.height = 16;
-      icon.style.marginRight = '4px';
-      top.appendChild(icon);
-
-      const nameLabel = document.createElement('span');
-      nameLabel.className = 'zone-name';
-      nameLabel.textContent = kingdomName + ' Shop';
-      nameLabel.style.color = fullState.painting_shop_collapsed[shopKey] ? '#888' : kd.color;
-      top.appendChild(nameLabel);
       row.appendChild(top);
       row.appendChild(noteArea);
-
-      nameLabel.addEventListener('click', () => {
-        const collapsed = !fullState.painting_shop_collapsed[shopKey];
-        fullState.painting_shop_collapsed[shopKey] = collapsed;
-        nameLabel.style.color = collapsed ? '#888' : kd.color;
-        noteArea.style.display = collapsed ? 'none' : '';
-        reqsWrap.style.display = collapsed ? 'none' : '';
-        saveFullState();
-      });
 
       return row;
     }
@@ -2105,6 +2130,7 @@
     function buildZoneRow(kingdom, zone, zoneData, color) {
       const zs = fullState.loading_zones[kingdom].zones[zone];
       if (!Array.isArray(zs.requirements)) zs.requirements = [];
+      if (!Array.isArray(zs.multimoons)) zs.multimoons = [];
       const row = document.createElement('div');
       row.className = 'zone-row';
 
@@ -2274,6 +2300,18 @@
         if (zs) zs.requirements = zs.requirements.filter(r => !(r.kind === 'shops' && r.key === shopKey));
       }
 
+      const nameLabel = document.createElement('span');
+      nameLabel.className = 'zone-name';
+      nameLabel.textContent = zoneDisplayName(kingdom, zone);
+      nameLabel.style.color = zs.collapsed ? '#888' : color;
+      nameLabel.addEventListener('click', () => {
+        zs.collapsed = !zs.collapsed;
+        nameLabel.style.color = zs.collapsed ? '#888' : color;
+        noteArea.style.display = zs.collapsed ? 'none' : '';
+        reqsWrap.style.display = zs.collapsed ? 'none' : '';
+        saveFullState();
+      });
+
       function renderReqIcons() {
         reqsWrap.innerHTML = '';
         const addBtn = document.createElement('button');
@@ -2290,6 +2328,11 @@
           }, kingdom, zone);
         });
         reqsWrap.appendChild(addBtn);
+        // Area name always sits immediately to the right of the + button,
+        // ahead of every requirement icon, so its position never shifts as
+        // icons are added/removed (see nameLabel definition below, appended
+        // once and just moved here on every rebuild).
+        reqsWrap.appendChild(nameLabel);
 
         zs.requirements.forEach((req) => {
           const item = APC.findItem(req.kind, req.key);
@@ -2453,27 +2496,49 @@
           reqsWrap.appendChild(img);
         });
 
+        // Darkerside's "End" zone gets an Extra + for the row of Multimoon
+        // paintings found there - separate from the normal Capture/Ability/
+        // Refight/Shop/Kingdom + above, since a Multimoon can point back to
+        // more than one Kingdom at once (multi-select, not radio-select).
+        if (kingdom === 'Darkerside' && zone === 'End') {
+          const extraBtn = document.createElement('button');
+          extraBtn.type = 'button';
+          extraBtn.className = 'zone-req-add zone-req-add--extra';
+          extraBtn.title = 'Which Multimoon is here?';
+          extraBtn.textContent = '+';
+          extraBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            bounce(extraBtn);
+            openMultimoonPicker(zs, () => renderReqIcons());
+          });
+          reqsWrap.appendChild(extraBtn);
+
+          zs.multimoons.forEach((kKey) => {
+            const kItem = APC.findItem('kingdoms', kKey);
+            if (!kItem) return;
+            const img = document.createElement('img');
+            img.className = 'zone-req-icon zone-req-icon--kingdom';
+            img.src = kItem.src;
+            img.alt = kItem.name;
+            img.title = kItem.name + ' Multimoon (click to remove)';
+            if (kItem.color) img.style.setProperty('--kingdom-color', kItem.color);
+            img.addEventListener('click', (e) => {
+              e.stopPropagation();
+              bounce(img);
+              zs.multimoons = zs.multimoons.filter(k => k !== kKey);
+              saveFullState();
+              renderReqIcons();
+            });
+            reqsWrap.appendChild(img);
+          });
+        }
+
         updateNoteColor();
       }
       renderReqIcons();
 
       top.appendChild(reqsWrap);
-
-      const nameLabel = document.createElement('span');
-      nameLabel.className = 'zone-name';
-      nameLabel.textContent = zoneDisplayName(kingdom, zone);
-      nameLabel.style.color = zs.collapsed ? '#888' : color;
-
-      top.appendChild(nameLabel);
       row.appendChild(top);
-
-      nameLabel.addEventListener('click', () => {
-        zs.collapsed = !zs.collapsed;
-        nameLabel.style.color = zs.collapsed ? '#888' : color;
-        noteArea.style.display = zs.collapsed ? 'none' : '';
-        reqsWrap.style.display = zs.collapsed ? 'none' : '';
-        saveFullState();
-      });
 
       row.appendChild(noteArea);
       return row;
@@ -2793,7 +2858,118 @@
       search.focus();
     }
 
-    // ── Kingdom Destination subarea picker (Kingdom tab: picking one of the
+    // ── Multimoon picker (Darkerside Kingdom: "End" zone's Extra + button) ──
+    // Darkerside's "End" is the room with the row of Multimoon paintings -
+    // each one leads back to a specific other Kingdom. Multi-select (toggle
+    // on/off), since more than one painting can be present/known at once;
+    // stored as zs.multimoons, an array of Kingdom keys, in whatever order
+    // they were picked. Reuses each Kingdom's existing icon/color - no new
+    // assets needed.
+    const MULTIMOON_KINGDOMS_ORDER = [
+      'Cascade', 'Sand', 'Lake', 'Wooded', 'Metro', 'Snow', 'Seaside',
+      'Luncheon', 'Ruined', "Bowser's", 'Mushroom', 'Darkside',
+    ];
+    const MULTIMOON_KINGDOMS = MULTIMOON_KINGDOMS_ORDER
+      .map(key => APC.findItem('kingdoms', key))
+      .filter(Boolean);
+
+    function openMultimoonPicker(zs, onChange) {
+      document.querySelectorAll('.req-picker-overlay').forEach(p => p.remove());
+      if (!Array.isArray(zs.multimoons)) zs.multimoons = [];
+
+      const overlay = document.createElement('div');
+      overlay.className = 'req-picker-overlay';
+      const popup = document.createElement('div');
+      popup.className = 'req-picker-popup req-picker-popup--scroll';
+      popup.addEventListener('click', (e) => e.stopPropagation());
+      overlay.appendChild(popup);
+
+      const header = document.createElement('div');
+      header.className = 'req-picker-header';
+      const title = document.createElement('div');
+      title.className = 'req-picker-title';
+      title.textContent = 'Which Multimoon is here?';
+      const closeBtn = document.createElement('button');
+      closeBtn.type = 'button';
+      closeBtn.className = 'req-picker-close';
+      closeBtn.textContent = '✕';
+      closeBtn.title = 'Close';
+      closeBtn.addEventListener('click', () => closePicker());
+      header.appendChild(title);
+      header.appendChild(closeBtn);
+      popup.appendChild(header);
+
+      const search = document.createElement('input');
+      search.type = 'text';
+      search.className = 'req-picker-search';
+      search.placeholder = 'Search…';
+      popup.appendChild(search);
+
+      const grid = document.createElement('div');
+      grid.className = 'req-picker-grid';
+      popup.appendChild(grid);
+
+      function render() {
+        grid.innerHTML = '';
+        const q = search.value.trim().toLowerCase();
+        const list = q ? MULTIMOON_KINGDOMS.filter(i => i.name.toLowerCase().includes(q)) : MULTIMOON_KINGDOMS;
+        fitPickerGrid(grid, list.length);
+        if (!list.length) {
+          const empty = document.createElement('div');
+          empty.className = 'req-picker-empty';
+          empty.textContent = 'No matches';
+          grid.appendChild(empty);
+          return;
+        }
+        list.forEach(item => {
+          const cell = document.createElement('button');
+          cell.type = 'button';
+          cell.className = 'req-picker-item req-picker-item--kingdom';
+          cell.classList.toggle('selected', zs.multimoons.includes(item.key));
+          if (item.color) cell.style.setProperty('--kingdom-color', item.color);
+          const img = document.createElement('img');
+          img.src = item.src;
+          img.alt = item.name;
+          const label = document.createElement('span');
+          label.textContent = item.name;
+          cell.appendChild(img);
+          cell.appendChild(label);
+          cell.addEventListener('click', () => {
+            bounce(cell);
+            const idx = zs.multimoons.indexOf(item.key);
+            if (idx === -1) zs.multimoons.push(item.key);
+            else zs.multimoons.splice(idx, 1);
+            saveFullState();
+            onChange();
+            render();
+          });
+          grid.appendChild(cell);
+        });
+      }
+
+      search.addEventListener('input', render);
+      document.body.appendChild(overlay);
+      render();
+      requestAnimationFrame(render);
+      const onResize = () => render();
+      window.addEventListener('resize', onResize);
+
+      function onKeyDown(e) { if (e.key === 'Escape') closePicker(); }
+      function closePicker() {
+        overlay.classList.remove('active');
+        document.removeEventListener('keydown', onKeyDown);
+        window.removeEventListener('resize', onResize);
+        setTimeout(() => overlay.remove(), 320);
+      }
+      overlay.addEventListener('click', (e) => { if (e.target === overlay) closePicker(); });
+      document.addEventListener('keydown', onKeyDown);
+
+      void overlay.offsetWidth;
+      requestAnimationFrame(() => overlay.classList.add('active'));
+      search.focus();
+    }
+
+
     // 18 Kingdoms as a zone's requirement) ──────────────────────────────────
     // Only fires for the Kingdoms grid, never Captures/Abilities/Refights/
     // Shops - see the `kind === 'kingdoms'` gate around its call site below.
@@ -4310,6 +4486,17 @@
 
     // ── Init ────────────────────────────────────────────────────────
     document.getElementById('notes-page-clear').addEventListener('click', clearAllNotes);
+    document.getElementById('notes-page-collapse-all').addEventListener('click', () => {
+      // Collapses every actual Kingdom column only - deliberately leaves
+      // the Paintings column (PAINTINGS_NOTES_KEY) alone, since that's not
+      // a Kingdom.
+      for (const k of Object.keys(fullState.kingdom_collapsed)) {
+        if (k === PAINTINGS_NOTES_KEY) continue;
+        fullState.kingdom_collapsed[k] = true;
+      }
+      saveFullState();
+      buildLoadingZonesContent();
+    });
     document.getElementById('notes-page-settings').addEventListener('click', () => {
       // Notes can be viewed two ways: embedded as an iframe side panel
       // (reach the tracker via window.parent) or popped out into its own
