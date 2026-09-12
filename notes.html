@@ -730,20 +730,38 @@
     /* One-Way Chain question: asked right after picking which subarea you
        arrive at in a destination Kingdom (openKingdomSubareaPicker). Three
        side-by-side choices, each with an icon and a short description of
-       what picking it does. */
+       what picking it does. Modal: sits on its own dark backdrop that greys
+       out everything behind it, and can only be dismissed by picking one of
+       the 3 answer buttons (see .req-picker-oneway-backdrop / onAnswer-only
+       close logic in openOneWayChainPicker). */
+    .req-picker-oneway-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 10001;
+      background: rgba(0,0,0,0);
+      opacity: 0;
+      pointer-events: none;
+      transition: background .2s ease, opacity .2s ease;
+    }
+    .req-picker-oneway-backdrop.active {
+      background: rgba(0,0,0,.72);
+      opacity: 1;
+      pointer-events: auto;
+    }
     .req-picker-oneway-submenu {
       position: fixed;
       z-index: 10002;
       display: flex;
       flex-direction: column;
-      gap: 14px;
-      padding: 18px;
+      gap: 28px;
+      padding: 40px 44px;
       min-width: 320px;
-      max-width: 92vw;
-      border-radius: 14px;
+      width: min(900px, 94vw);
+      max-width: 94vw;
+      border-radius: 20px;
       border: 1px solid var(--border, #444);
       background: var(--bg, #1a1a22);
-      box-shadow: 0 10px 34px rgba(0,0,0,.55);
+      box-shadow: 0 20px 70px rgba(0,0,0,.7);
       opacity: 0;
       transform: translateY(-4px) scale(.97);
       transition: opacity .16s ease, transform .16s ease;
@@ -757,11 +775,11 @@
     .req-picker-oneway-title {
       font-weight: 700;
       text-align: center;
-      font-size: 1.02rem;
+      font-size: 1.8rem;
     }
     .req-picker-oneway-opts {
       display: flex;
-      gap: 12px;
+      gap: 24px;
       flex-wrap: wrap;
       justify-content: center;
     }
@@ -769,10 +787,10 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 8px;
-      width: 150px;
-      padding: 12px 10px;
-      border-radius: 10px;
+      gap: 16px;
+      width: 240px;
+      padding: 28px 20px;
+      border-radius: 16px;
       border: 1px solid var(--border, #444);
       background: rgba(255,255,255,.04);
       color: inherit;
@@ -784,8 +802,8 @@
       background: rgba(255,255,255,.09);
     }
     .req-picker-oneway-opt-icon {
-      width: 40px;
-      height: 40px;
+      width: 72px;
+      height: 72px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -794,19 +812,20 @@
       flex-shrink: 0;
     }
     .req-picker-oneway-opt-icon img {
-      width: 28px;
-      height: 28px;
+      width: 48px;
+      height: 48px;
       object-fit: contain;
     }
-    .req-picker-oneway-opt-icon--yes { color: #4ee06a; font-size: 1.5rem; font-weight: 800; }
-    .req-picker-oneway-opt-icon--no { color: #ff5a5a; font-size: 1.5rem; font-weight: 800; }
+    .req-picker-oneway-opt-icon--yes { color: #4ee06a; font-size: 2.4rem; font-weight: 800; }
+    .req-picker-oneway-opt-icon--no { color: #ff5a5a; font-size: 2.4rem; font-weight: 800; }
     .req-picker-oneway-opt-label {
       font-weight: 700;
+      font-size: 1.15rem;
     }
     .req-picker-oneway-opt-desc {
-      font-size: .78em;
+      font-size: .95em;
       opacity: .75;
-      line-height: 1.25;
+      line-height: 1.3;
     }
 
     /* Direction marker on a Kingdom requirement placed via the One-Way
@@ -1400,6 +1419,11 @@
       }
       if (fullState.painting_notes) {
         for (const k of Object.keys(fullState.painting_notes)) fullState.painting_notes[k] = '';
+      }
+      // Cap/Cascade/Wooded/Seaside Shop rows (Paintings column) keep their
+      // own note text separate from painting_notes above - clear it too.
+      if (fullState.painting_shop_notes) {
+        for (const k of Object.keys(fullState.painting_shop_notes)) fullState.painting_shop_notes[k] = '';
       }
       if (fullState.painting_shop_collapsed) {
         for (const k of Object.keys(fullState.painting_shop_collapsed)) fullState.painting_shop_collapsed[k] = false;
@@ -2936,7 +2960,15 @@
     ];
 
     function openOneWayChainPicker(onAnswer) {
-      document.querySelectorAll('.req-picker-oneway-submenu').forEach(m => m.remove());
+      document.querySelectorAll('.req-picker-oneway-submenu, .req-picker-oneway-backdrop').forEach(m => m.remove());
+
+      // Modal backdrop: greys out everything behind the question. No click
+      // handler on purpose - this question can ONLY be dismissed by picking
+      // one of the 3 answer buttons below (no outside-click, no Escape).
+      const backdrop = document.createElement('div');
+      backdrop.className = 'req-picker-oneway-backdrop';
+      document.body.appendChild(backdrop);
+
       const menu = document.createElement('div');
       menu.className = 'req-picker-oneway-submenu';
       document.body.appendChild(menu);
@@ -2996,21 +3028,20 @@
       menu.style.left = Math.round((window.innerWidth - menuRect.width) / 2) + 'px';
       menu.style.top = Math.round((window.innerHeight - menuRect.height) / 2) + 'px';
 
-      function onDocClick(e) {
-        if (!menu.contains(e.target)) closeMenu();
-      }
-      function onKeyDown(e) { if (e.key === 'Escape') closeMenu(); }
+      // Intentionally no outside-click or Escape handler here - this
+      // question must stay open until one of the 3 answer buttons above is
+      // clicked (see backdrop comment).
       function closeMenu() {
         menu.classList.remove('active');
-        document.removeEventListener('click', onDocClick, true);
-        document.removeEventListener('keydown', onKeyDown);
-        setTimeout(() => menu.remove(), 200);
+        backdrop.classList.remove('active');
+        setTimeout(() => { menu.remove(); backdrop.remove(); }, 200);
       }
-      setTimeout(() => document.addEventListener('click', onDocClick, true), 0);
-      document.addEventListener('keydown', onKeyDown);
 
       void menu.offsetWidth;
-      requestAnimationFrame(() => menu.classList.add('active'));
+      requestAnimationFrame(() => {
+        menu.classList.add('active');
+        backdrop.classList.add('active');
+      });
     }
 
     // ── Shop "for sale" picker (Kingdom tab's Shop grid, and the Paintings
