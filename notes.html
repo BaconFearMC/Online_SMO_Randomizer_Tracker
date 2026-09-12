@@ -1120,7 +1120,7 @@
   <div class="notes-page-header">
     <h2>Loading Zone Notes</h2>
     <div class="modal-header-actions">
-      <button class="ctrl-btn" id="notes-page-collapse-all" title="Collapse all Kingdoms">⊟ Collapse</button>
+      <button class="ctrl-btn" id="notes-page-collapse-all" title="Collapse all Kingdoms" style="font-size: .78em; padding: 3px 8px;">⊟ Collapse</button>
       <button class="modal-icon-btn-red" id="notes-page-clear" title="Clear all notes">Clear</button>
       <button class="ctrl-btn gear-btn" id="notes-page-settings" title="Settings">⚙</button>
     </div>
@@ -3562,9 +3562,13 @@
 
         const q = search.value.trim().toLowerCase();
         // Jaxi/Scooter are picked from the Ability tab's extras column now
-        // (see below) - left out of the regular Captures grid here.
+        // (see below) - left out of the regular Captures grid here. Coin
+        // Grind is also excluded - it's a Notes-tab-only pseudo-capture for
+        // tracking Coin Grind requirements on a zone, never something an
+        // actual in-game Shop can stock, so it has no business in a "what
+        // does this Shop sell" picker.
         const list = activeKind === 'captures'
-          ? APC.CAPTURES.filter(i => !APC.SHOP_ABILITY_MOVED_CAPTURE_KEYS.includes(i.key))
+          ? APC.CAPTURES.filter(i => !APC.SHOP_ABILITY_MOVED_CAPTURE_KEYS.includes(i.key) && i.key !== 'Coin_Grind_Capture')
           : APC.ABILITIES;
         const filtered = q ? list.filter(i => i.name.toLowerCase().includes(q)) : list;
         fitPickerGrid(grid, filtered.length, 100);
@@ -4630,11 +4634,9 @@
     // ── Init ────────────────────────────────────────────────────────
     document.getElementById('notes-page-clear').addEventListener('click', clearAllNotes);
     document.getElementById('notes-page-collapse-all').addEventListener('click', () => {
-      // Collapses every actual Kingdom column only - deliberately leaves
-      // the Paintings column (PAINTINGS_NOTES_KEY) alone, since that's not
-      // a Kingdom.
+      // Collapses every Kingdom column, including the Paintings column
+      // (PAINTINGS_NOTES_KEY) - Collapse All means everything collapses.
       for (const k of Object.keys(fullState.kingdom_collapsed)) {
-        if (k === PAINTINGS_NOTES_KEY) continue;
         fullState.kingdom_collapsed[k] = true;
       }
       saveFullState();
