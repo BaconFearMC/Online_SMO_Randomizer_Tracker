@@ -128,6 +128,7 @@ const DEFAULT_SETTINGS = {
   notes_columns: 2,            // kingdoms side-by-side in vertical mode (1 | 2 | 3)
   notes_compact: false,        // tighter spacing + shorter note boxes
   show_painting_notes: true,   // Paintings notes column (before Cascade); default on
+  show_kingdomsubicons: true,  // Small kingdom+subarea icon next to each zone's name in Notes; default on
 
   // Individually show/hide each top-left main tab (Notes itself can't be
   // hidden). Default false = only Notes visible until turned on.
@@ -322,6 +323,7 @@ const TOGGLE_SETTINGS = [
   { id: 'toggle-cap-obs', key: 'show_cap_obs' },
   { id: 'toggle-moon-updater', key: 'show_moon_updater' },
   { id: 'toggle-painting-notes', key: 'show_painting_notes' },
+  { id: 'toggle-kingdomsubicons', key: 'show_kingdomsubicons' },
   { id: 'toggle-merge-vines', key: 'merge_deep_woods_vines' },
   { id: 'toggle-tab-tracker', key: 'show_tab_tracker' },
   { id: 'toggle-tab-map', key: 'show_tab_map' },
@@ -354,9 +356,35 @@ function applyTabVisibility() {
   // button (and the label it shows) in that one case, rather than leaving
   // a single, permanently-active "Notes" button with no other tabs beside it.
   const notesBtn = document.querySelector('.main-tab[data-main-tab="notes"]');
+  const anyOtherVisible = TAB_VISIBILITY_SETTINGS.some(({ key }) => state.settings[key] !== false);
   if (notesBtn) {
-    const anyOtherVisible = TAB_VISIBILITY_SETTINGS.some(({ key }) => state.settings[key] !== false);
     notesBtn.classList.toggle('hidden', !anyOtherVisible);
+  }
+
+  applySettingsTabVisibility(anyOtherVisible);
+}
+
+// If Tracker, Connection Map, and Abilities & Captures (the three
+// toggleable main tabs) are ALL hidden, the settings that only matter to
+// those views - Main, Kingdom Tracking, Streamer - are hidden from the
+// Settings modal's own tab bar too, leaving just Notes/System. Reappears
+// automatically as soon as any one of the three tabs is turned back on.
+const SETTINGS_TABS_REQUIRING_MAIN_TABS = ['main', 'kingdom', 'streamer'];
+function applySettingsTabVisibility(anyMainTabVisible) {
+  SETTINGS_TABS_REQUIRING_MAIN_TABS.forEach(name => {
+    const tabBtn = document.querySelector('.settings-tab[data-tab="' + name + '"]');
+    const panel = document.querySelector('.settings-panel[data-panel="' + name + '"]');
+    if (tabBtn) tabBtn.classList.toggle('hidden', !anyMainTabVisible);
+    if (panel) panel.classList.toggle('hidden', !anyMainTabVisible);
+  });
+
+  // If the currently-active settings tab just got hidden, fall back to Notes.
+  if (!anyMainTabVisible) {
+    const activeTab = document.querySelector('.settings-tab.active');
+    if (activeTab && SETTINGS_TABS_REQUIRING_MAIN_TABS.includes(activeTab.dataset.tab)) {
+      const notesTab = document.querySelector('.settings-tab[data-tab="notes"]');
+      if (notesTab) notesTab.click();
+    }
   }
 }
 
@@ -1266,6 +1294,7 @@ function openSettings() {
   document.getElementById('rebind-scroll-right').textContent = bindingLabel(state.settings.scroll_right_binding);
 
   updateSettingsEnablement();
+  applyTabVisibility();
   modal.classList.remove('hidden');
 }
 

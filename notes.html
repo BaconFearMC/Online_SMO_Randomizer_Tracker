@@ -1072,6 +1072,48 @@
       line-height: 1;
       white-space: nowrap;
     }
+
+    /* Darker Side: the only Kingdom row with its own icon riding to the
+       LEFT of its name, plus a faint tint on the whole row, so it reads as
+       visually distinct from every other Kingdom at a glance. */
+    .zone-row--darkerside {
+      background: rgba(255, 242, 198, 0.08);
+      border-radius: 8px;
+    }
+    .zone-darkerside-icon {
+      width: 20px;
+      height: 20px;
+      object-fit: contain;
+      border-radius: 4px;
+      flex: none;
+    }
+
+    /* Kingdom subarea icon next to a zone's name - deliberately understated
+       (small, grayscale, faded) so it never competes visually with the bold
+       "+" add button beside it. Sharpens up on hover for a closer look. */
+    .zone-sub-icon {
+      width: 14px;
+      height: 14px;
+      object-fit: contain;
+      opacity: 0.35;
+      filter: grayscale(1);
+      flex: none;
+      transition: opacity .15s ease, filter .15s ease;
+      cursor: default;
+    }
+    .zone-sub-icon:hover {
+      opacity: 0.9;
+      filter: grayscale(0);
+    }
+
+    /* "|" grouping toggle in the Requirement Picker toolbar (replaces the
+       old separate "(" / ")" buttons). Visually flagged while a group is
+       currently open, so it's clear the next pick(s) won't get an
+       automatic AND/OR until this is pressed again to close the group. */
+    .req-picker-tok--pipe-open {
+      background: rgba(255, 215, 0, 0.25);
+      box-shadow: 0 0 0 1px rgba(255, 215, 0, 0.6) inset;
+    }
   </style>
 </head>
 <body class="notes-page">
@@ -1157,6 +1199,7 @@
       notes_columns: 1,            // vertical-mode kingdoms side-by-side (1|2|3)
       notes_compact: true,         // tighter spacing + shorter note boxes
       show_painting_notes: true,   // Paintings notes column (before Cascade); default on
+      show_kingdomsubicons: true,  // Small kingdom+subarea icon next to each zone's name; default on
       zone_names:    {},           // custom loading-zone name overrides
     };
 
@@ -2361,11 +2404,42 @@
           }, kingdom, zone);
         });
         reqsWrap.appendChild(addBtn);
-        // Area name always sits immediately to the right of the + button,
-        // ahead of every requirement icon, so its position never shifts as
-        // icons are added/removed (see nameLabel definition below, appended
-        // once and just moved here on every rebuild).
+
+        // Darker Side gets its own distinct treatment: its Kingdom icon
+        // rides to the LEFT of the name (every other row's icons, if any,
+        // stay to the right in reqsWrap), plus a subtle tinted background
+        // on the row itself so it reads as visually distinct from every
+        // other Kingdom - Darkerside is the only place this happens.
+        if (kingdom === 'Darkerside') {
+          row.classList.add('zone-row--darkerside');
+          const dsIcon = document.createElement('img');
+          dsIcon.className = 'zone-darkerside-icon';
+          dsIcon.src = 'assets/Darker.png';
+          dsIcon.alt = 'Darker Side';
+          reqsWrap.appendChild(dsIcon);
+        }
+
+        // Area name always sits immediately to the right of the + button
+        // (and, on Darkerside only, its own icon), ahead of every
+        // requirement icon, so its position never shifts as icons are
+        // added/removed (see nameLabel definition below, appended once and
+        // just moved here on every rebuild).
         reqsWrap.appendChild(nameLabel);
+
+        // Kingdom subarea icon (e.g. Cascade's "2D" icon) - purely
+        // informational, so it's styled distinct/slightly hidden (small,
+        // grayscale, faded) so it never gets mistaken for the clickable "+"
+        // add button beside it. Toggleable via Notes Settings; skipped
+        // entirely for the Paintings pseudo-kingdom, which has no subareas.
+        if (fullState.settings.show_kingdomsubicons !== false && kingdom !== PAINTINGS_NOTES_KEY) {
+          const subIcon = document.createElement('img');
+          subIcon.className = 'zone-sub-icon';
+          subIcon.src = kingdomSubareaIconSrc(kingdom, zone);
+          subIcon.alt = '';
+          subIcon.title = zoneDisplayName(kingdom, zone);
+          subIcon.onerror = () => { subIcon.style.display = 'none'; };
+          reqsWrap.appendChild(subIcon);
+        }
 
         zs.requirements.forEach((req) => {
           const item = APC.findItem(req.kind, req.key);
@@ -2612,12 +2686,28 @@
     // it's just added with a single separating space. The textarea stays a
     // normal freeform field the rest of the time - this only shapes what
     // gets inserted at the moment a Capture/Ability is picked.
+    // Whether a note textarea currently has an UNCLOSED "|" group open -
+    // i.e. an odd number of "|" placed so far. While a group is open,
+    // appendRequirementText below skips auto-inserting AND/OR between
+    // picks, since the person is manually building a grouped expression
+    // (e.g. "Vault | Goomba | AND Long Jump") and doesn't want AND forced
+    // in before they've had a chance to place their own connector or close
+    // the group. Tracked per-textarea via a WeakSet rather than on `zs`,
+    // since it's purely a "what am I mid-typing" UI state, not saved data.
+    const noteGroupOpen = new WeakSet();
+
     function appendRequirementText(noteArea, text) {
       const trimmedEnd = noteArea.value.replace(/\s+$/, '');
+      const groupOpen = noteGroupOpen.has(noteArea);
       let next;
       if (!trimmedEnd) {
         next = text;
-      } else if (/\($/.test(trimmedEnd) || /\b(AND|OR)$/i.test(trimmedEnd)) {
+      } else if (groupOpen || /\|$/.test(trimmedEnd) || /\b(AND|OR)$/i.test(trimmedEnd)) {
+        // Inside an open "|" group, or right after one, or right after a
+        // manually-placed AND/OR: just place the name with a single space,
+        // no automatic connector - the person is driving the grouping by
+        // hand until the group closes (a second "|") or they add their own
+        // AND/OR, at which point normal auto-AND resumes on the next pick.
         next = trimmedEnd + ' ' + text;
       } else {
         next = trimmedEnd + ' AND ' + text;
@@ -2628,16 +2718,21 @@
       noteArea.setSelectionRange(noteArea.value.length, noteArea.value.length);
     }
 
-    // Inserts a bare AND / OR / ( / ) token at the end of the note text, for
-    // building grouped combinations like "(Vault AND Goomba) OR Long Jump"
-    // or "Vault AND (Goomba OR Long Jump)" by hand around the picked names.
+    // Inserts a bare AND / OR / | token at the end of the note text. "|"
+    // replaces the old separate "(" / ")" buttons with a single toggle: the
+    // first "|" opens a group (suppressing auto AND/OR insertion for
+    // anything picked next - see appendRequirementText/noteGroupOpen
+    // above), and a second "|" closes it again (auto AND/OR resumes from
+    // the next pick onward). This still just writes literal "|" characters
+    // into the note text as a lightweight, hand-typed grouping marker -
+    // it doesn't change how the note text itself is parsed/displayed.
     function insertNoteToken(noteArea, token) {
       const trimmedEnd = noteArea.value.replace(/\s+$/, '');
       let next;
-      if (token === '(') {
-        next = trimmedEnd ? trimmedEnd + ' (' : '(';
-      } else if (token === ')') {
-        next = trimmedEnd + ')';
+      if (token === '|') {
+        next = trimmedEnd ? trimmedEnd + ' |' : '|';
+        if (noteGroupOpen.has(noteArea)) noteGroupOpen.delete(noteArea);
+        else noteGroupOpen.add(noteArea);
       } else {
         next = trimmedEnd ? trimmedEnd + ' ' + token + ' ' : '';
       }
@@ -2669,12 +2764,16 @@
       // Captures the char just before/after the name (or '' at a string edge) so
       // we can confirm it's a standalone token without relying on \b, since
       // names like "RC Car" or "Chargin' Chuck" mix word and non-word chars.
-      const nameRe = new RegExp('(^|[^A-Za-z0-9])(' + escaped + ')($|[^A-Za-z0-9])', 'i');
+      // An optional trailing "?" is swallowed with the name itself - that's
+      // the "I don't remember" marker appended by setReciprocalKingdomRequirement
+      // (e.g. "Cascade?"), so removing the requirement removes that whole
+      // marked token rather than leaving a bare, meaningless "?" behind.
+      const nameRe = new RegExp('(^|[^A-Za-z0-9])(' + escaped + ')(\\??)($|[^A-Za-z0-9])', 'i');
       const m = nameRe.exec(text);
       if (!m) return;
 
       let start = m.index + m[1].length;
-      let end = start + m[2].length;
+      let end = start + m[2].length + m[3].length;
 
       const afterConnector = /^(\s*)(AND|OR)\b(\s*)/i.exec(text.slice(end));
       if (afterConnector) {
@@ -3552,14 +3651,25 @@
 
       const toolbar = document.createElement('div');
       toolbar.className = 'req-picker-toolbar';
-      const TOK_CLASS = { AND: 'req-picker-tok--and', OR: 'req-picker-tok--or', '(': 'req-picker-tok--paren', ')': 'req-picker-tok--paren' };
-      ['AND', 'OR', '(', ')'].forEach(tok => {
+      const TOK_CLASS = { AND: 'req-picker-tok--and', OR: 'req-picker-tok--or', '|': 'req-picker-tok--pipe' };
+      // "|" replaces the old separate "(" / ")" buttons - one button that
+      // opens a group on its first click and closes it on its second (see
+      // insertNoteToken/noteGroupOpen). Its pressed/open state is reflected
+      // on the button itself so it's clear a group is currently open.
+      let pipeBtn = null;
+      ['AND', 'OR', '|'].forEach(tok => {
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.textContent = tok;
-        btn.title = 'Insert ' + tok + ' into the note';
+        btn.title = tok === '|'
+          ? 'Start/end a group (suppresses auto AND/OR until closed)'
+          : 'Insert ' + tok + ' into the note';
         if (TOK_CLASS[tok]) btn.classList.add(TOK_CLASS[tok]);
-        btn.addEventListener('click', () => insertNoteToken(noteArea, tok));
+        btn.addEventListener('click', () => {
+          insertNoteToken(noteArea, tok);
+          if (tok === '|') btn.classList.toggle('req-picker-tok--pipe-open', noteGroupOpen.has(noteArea));
+        });
+        if (tok === '|') pipeBtn = btn;
         toolbar.appendChild(btn);
       });
       popup.appendChild(toolbar);
