@@ -1056,6 +1056,22 @@
       border-color: #fff2c6;
       color: #fff2c6;
     }
+    /* Subarea label riding next to a Kingdom requirement icon (e.g. "2D"
+       next to the Cascade icon) - shows which of that Kingdom's own areas
+       you actually arrive at (req.viaZone, set by openKingdomSubareaPicker).
+       Wrapper is inline-flex so it sits in the icon's place in the flex row
+       without needing to know style.css's own icon sizing. */
+    .zone-req-kingdom-wrap {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+    }
+    .zone-req-kingdom-label {
+      font-size: .72rem;
+      font-weight: 700;
+      line-height: 1;
+      white-space: nowrap;
+    }
   </style>
 </head>
 <body class="notes-page">
@@ -2207,7 +2223,13 @@
       // Refights so either half of the pair deletes the whole thing).
       // `extraClass`, if given, is added on top of the kind-based class
       // (used for the smaller "paired" icon riding next to a refight icon).
-      function buildReqIconEl(kind, key, item, onRemove, extraClass, refightColors) {
+      // `viaZoneLabel`, if given (Kingdom requirements only - see req.viaZone
+      // set by openKingdomSubareaPicker), renders as a small colored label
+      // riding next to the icon, e.g. the Cascade icon showing "2D" when
+      // that's the specific area you arrive at - colored in that Kingdom's
+      // own color. Returns the wrapper span in that case instead of the
+      // bare <img>, so callers can still just appendChild() the result.
+      function buildReqIconEl(kind, key, item, onRemove, extraClass, refightColors, viaZoneLabel) {
         const img = document.createElement('img');
         const kindClass =
           kind === 'abilities' ? 'zone-req-icon--ability' :
@@ -2217,7 +2239,7 @@
         img.className = 'zone-req-icon ' + kindClass + (extraClass ? ' ' + extraClass : '');
         img.src = item.src;
         img.alt = item.name;
-        img.title = item.name + ' (click to remove)';
+        img.title = item.name + (viaZoneLabel ? ' - ' + viaZoneLabel : '') + ' (click to remove)';
         if (kind === 'kingdoms' && item.color) img.style.setProperty('--kingdom-color', item.color);
         if (refightColors) {
           img.classList.add('zone-req-icon--refight-active');
@@ -2235,6 +2257,17 @@
           renderReqIcons();
           saveFullState();
         });
+        if (kind === 'kingdoms' && viaZoneLabel) {
+          const wrap = document.createElement('span');
+          wrap.className = 'zone-req-kingdom-wrap';
+          wrap.appendChild(img);
+          const label = document.createElement('span');
+          label.className = 'zone-req-kingdom-label';
+          label.textContent = viaZoneLabel;
+          if (item.color) label.style.color = item.color;
+          wrap.appendChild(label);
+          return wrap;
+        }
         return img;
       }
 
@@ -2429,7 +2462,7 @@
             arrow.className = 'zone-req-oneway-arrow';
             arrow.textContent = '→';
             group.appendChild(arrow);
-            group.appendChild(buildReqIconEl(req.kind, req.key, item));
+            group.appendChild(buildReqIconEl(req.kind, req.key, item, null, null, null, req.viaZone ? zoneDisplayName(req.key, req.viaZone) : null));
             if (req.oneWay === 'unknown') {
               const q = document.createElement('img');
               q.className = 'zone-req-icon zone-req-icon--oneway-unknown';
@@ -2442,7 +2475,7 @@
             return;
           }
 
-          reqsWrap.appendChild(buildReqIconEl(req.kind, req.key, item));
+          reqsWrap.appendChild(buildReqIconEl(req.kind, req.key, item, null, null, null, (req.kind === 'kingdoms' && req.viaZone) ? zoneDisplayName(req.key, req.viaZone) : null));
         });
 
         // Auto-detected items: anything typed in the note text that matches
