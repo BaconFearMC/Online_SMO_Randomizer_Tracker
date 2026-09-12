@@ -1819,6 +1819,24 @@
       autosizeNotes(container);
     }
 
+    // Uncollapses a Kingdom's whole section (if it was collapsed) and
+    // smooth-scrolls it into view - used after picking a Kingdom as a
+    // "reaching" requirement (e.g. Sand's Shop -> Ruined), so the Kingdom
+    // you just linked to is immediately visible instead of the user having
+    // to go hunt for it themselves. Only affects the Kingdom-level collapse
+    // (fullState.kingdom_collapsed), not any individual zone's own
+    // collapsed state within it. Must run AFTER buildLoadingZonesContent()
+    // has rebuilt the DOM, since it looks up the freshly-rendered column.
+    function scrollToKingdomAndUncollapse(kingdomKey) {
+      if (fullState.kingdom_collapsed[kingdomKey]) {
+        fullState.kingdom_collapsed[kingdomKey] = false;
+        saveFullState();
+        buildLoadingZonesContent();
+      }
+      const col = document.querySelector('.kingdom-col[data-kingdom="' + CSS.escape(kingdomKey) + '"]');
+      if (col) col.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
     // Paintings notes column: one note box per kingdom, no moon icons.
     function buildPaintingNotesColumn() {
       if (!fullState.painting_notes) fullState.painting_notes = {};
@@ -2091,6 +2109,7 @@
     function buildKingdomColumn(kingdom, data) {
       const col = document.createElement('div');
       col.className = 'kingdom-col';
+      col.dataset.kingdom = kingdom;
 
       const header = document.createElement('div');
       header.className = 'kingdom-col-header';
@@ -4179,6 +4198,11 @@
 
                 saveFullState();
                 buildLoadingZonesContent();
+                // Jump straight to the Kingdom just picked (e.g. Sand's
+                // Shop -> Ruined) - uncollapsing its section if needed -
+                // so the connection is immediately visible instead of
+                // leaving the user to go scroll and find it themselves.
+                scrollToKingdomAndUncollapse(item.key);
               });
             });
           }
