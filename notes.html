@@ -1055,6 +1055,13 @@
       flex: 0 0 auto;
       white-space: nowrap;
     }
+    /* nameLabel now lives outside .zone-reqs (as a sibling in .zone-row-top)
+       so it stays visible when reqsWrap is hidden on collapse - same layout
+       as before. */
+    .zone-row-top > .zone-name {
+      flex: 0 0 auto;
+      white-space: nowrap;
+    }
     /* Darkerside "End" zone's Extra + (Multimoon picker) - same shape as
        the normal + but a subtly different color so it reads as a second,
        distinct add-action rather than a duplicate of the main +. */
@@ -2447,12 +2454,9 @@
           reqsWrap.appendChild(dsIcon);
         }
 
-        // Area name always sits immediately to the right of the + button
-        // (and, on Darkerside only, its own icon), ahead of every
-        // requirement icon, so its position never shifts as icons are
-        // added/removed (see nameLabel definition below, appended once and
-        // just moved here on every rebuild).
-        reqsWrap.appendChild(nameLabel);
+        // Area name lives outside reqsWrap (appended directly to `top`) so it
+        // stays visible even when the zone is collapsed and reqsWrap is
+        // hidden - its position is fixed there, not touched on rebuild.
 
         // Kingdom subarea icon (e.g. Cascade's "2D" icon) - purely
         // informational, so it's styled distinct/slightly hidden (small,
@@ -2673,6 +2677,7 @@
       renderReqIcons();
 
       top.appendChild(reqsWrap);
+      top.appendChild(nameLabel);
       row.appendChild(top);
 
       row.appendChild(noteArea);
