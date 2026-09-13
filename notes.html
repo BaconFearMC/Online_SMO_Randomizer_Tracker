@@ -2021,7 +2021,7 @@
       noteArea.value = fullState.painting_shop_notes[shopKey] || '';
       noteArea.placeholder = 'Note…';
       noteArea.rows = 1;
-      if (fullState.painting_shop_collapsed[shopKey]) noteArea.classList.add('zone-greyed-out');
+      if (fullState.painting_shop_collapsed[shopKey]) noteArea.style.display = 'none';
       noteArea.addEventListener('input', () => {
         fullState.painting_shop_notes[shopKey] = noteArea.value;
         saveFullState();
@@ -2072,9 +2072,9 @@
         fullState.painting_shop_collapsed[shopKey] = collapsed;
         nameLabel.style.color = collapsed ? '#888' : kd.color;
         nameLabel.classList.toggle('zone-greyed-out', collapsed);
-        noteArea.classList.toggle('zone-greyed-out', collapsed);
+        noteArea.style.display = collapsed ? 'none' : '';
         Array.from(reqsWrap.children).forEach(child => {
-          if (child !== nameLabel) child.classList.toggle('zone-greyed-out', collapsed);
+          if (child !== nameLabel) child.style.display = collapsed ? 'none' : '';
         });
         saveFullState();
       });
@@ -2111,7 +2111,7 @@
 
         if (fullState.painting_shop_collapsed[shopKey]) {
           Array.from(reqsWrap.children).forEach(child => {
-            if (child !== nameLabel) child.classList.add('zone-greyed-out');
+            if (child !== nameLabel) child.style.display = 'none';
           });
         }
       }
@@ -2242,7 +2242,7 @@
       noteArea.value = zs.note || '';
       noteArea.placeholder = 'Note…';
       noteArea.rows = 1;
-      if (zs.collapsed) noteArea.classList.add('zone-greyed-out');
+      if (zs.collapsed) noteArea.style.display = 'none';
 
       noteArea.addEventListener('input', () => {
         zs.note = noteArea.value;
@@ -2420,9 +2420,9 @@
         zs.collapsed = !zs.collapsed;
         nameLabel.style.color = zs.collapsed ? '#888' : color;
         nameLabel.classList.toggle('zone-greyed-out', zs.collapsed);
-        noteArea.classList.toggle('zone-greyed-out', zs.collapsed);
+        noteArea.style.display = zs.collapsed ? 'none' : '';
         Array.from(reqsWrap.children).forEach(child => {
-          if (child !== nameLabel) child.classList.toggle('zone-greyed-out', zs.collapsed);
+          if (child !== nameLabel) child.style.display = zs.collapsed ? 'none' : '';
         });
         saveFullState();
       });
@@ -2691,7 +2691,7 @@
         // each time.
         if (zs.collapsed) {
           Array.from(reqsWrap.children).forEach(child => {
-            if (child !== nameLabel) child.classList.add('zone-greyed-out');
+            if (child !== nameLabel) child.style.display = 'none';
           });
         }
       }
