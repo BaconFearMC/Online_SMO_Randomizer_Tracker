@@ -2495,7 +2495,7 @@
           // in the option's colors. It has no paired second icon, so it's
           // routed through the same removeBoth/group scaffolding as a
           // Refight/Shop but with only one icon in the group.
-          const coinGrindOpt = req.kind === 'captures' ? findCoinGrindOption(req.kind, req.key) : null;
+          const coinGrindOpt = (req.kind === 'captures' && req.coinGrind) ? findCoinGrindOption(req.kind, req.key) : null;
 
           if (req.kind === 'refights' || req.kind === 'shops' || coinGrindOpt) {
             // A Refight shows its own icon plus the paired Capture/Ability
@@ -2894,7 +2894,7 @@
       return null;
     }
 
-    function toggleRequirement(zs, kind, key, noteArea, overrideText) {
+    function toggleRequirement(zs, kind, key, noteArea, overrideText, extraFields) {
       if (!Array.isArray(zs.requirements)) zs.requirements = [];
       const idx = zs.requirements.findIndex(r => r.kind === kind && r.key === key);
       const text = overrideText !== undefined ? overrideText : requirementDisplayText(kind, key);
@@ -2903,7 +2903,7 @@
         if (text) removeRequirementText(noteArea, text);
         return false;
       }
-      zs.requirements.push({ kind, key });
+      zs.requirements.push(Object.assign({ kind, key }, extraFields));
       if (text) appendRequirementText(noteArea, text);
       return true;
     }
@@ -3306,7 +3306,7 @@
     // Calls onAnswer('yes' | 'no' | 'unknown') once, then closes; Escape/
     // outside-click closes with no answer (onAnswer is simply never called).
     const ONE_WAY_OPTIONS = [
-      { key: 'yes',     label: 'Yes',              desc: 'Will hide the destination' },
+      { key: 'yes',     label: 'Yes',              desc: 'Will collapse the destination' },
       { key: 'no',      label: 'No',               desc: "Will place the Starting Area's Kingdom in the Destination" },
       { key: 'unknown', label: "I don't remember",  desc: "Will place the Starting Area's Kingdom in the Destination with a question mark" },
     ];
@@ -4210,8 +4210,8 @@
               openOneWayChainPicker((answer) => {
                 if (destZs) {
                   if (answer === 'yes') {
-                    // "Will hide the destination" - grey it out exactly as
-                    // if the user had clicked the destination zone itself.
+                    // "Will collapse the destination" - grey it out exactly
+                    // as if the user had clicked the destination zone itself.
                     destZs.collapsed = true;
                   } else if (answer === 'no') {
                     // "Will place the Starting Area's Kingdom in the
@@ -4373,7 +4373,7 @@
 
         function refreshSelected() {
           const anySelected = COIN_GRIND_OPTIONS.some(o =>
-            zs.requirements.some(r => r.kind === o.kind && r.key === o.key));
+            zs.requirements.some(r => r.kind === o.kind && r.key === o.key && r.coinGrind));
           cell.classList.toggle('selected', anySelected);
         }
         refreshSelected();
@@ -4386,9 +4386,9 @@
           // note text) outright instead of reopening the submenu. Only open
           // the submenu to pick one when nothing is currently selected.
           const activeOpt = COIN_GRIND_OPTIONS.find(o =>
-            zs.requirements.some(r => r.kind === o.kind && r.key === o.key));
+            zs.requirements.some(r => r.kind === o.kind && r.key === o.key && r.coinGrind));
           if (activeOpt) {
-            toggleRequirement(zs, activeOpt.kind, activeOpt.key, noteArea, coinGrindDisplayText(activeOpt));
+            toggleRequirement(zs, activeOpt.kind, activeOpt.key, noteArea, coinGrindDisplayText(activeOpt), { coinGrind: true });
             refreshSelected();
             onChange();
           } else {
@@ -4449,7 +4449,7 @@
             btn.style.setProperty('--refight-c1', opt.colors[0]);
             btn.style.setProperty('--refight-c2', opt.colors[1]);
           }
-          const selected = zs.requirements.some(r => r.kind === opt.kind && r.key === opt.key);
+          const selected = zs.requirements.some(r => r.kind === opt.kind && r.key === opt.key && r.coinGrind);
           btn.classList.toggle('selected', selected);
           const img = document.createElement('img');
           img.src = iconItem ? iconItem.src : '';
@@ -4471,7 +4471,7 @@
           btn.addEventListener('click', (e) => {
             e.stopPropagation();
             bounce(btn);
-            const nowSelected = toggleRequirement(zs, opt.kind, opt.key, noteArea, coinGrindDisplayText(opt));
+            const nowSelected = toggleRequirement(zs, opt.kind, opt.key, noteArea, coinGrindDisplayText(opt), { coinGrind: true });
             btn.classList.toggle('selected', nowSelected);
             onChange();
             if (onDone) onDone();
