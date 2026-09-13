@@ -7,6 +7,14 @@
   <link rel="stylesheet" href="style.css">
   <link rel="icon" href="assets/SMO-ColoredGlobe.png">
   <style>
+    /* Collapsed Kingdom section: greyed out and inert, but still visible
+       (rather than display:none) so its layout/space stays in place. */
+    .kingdom-greyed-out {
+      opacity: 0.4;
+      pointer-events: none;
+      filter: grayscale(60%);
+    }
+
     /* Override the main stylesheet's page padding/sizing this page IS the window */
     html { height: 100%; }
     body.notes-page {
@@ -2187,13 +2195,15 @@
       }
 
       if (fullState.kingdom_collapsed[kingdom]) {
-        zonesRoot.style.display = 'none';
+        zonesRoot.classList.add('kingdom-greyed-out');
+        title.style.color = '#888';
         header.classList.add('collapsed');
       }
 
       header.addEventListener('click', () => {
-        const willCollapse = zonesRoot.style.display !== 'none';
-        zonesRoot.style.display = willCollapse ? 'none' : '';
+        const willCollapse = !header.classList.contains('collapsed');
+        zonesRoot.classList.toggle('kingdom-greyed-out', willCollapse);
+        title.style.color = willCollapse ? '#888' : data.color;
         header.classList.toggle('collapsed', willCollapse);
         fullState.kingdom_collapsed[kingdom] = willCollapse;
         saveFullState();
