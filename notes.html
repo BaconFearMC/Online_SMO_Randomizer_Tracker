@@ -1055,13 +1055,6 @@
       flex: 0 0 auto;
       white-space: nowrap;
     }
-    /* nameLabel now lives outside .zone-reqs (as a sibling in .zone-row-top)
-       so it stays visible when reqsWrap is hidden on collapse - same layout
-       as before. */
-    .zone-row-top > .zone-name {
-      flex: 0 0 auto;
-      white-space: nowrap;
-    }
     /* Darkerside "End" zone's Extra + (Multimoon picker) - same shape as
        the normal + but a subtly different color so it reads as a second,
        distinct add-action rather than a duplicate of the main +. */
@@ -2019,7 +2012,6 @@
 
       const reqsWrap = document.createElement('div');
       reqsWrap.className = 'zone-reqs';
-      if (fullState.painting_shop_collapsed[shopKey]) reqsWrap.style.display = 'none';
 
       // Note textarea built first (but appended later) so the + button's
       // picker below can write "<Shop> sells X & Y" into it, same as a
@@ -2080,6 +2072,10 @@
         fullState.painting_shop_collapsed[shopKey] = collapsed;
         nameLabel.style.color = collapsed ? '#888' : kd.color;
         nameLabel.classList.toggle('zone-greyed-out', collapsed);
+        noteArea.style.display = collapsed ? 'none' : '';
+        Array.from(reqsWrap.children).forEach(child => {
+          if (child !== nameLabel) child.style.display = collapsed ? 'none' : '';
+        });
         saveFullState();
       });
 
@@ -2097,9 +2093,11 @@
         });
         reqsWrap.appendChild(addBtn);
         // Shop icon sits immediately to the right of the + button, ahead of
-        // the for-sale chips, so its position never shifts. The area name
-        // lives outside reqsWrap so it stays visible even when collapsed.
+        // the area name and the for-sale chips, so its position never
+        // shifts. The area name stays visible even when collapsed - only
+        // its siblings are hidden in that case.
         reqsWrap.appendChild(icon);
+        reqsWrap.appendChild(nameLabel);
 
         const sale = APC.getShopSale(fullState, shopKey);
         if (sale.ability) {
@@ -2110,10 +2108,15 @@
           const chip = buildSaleChip('captures', sale.capture);
           if (chip) reqsWrap.appendChild(chip);
         }
+
+        if (fullState.painting_shop_collapsed[shopKey]) {
+          Array.from(reqsWrap.children).forEach(child => {
+            if (child !== nameLabel) child.style.display = 'none';
+          });
+        }
       }
       renderChips();
       top.appendChild(reqsWrap);
-      top.appendChild(nameLabel);
       row.appendChild(top);
       row.appendChild(noteArea);
 
@@ -2419,7 +2422,9 @@
         nameLabel.style.color = zs.collapsed ? '#888' : color;
         nameLabel.classList.toggle('zone-greyed-out', zs.collapsed);
         noteArea.style.display = zs.collapsed ? 'none' : '';
-        reqsWrap.style.display = zs.collapsed ? 'none' : '';
+        Array.from(reqsWrap.children).forEach(child => {
+          if (child !== nameLabel) child.style.display = zs.collapsed ? 'none' : '';
+        });
         saveFullState();
       });
 
@@ -2454,9 +2459,15 @@
           reqsWrap.appendChild(dsIcon);
         }
 
-        // Area name lives outside reqsWrap (appended directly to `top`) so it
-        // stays visible even when the zone is collapsed and reqsWrap is
-        // hidden - its position is fixed there, not touched on rebuild.
+        // Area name always sits immediately to the right of the + button
+        // (and, on Darkerside only, its own icon), ahead of every
+        // requirement icon and the subarea icon, so its position never
+        // shifts as icons are added/removed (see nameLabel definition
+        // below, appended once and just moved here on every rebuild). It
+        // stays visible even when the zone is collapsed - only its
+        // siblings in reqsWrap are hidden in that case (see the collapse
+        // toggle above and the addBtn/dsIcon/subIcon visibility below).
+        reqsWrap.appendChild(nameLabel);
 
         // Kingdom subarea icon (e.g. Cascade's "2D" icon) - purely
         // informational, so it's styled distinct/slightly hidden (small,
@@ -2673,11 +2684,20 @@
         }
 
         updateNoteColor();
+
+        // Keep everything but the area name hidden while collapsed - name
+        // stays visible/greyed, its siblings (add button, sub icon, req
+        // icons) are hidden, re-applied on every rebuild since reqsWrap is
+        // cleared and rebuilt from scratch each time.
+        if (zs.collapsed) {
+          Array.from(reqsWrap.children).forEach(child => {
+            if (child !== nameLabel) child.style.display = 'none';
+          });
+        }
       }
       renderReqIcons();
 
       top.appendChild(reqsWrap);
-      top.appendChild(nameLabel);
       row.appendChild(top);
 
       row.appendChild(noteArea);
