@@ -2021,7 +2021,7 @@
       noteArea.value = fullState.painting_shop_notes[shopKey] || '';
       noteArea.placeholder = 'Note…';
       noteArea.rows = 1;
-      if (fullState.painting_shop_collapsed[shopKey]) noteArea.style.display = 'none';
+      if (fullState.painting_shop_collapsed[shopKey]) noteArea.classList.add('zone-greyed-out');
       noteArea.addEventListener('input', () => {
         fullState.painting_shop_notes[shopKey] = noteArea.value;
         saveFullState();
@@ -2072,9 +2072,9 @@
         fullState.painting_shop_collapsed[shopKey] = collapsed;
         nameLabel.style.color = collapsed ? '#888' : kd.color;
         nameLabel.classList.toggle('zone-greyed-out', collapsed);
-        noteArea.style.display = collapsed ? 'none' : '';
+        noteArea.classList.toggle('zone-greyed-out', collapsed);
         Array.from(reqsWrap.children).forEach(child => {
-          if (child !== nameLabel) child.style.display = collapsed ? 'none' : '';
+          if (child !== nameLabel) child.classList.toggle('zone-greyed-out', collapsed);
         });
         saveFullState();
       });
@@ -2111,7 +2111,7 @@
 
         if (fullState.painting_shop_collapsed[shopKey]) {
           Array.from(reqsWrap.children).forEach(child => {
-            if (child !== nameLabel) child.style.display = 'none';
+            if (child !== nameLabel) child.classList.add('zone-greyed-out');
           });
         }
       }
@@ -2242,7 +2242,7 @@
       noteArea.value = zs.note || '';
       noteArea.placeholder = 'Note…';
       noteArea.rows = 1;
-      if (zs.collapsed) noteArea.style.display = 'none';
+      if (zs.collapsed) noteArea.classList.add('zone-greyed-out');
 
       noteArea.addEventListener('input', () => {
         zs.note = noteArea.value;
@@ -2420,9 +2420,9 @@
         zs.collapsed = !zs.collapsed;
         nameLabel.style.color = zs.collapsed ? '#888' : color;
         nameLabel.classList.toggle('zone-greyed-out', zs.collapsed);
-        noteArea.style.display = zs.collapsed ? 'none' : '';
+        noteArea.classList.toggle('zone-greyed-out', zs.collapsed);
         Array.from(reqsWrap.children).forEach(child => {
-          if (child !== nameLabel) child.style.display = zs.collapsed ? 'none' : '';
+          if (child !== nameLabel) child.classList.toggle('zone-greyed-out', zs.collapsed);
         });
         saveFullState();
       });
@@ -2684,13 +2684,14 @@
 
         updateNoteColor();
 
-        // Keep everything but the area name hidden while collapsed - name
-        // stays visible/greyed, its siblings (add button, sub icon, req
-        // icons) are hidden, re-applied on every rebuild since reqsWrap is
-        // cleared and rebuilt from scratch each time.
+        // Keep everything but the area name dimmed (never hidden) while
+        // collapsed - name stays visible, its siblings (add button, sub
+        // icon, req icons) are just greyed out via opacity, re-applied on
+        // every rebuild since reqsWrap is cleared and rebuilt from scratch
+        // each time.
         if (zs.collapsed) {
           Array.from(reqsWrap.children).forEach(child => {
-            if (child !== nameLabel) child.style.display = 'none';
+            if (child !== nameLabel) child.classList.add('zone-greyed-out');
           });
         }
       }
@@ -4235,6 +4236,9 @@
                 // Shop -> Ruined) - uncollapsing its section if needed -
                 // so the connection is immediately visible instead of
                 // leaving the user to go scroll and find it themselves.
+                // This must run even on the "yes" (One-Way) branch: the
+                // destination ZONE is meant to sit there greyed-out/collapsed
+                // in place, not disappear inside a collapsed KINGDOM section.
                 scrollToKingdomAndUncollapse(item.key);
               });
             });
