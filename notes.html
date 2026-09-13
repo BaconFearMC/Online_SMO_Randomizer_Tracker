@@ -2012,6 +2012,7 @@
 
       const reqsWrap = document.createElement('div');
       reqsWrap.className = 'zone-reqs';
+      if (fullState.painting_shop_collapsed[shopKey]) reqsWrap.style.display = 'none';
 
       // Note textarea built first (but appended later) so the + button's
       // picker below can write "<Shop> sells X & Y" into it, same as a
@@ -2021,6 +2022,7 @@
       noteArea.value = fullState.painting_shop_notes[shopKey] || '';
       noteArea.placeholder = 'Note…';
       noteArea.rows = 1;
+      if (fullState.painting_shop_collapsed[shopKey]) noteArea.style.display = 'none';
       noteArea.addEventListener('input', () => {
         fullState.painting_shop_notes[shopKey] = noteArea.value;
         saveFullState();
@@ -2087,10 +2089,10 @@
           openShopSalePicker(shopKey, renderChips, noteArea);
         });
         reqsWrap.appendChild(addBtn);
-        // Shop icon + area name always sit immediately to the right of the +
-        // button, ahead of the for-sale chips, so their position never shifts.
+        // Shop icon sits immediately to the right of the + button, ahead of
+        // the for-sale chips, so its position never shifts. The area name
+        // lives outside reqsWrap so it stays visible even when collapsed.
         reqsWrap.appendChild(icon);
-        reqsWrap.appendChild(nameLabel);
 
         const sale = APC.getShopSale(fullState, shopKey);
         if (sale.ability) {
@@ -2104,6 +2106,7 @@
       }
       renderChips();
       top.appendChild(reqsWrap);
+      top.appendChild(nameLabel);
       row.appendChild(top);
       row.appendChild(noteArea);
 
@@ -2229,7 +2232,8 @@
       noteArea.value = zs.note || '';
       noteArea.placeholder = 'Note…';
       noteArea.rows = 1;
-      if (zs.collapsed) nameLabel.classList.add('zone-greyed-out');
+      if (zs.collapsed) noteArea.style.display = 'none';
+      if (zs.collapsed) reqsWrap.style.display = 'none';
 
       noteArea.addEventListener('input', () => {
         zs.note = noteArea.value;
@@ -2407,6 +2411,8 @@
         zs.collapsed = !zs.collapsed;
         nameLabel.style.color = zs.collapsed ? '#888' : color;
         nameLabel.classList.toggle('zone-greyed-out', zs.collapsed);
+        noteArea.style.display = zs.collapsed ? 'none' : '';
+        reqsWrap.style.display = zs.collapsed ? 'none' : '';
         saveFullState();
       });
 
