@@ -11,7 +11,6 @@
        visible/in-place, rather than display:none removing it entirely. */
     .zone-greyed-out {
       opacity: 0.55;
-      pointer-events: none;
     }
 
     /* Override the main stylesheet's page padding/sizing this page IS the window */
@@ -2013,7 +2012,6 @@
 
       const reqsWrap = document.createElement('div');
       reqsWrap.className = 'zone-reqs';
-      if (fullState.painting_shop_collapsed[shopKey]) reqsWrap.style.display = 'none';
 
       // Note textarea built first (but appended later) so the + button's
       // picker below can write "<Shop> sells X & Y" into it, same as a
@@ -2023,7 +2021,6 @@
       noteArea.value = fullState.painting_shop_notes[shopKey] || '';
       noteArea.placeholder = 'Note…';
       noteArea.rows = 1;
-      if (fullState.painting_shop_collapsed[shopKey]) noteArea.style.display = 'none';
       noteArea.addEventListener('input', () => {
         fullState.painting_shop_notes[shopKey] = noteArea.value;
         saveFullState();
@@ -2068,12 +2065,12 @@
       nameLabel.className = 'zone-name';
       nameLabel.textContent = kingdomName + ' Shop';
       nameLabel.style.color = fullState.painting_shop_collapsed[shopKey] ? '#888' : kd.color;
+      if (fullState.painting_shop_collapsed[shopKey]) nameLabel.classList.add('zone-greyed-out');
       nameLabel.addEventListener('click', () => {
         const collapsed = !fullState.painting_shop_collapsed[shopKey];
         fullState.painting_shop_collapsed[shopKey] = collapsed;
         nameLabel.style.color = collapsed ? '#888' : kd.color;
-        noteArea.style.display = collapsed ? 'none' : '';
-        reqsWrap.style.display = collapsed ? 'none' : '';
+        nameLabel.classList.toggle('zone-greyed-out', collapsed);
         saveFullState();
       });
 
@@ -2232,8 +2229,7 @@
       noteArea.value = zs.note || '';
       noteArea.placeholder = 'Note…';
       noteArea.rows = 1;
-      if (zs.collapsed) noteArea.classList.add('zone-greyed-out');
-      if (zs.collapsed) reqsWrap.classList.add('zone-greyed-out');
+      if (zs.collapsed) nameLabel.classList.add('zone-greyed-out');
 
       noteArea.addEventListener('input', () => {
         zs.note = noteArea.value;
@@ -2406,11 +2402,11 @@
       nameLabel.className = 'zone-name';
       nameLabel.textContent = zoneDisplayName(kingdom, zone);
       nameLabel.style.color = zs.collapsed ? '#888' : color;
+      if (zs.collapsed) nameLabel.classList.add('zone-greyed-out');
       nameLabel.addEventListener('click', () => {
         zs.collapsed = !zs.collapsed;
         nameLabel.style.color = zs.collapsed ? '#888' : color;
-        noteArea.classList.toggle('zone-greyed-out', zs.collapsed);
-        reqsWrap.classList.toggle('zone-greyed-out', zs.collapsed);
+        nameLabel.classList.toggle('zone-greyed-out', zs.collapsed);
         saveFullState();
       });
 
