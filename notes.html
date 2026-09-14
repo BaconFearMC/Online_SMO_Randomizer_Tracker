@@ -882,39 +882,47 @@
     }
 
     /* ── Notes tab "Clear" animated progress overlay ──────────────────── */
+    /* Docked to the right edge (not centered) and with a transparent,
+       click-through backdrop rather than a full dark scrim: the Kingdom
+       columns underneath are the whole point during the clear animation
+       (uncollapsing -> notes fading out -> collapsing back), so the panel
+       must stay out of their way and let them stay clearly visible instead
+       of dimming the page behind it. */
     .notes-clear-overlay {
       position: fixed;
       inset: 0;
       z-index: 20000;
       display: flex;
       align-items: center;
-      justify-content: center;
-      background: rgba(0,0,0,0);
+      justify-content: flex-end;
+      background: transparent;
       opacity: 0;
-      transition: opacity .18s ease, background .18s ease;
+      transition: opacity .18s ease;
       pointer-events: none;
     }
     .notes-clear-overlay.active {
       opacity: 1;
-      background: rgba(0,0,0,.65);
-      pointer-events: auto;
+      pointer-events: none; /* the box below re-enables pointer events for itself only */
     }
     .notes-clear-box {
-      width: min(920px, 92vw);
-      max-height: 86vh;
-      padding: 22px 26px 24px;
+      width: min(360px, 90vw);
+      max-height: 92vh;
+      margin: 16px 16px 16px 0;
+      padding: 18px 20px 20px;
       border-radius: 16px;
       background: var(--bg, #1a1a22);
       border: 1px solid var(--border, #444);
       box-shadow: 0 10px 44px rgba(0,0,0,.65), 0 0 60px rgba(255,180,20,.08);
       text-align: center;
-      transform: translateY(-6px) scale(.97);
+      transform: translateX(24px) scale(.97);
       transition: transform .18s ease;
       display: flex;
       flex-direction: column;
+      overflow-y: auto;
+      pointer-events: auto;
     }
     .notes-clear-overlay.active .notes-clear-box {
-      transform: translateY(0) scale(1);
+      transform: translateX(0) scale(1);
     }
     .notes-clear-label {
       font-weight: 700;
@@ -973,23 +981,23 @@
     /* Per-Kingdom grid: every Kingdom shown at once, each with its own
        mini progress ring + bar, updating live as its own notes clear. */
     .notes-clear-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
-      gap: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
       overflow-y: auto;
       padding: 4px 2px 2px;
     }
     .notes-clear-kingdom {
       display: flex;
-      flex-direction: column;
+      flex-direction: row;
       align-items: center;
-      gap: 6px;
-      padding: 10px 6px 8px;
+      gap: 10px;
+      padding: 8px 10px;
       border-radius: 12px;
       background: rgba(255,255,255,.03);
       border: 1px solid rgba(255,255,255,.06);
       opacity: .55;
-      transform: scale(.94);
+      transform: scale(.97);
       transition: opacity .3s ease, transform .3s ease, border-color .3s ease, background .3s ease;
     }
     .notes-clear-kingdom.is-active {
@@ -1005,12 +1013,18 @@
     .notes-clear-kingdom.is-empty {
       opacity: .3;
     }
+    .notes-clear-kingdom.is-collapsed {
+      opacity: .5;
+      transform: scale(.96);
+      border-color: rgba(255,255,255,.06);
+      background: rgba(255,255,255,.03);
+    }
     /* Circular ring per Kingdom, filled via conic-gradient driven by a CSS
        variable (--p, 0-100) set from JS on every tick. */
     .notes-clear-ring {
       --p: 0;
-      width: 46px;
-      height: 46px;
+      width: 36px;
+      height: 36px;
       border-radius: 50%;
       display: flex;
       align-items: center;
@@ -1026,8 +1040,8 @@
       box-shadow: 0 0 10px color-mix(in srgb, var(--kc, #ffd700) 60%, transparent);
     }
     .notes-clear-ring img {
-      width: 22px;
-      height: 22px;
+      width: 18px;
+      height: 18px;
       object-fit: contain;
       filter: drop-shadow(0 1px 2px rgba(0,0,0,.5));
     }
@@ -1037,12 +1051,12 @@
       font-weight: 700;
     }
     .notes-clear-kingdom-name {
-      font-size: .68rem;
+      flex: 1;
+      font-size: .76rem;
       font-weight: 600;
       color: var(--text-dim);
-      text-align: center;
+      text-align: left;
       line-height: 1.15;
-      max-width: 100%;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -1052,7 +1066,8 @@
       color: var(--text);
     }
     .notes-clear-kingdom-pct {
-      font-size: .66rem;
+      flex-shrink: 0;
+      font-size: .72rem;
       color: var(--text-dim);
       font-variant-numeric: tabular-nums;
     }
@@ -1633,6 +1648,24 @@
     // changing this one number is enough (no animation-logic rewrite).
     const NOTES_CLEAR_DURATION_MS = 5000;
 
+    // A kingdom column's collapsible body can be either a plain
+    // .zones-container or (for the split Paintings column) a
+    // .zones-split-wrap - both live as the element right after
+    // .kingdom-col-header inside .kingdom-col. Reuse the exact same
+    // display-toggle + header.collapsed + fullState write that the header's
+    // own click handler does, so driving this programmatically during the
+    // Clear animation is indistinguishable from a real click.
+    function setKingdomColCollapsed(col, kingdomKey, collapsed) {
+      const header = col.querySelector('.kingdom-col-header');
+      const zonesRoot = col.querySelector('.zones-container, .zones-split-wrap');
+      if (!header || !zonesRoot) return;
+      zonesRoot.style.display = collapsed ? 'none' : '';
+      header.classList.toggle('collapsed', collapsed);
+      if (fullState.kingdom_collapsed && kingdomKey in fullState.kingdom_collapsed) {
+        fullState.kingdom_collapsed[kingdomKey] = collapsed;
+      }
+    }
+
     function clearAllNotes() {
       if (!confirm('Clear everything - Notes, Tracker, Connection Map, and Abilities & Captures? This cannot be undone.')) return;
 
@@ -1670,12 +1703,16 @@
           color: colorEl && colorEl.style.color ? colorEl.style.color : '#ffd700',
           iconSrc: iconEl ? iconEl.src : '',
           notes: filledNotes,
+          col,
+          key: col.dataset.kingdom || null,
         };
       }).filter(k => k.notes.length || true); // keep every kingdom, even empty ones
 
       const totalNotes = kingdoms.reduce((sum, k) => sum + k.notes.length, 0);
 
       if (!totalNotes) { finishClear(); return; }
+
+      const UNCOLLAPSE_STEP_MS = 90;
 
       // ── Build the overlay: overall bar + a live per-Kingdom grid ──────
       const overlay = document.createElement('div');
@@ -1695,7 +1732,7 @@
       const overallCount = overlay.querySelector('.notes-clear-overall-count');
       const grid = overlay.querySelector('.notes-clear-grid');
 
-      sublabel.textContent = totalNotes + ' note' + (totalNotes === 1 ? '' : 's') + ' across ' + kingdoms.length + ' Kingdoms';
+      sublabel.textContent = 'Opening ' + kingdoms.length + ' Kingdoms…';
 
       const kState = kingdoms.map((k) => {
         const card = document.createElement('div');
@@ -1732,6 +1769,25 @@
         requestAnimationFrame(() => overlay.classList.add('active'));
       });
 
+      // ── Phase 1: uncollapse every Kingdom in the live page, one by one ──
+      // Visible reveal so the person watching can see each Kingdom open up
+      // before its notes start clearing, rather than everything silently
+      // already being open behind the overlay. Only once every Kingdom is
+      // open does Phase 2 (clearing notes) begin.
+      function uncollapseKingdomsOneByOne(onDone) {
+        let i = 0;
+        function step() {
+          if (i >= kingdoms.length) { onDone(); return; }
+          const k = kingdoms[i];
+          if (k.col) setKingdomColCollapsed(k.col, k.key, false);
+          saveFullState();
+          sublabel.textContent = 'Opening ' + k.name + '…';
+          i++;
+          setTimeout(step, UNCOLLAPSE_STEP_MS);
+        }
+        step();
+      }
+
       // ── Drive every Kingdom's clearing in parallel ────────────────────
       // Each Kingdom gets its own note-clearing schedule spread evenly
       // across the shared NOTES_CLEAR_DURATION_MS, all running at once
@@ -1742,7 +1798,7 @@
       // very end of NOTES_CLEAR_DURATION_MS.
       let totalCleared = 0;
       let rafId = null;
-      const startTime = performance.now();
+      let startTime = 0;
 
       function updateKingdom(ks, elapsed) {
         const n = ks.def.notes.length;
@@ -1798,14 +1854,52 @@
           overallCount.textContent = "Time's up!";
           overallCount.classList.add('notes-clear-times-up');
 
-          setTimeout(() => {
-            overlay.classList.remove('active');
-            setTimeout(() => overlay.remove(), 220);
-            finishClear();
-          }, 400);
+          setTimeout(collapseKingdomsOneByOne, 400);
         }
       }
-      rafId = requestAnimationFrame(tick);
+
+      // ── Phase 3: collapse every Kingdom back, one by one ──────────────
+      // Mirrors the uncollapse-then-clear order the "Clear" comment above
+      // promises (uncollapse everything -> clear -> collapse the overall
+      // Kingdom), but now driven visibly against the live page instead of
+      // silently against fullState: each Kingdom folds shut in turn while
+      // the overlay label tracks which one, so the person can watch the
+      // whole reset happen instead of it jumping straight to "done".
+      const COLLAPSE_STEP_MS = 90;
+      function collapseKingdomsOneByOne() {
+        overallCount.classList.remove('notes-clear-times-up');
+        sublabel.textContent = 'Collapsing Kingdoms…';
+        let i = 0;
+        function step() {
+          if (i >= kingdoms.length) {
+            overallCount.textContent = 'Done!';
+            setTimeout(() => {
+              overlay.classList.remove('active');
+              setTimeout(() => overlay.remove(), 220);
+              finishClear();
+            }, 300);
+            return;
+          }
+          const k = kingdoms[i];
+          const ks = kState[i];
+          if (k.col) setKingdomColCollapsed(k.col, k.key, true);
+          saveFullState();
+          ks.card.classList.remove('is-active', 'is-done');
+          ks.card.classList.add('is-collapsed');
+          overallCount.textContent = 'Collapsing ' + k.name + '…';
+          i++;
+          setTimeout(step, COLLAPSE_STEP_MS);
+        }
+        step();
+      }
+
+      // Kick off Phase 1 now; Phase 2 (the tick loop) only starts once every
+      // Kingdom has visibly uncollapsed.
+      uncollapseKingdomsOneByOne(() => {
+        sublabel.textContent = totalNotes + ' note' + (totalNotes === 1 ? '' : 's') + ' across ' + kingdoms.length + ' Kingdoms';
+        startTime = performance.now();
+        rafId = requestAnimationFrame(tick);
+      });
     }
 
     // ── Notes layout: orientation / column count / compact ───────────
@@ -1946,6 +2040,7 @@
       if (!fullState.painting_notes) fullState.painting_notes = {};
       const col = document.createElement('div');
       col.className = 'kingdom-col';
+      col.dataset.kingdom = PAINTINGS_NOTES_KEY;
 
       const header = document.createElement('div');
       header.className = 'kingdom-col-header';
@@ -3833,9 +3928,15 @@
 
       document.body.appendChild(overlay);
       render();
+      // Deliberately animate=true here (not false): the indicator's CSS
+      // default is width:0 at the left edge, so this first call is the
+      // stroke that actually slides/grows it into place under the active
+      // tab when the popup opens. Disabling the transition here left the
+      // indicator visibly "stagnant" - it snapped straight to its resting
+      // spot with no motion instead of sliding there.
       requestAnimationFrame(() => {
         render();
-        positionIndicator(SALE_TAB_BTN_BY_KIND[activeKind], SALE_TAB_COLORS[activeKind], false);
+        positionIndicator(SALE_TAB_BTN_BY_KIND[activeKind], SALE_TAB_COLORS[activeKind], true);
       });
       const onResize = () => {
         render();
@@ -4798,9 +4899,15 @@
       // once it actually has real dimensions. animate=false so the
       // indicator lands under the Kingdom tab directly, with no visible
       // slide-in from a stale 0-width starting position.
+      // Deliberately animate=true here (not false): the indicator's CSS
+      // default is width:0 at the left edge, so this first call is the
+      // stroke that actually slides/grows it into place under the active
+      // tab when the popup opens. Disabling the transition here left the
+      // indicator visibly "stagnant" - it snapped straight to its resting
+      // spot with no motion instead of sliding there.
       requestAnimationFrame(() => {
         renderGrid();
-        positionIndicator(TAB_BTN_BY_KIND[activeKind], TAB_COLORS[activeKind], false);
+        positionIndicator(TAB_BTN_BY_KIND[activeKind], TAB_COLORS[activeKind], true);
       });
       const onResize = () => {
         updateGridFit(grid.children.length);
