@@ -3191,20 +3191,13 @@
       header.appendChild(closeBtn);
       popup.appendChild(header);
 
-      const search = document.createElement('input');
-      search.type = 'text';
-      search.className = 'req-picker-search';
-      search.placeholder = 'Search…';
-      popup.appendChild(search);
-
       const grid = document.createElement('div');
       grid.className = 'req-picker-grid';
       popup.appendChild(grid);
 
       function render() {
         grid.innerHTML = '';
-        const q = search.value.trim().toLowerCase();
-        const list = q ? PAINTING_DEST_KINGDOMS.filter(i => i.name.toLowerCase().includes(q)) : PAINTING_DEST_KINGDOMS;
+        const list = PAINTING_DEST_KINGDOMS;
         fitPickerGrid(grid, list.length);
         if (!list.length) {
           const empty = document.createElement('div');
@@ -3238,7 +3231,6 @@
         });
       }
 
-      search.addEventListener('input', render);
       document.body.appendChild(overlay);
       render();
       requestAnimationFrame(render);
@@ -3257,7 +3249,6 @@
 
       void overlay.offsetWidth;
       requestAnimationFrame(() => overlay.classList.add('active'));
-      search.focus();
     }
 
     // ── Multimoon picker (Darkerside Kingdom: "End" zone's Extra + button) ──
