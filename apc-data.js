@@ -208,6 +208,7 @@
 
   // Only needed where the auto-generated label would be wrong.
   const NAME_OVERRIDES = {
+    'Rock_Capture': 'Boulder',
     'Spark_pylon_Capture': 'Spark Pylon',
     'RC_Car_Capture': 'RC Car',
     'Chargin_Chuck_Capture': "Chargin' Chuck",
@@ -246,7 +247,7 @@
   // (except Jaxi/Scooter, which do - see below), they only exist so this
   // "Extra Abilities" column has somewhere to live. Rendered as their own
   // column past a divider, to the right of the normal 21-ability grid, in
-  // that same order (top to bottom). 9 entries total:
+  // that same order (top to bottom). 10 entries total:
   //  - AbilityMoonGravity / AbilityGrab / AbilitySwim: shop-sale-only, never
   //    a real zone requirement (click just finds a shop that sells them).
   //  - Jaxi_Capture / Scooter_Capture: real Captures, still tracked/sold as
@@ -257,7 +258,8 @@
   //    instead of 'abilities', and so ALL_ITEMS below doesn't double them up
   //    against their real CAPTURES entry.
   //  - AbilityRocketFlower / AbilityNPCTalking / AbilityTimerChallenges /
-  //    Ability2DPipes: new extra abilities, shop-sale-only like the first 3.
+  //    Ability2DPipes / AbilityWarping: new extra abilities, shop-sale-only
+  //    like the first 3.
   const SHOP_ABILITY_EXTRA_KEYS = [
     'AbilityMoonGravity',
     'AbilityGrab',
@@ -277,12 +279,13 @@
     };
   });
 
-  const SHOP_ABILITY_EXTRA_KEYS_NEW = ['AbilityRocketFlower', 'AbilityNPCTalking', 'AbilityTimerChallenges', 'Ability2DPipes'];
+  const SHOP_ABILITY_EXTRA_KEYS_NEW = ['AbilityRocketFlower', 'AbilityNPCTalking', 'AbilityTimerChallenges', 'Ability2DPipes', 'AbilityWarping'];
   const SHOP_ABILITY_EXTRA_NAMES_NEW = {
     AbilityRocketFlower: 'Rocket Flower',
     AbilityNPCTalking: 'NPC Talking',
     AbilityTimerChallenges: 'Timer Challenges',
     Ability2DPipes: '2D Pipes',
+    AbilityWarping: 'Warping',
   };
   const SHOP_ABILITY_EXTRAS_NEW = SHOP_ABILITY_EXTRA_KEYS_NEW.map((key, i) => ({
     key,
@@ -348,7 +351,7 @@
     'T-Rex_Capture',
     'Zipper_Capture',
     'Cheep_Cheep_Capture',
-    'Picture_Match_Part_(Goomba)_Capture',
+    'Puzzle_Part_(Lake)_Capture',
     'Taxi_Capture',
     'Ty-foo_Capture',
     'Shiverian_Racer_Capture',
@@ -357,7 +360,7 @@
     'Parabones_Capture',
     'Banzai_Bill_Capture',
     'Picture_Match_Part_(Mario)_Capture',
-    'Puzzle_Part_(Lake)_Capture',
+    'Picture_Match_Part_(Goomba)_Capture',
     // Scooter_Capture and Jaxi_Capture moved out of here - they're now
     // picked from the Abilities tab's "Extra Abilities" column instead (see
     // SHOP_ABILITY_EXTRAS above).
@@ -602,13 +605,29 @@
     };
   }
 
-  console.log('SMO tracker apc-data.js v9');
+  // ── Useless Captures for Sale (Notes Tab: Shop's "Items For Sale" popup,
+  // Captures tab, bottom-right column) ───────────────────────────────────
+  // Captures classified as "useless" are pulled out of the main 52-entry
+  // Captures for Sale grid into their own column, keeping the main grid a
+  // clean rectangle with no dead space. This is just the built-in default -
+  // Notes Settings > Edit List lets the user save their own list, which
+  // then takes over everywhere this default otherwise would (see
+  // getUselessCaptureKeys() in notes.html / app.js).
+  const USELESS_CAPTURE_DEFAULT_KEYS = [
+    'Poison_Piranha_Plant_Capture',
+    'Rock_Capture',
+    'Fire_Piranha_Plant_Capture',
+    'Chargin_Chuck_Capture',
+  ];
+
+  console.log('SMO tracker apc-data.js v10');
 
   global.APC = {
     CAPTURES, ABILITIES, REFIGHTS, KINGDOMS, SHOPS,
     SHOP_ABILITY_EXTRAS,
     SHOP_ABILITY_MOVED_CAPTURE_KEYS,
     COIN_GRIND_EXTRAS,
+    USELESS_CAPTURE_DEFAULT_KEYS,
     NOTES_CAPTURES, NOTES_CAPTURES_ONETIME, NOTES_ABILITIES,
     CAPTURE_LINKS, ABILITY_LINKS,
     linkedTrackerKey, findItem, detectItemsInText,

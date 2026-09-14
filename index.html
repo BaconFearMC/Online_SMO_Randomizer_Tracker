@@ -426,6 +426,18 @@
           </div>
 
           <div class="settings-row">
+            <span>Hide Useless Captures for Sale</span>
+            <label class="toggle-switch">
+              <input type="checkbox" id="toggle-hide-useless-captures">
+              <span class="toggle-track"></span>
+            </label>
+          </div>
+          <div class="settings-row settings-subrow">
+            <span>Useless Captures List</span>
+            <button class="rebind-btn" id="btn-edit-useless-captures">Edit List</button>
+          </div>
+
+          <div class="settings-row">
             <span>Notes Scroll Speed (px)</span>
             <div class="input-save-pair">
               <input type="number" id="input-notes-scroll" placeholder="100" min="10" max="2000">
@@ -535,6 +547,31 @@
     </div>
   </div>
 
+  <!-- ── Useless Captures Modal ────────────────────────────────── -->
+  <!-- Lets the user customize which Captures are classified "useless" (see
+       Notes Settings > Hide Useless Captures for Sale). Built/wired in
+       app.js: openUselessCaptures() / buildUselessCapturesBody() /
+       saveUselessCaptures() / revertUselessCaptures(). -->
+  <div id="useless-captures-modal" class="modal-backdrop hidden" role="dialog" aria-label="Useless Captures">
+    <div class="modal-box useless-captures-modal-box">
+      <div class="modal-header">
+        <h2>Useless Captures for Sale</h2>
+        <button class="modal-close" id="useless-captures-close" aria-label="Close">✕</button>
+      </div>
+      <p class="hotkeys-hint hotkeys-hint-dim">
+        Click a Capture to mark it "useless" - it'll be pulled out of the main
+        Captures for Sale grid into its own Useless Captures for Sale section
+        (or left out entirely, if Hide Useless Captures for Sale is on).
+      </p>
+      <div class="modal-body useless-captures-body" id="useless-captures-body"></div>
+      <div class="settings-footer">
+        <button class="ctrl-btn revert-btn" id="useless-captures-revert">Reset to Default</button>
+        <button class="ctrl-btn" id="useless-captures-cancel">Cancel</button>
+        <button class="zn-save-btn" id="useless-captures-save">Save</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ── Hotkeys Modal ─────────────────────────────────────────── -->
   <!-- One binding per kingdom. The bound key alone adds a moon, Shift + it
        removes one (clamped at 0), Ctrl + it adds a multi moon (+3) - same as
@@ -584,8 +621,8 @@
   <!-- ── Icon Picker (appended to body by JS) ──────────────────── -->
 
   <script src="sync.js"></script>
-  <script src="apc-data.js?v=7"></script>
-  <script src="app.js?v=2"></script>
+  <script src="apc-data.js?v=8"></script>
+  <script src="app.js?v=3"></script>
   <script src="spoiler-log.js?v=1"></script>
 </body>
 

@@ -129,6 +129,8 @@ const DEFAULT_SETTINGS = {
   notes_compact: false,        // tighter spacing + shorter note boxes
   show_painting_notes: true,   // Paintings notes column (before Cascade); default on
   show_kingdomsubicons: true,  // Small kingdom+subarea icon next to each zone's name in Notes; default on
+  hide_useless_captures: true, // Hide the "Useless Captures for Sale" column in the Items For Sale picker; default on
+  useless_capture_keys: null,  // null = use APC.USELESS_CAPTURE_DEFAULT_KEYS; else the user's saved list (from Notes Settings > Edit List), including an explicitly-saved empty array
 
   // Individually show/hide each top-left main tab (Notes itself can't be
   // hidden). Default false = only Notes visible until turned on.
@@ -324,6 +326,7 @@ const TOGGLE_SETTINGS = [
   { id: 'toggle-moon-updater', key: 'show_moon_updater' },
   { id: 'toggle-painting-notes', key: 'show_painting_notes' },
   { id: 'toggle-kingdomsubicons', key: 'show_kingdomsubicons' },
+  { id: 'toggle-hide-useless-captures', key: 'hide_useless_captures' },
   { id: 'toggle-merge-vines', key: 'merge_deep_woods_vines' },
   { id: 'toggle-tab-tracker', key: 'show_tab_tracker' },
   { id: 'toggle-tab-map', key: 'show_tab_map' },
@@ -2549,6 +2552,73 @@ function revertZoneNames() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Useless Captures for Sale - Edit List modal
+// ─────────────────────────────────────────────────────────────────────────────
+// Lets the user customize which Captures count as "useless" (pulled out of
+// the main Captures for Sale grid, in notes.html's Shop "Items For Sale"
+// picker, into their own bottom-right section - see getUselessCaptureKeys()
+// there). Edits here are held in a local draft array and only committed to
+// state.settings.useless_capture_keys on Save, so Cancel/closing the modal
+// without saving is always non-destructive - same philosophy as Zone Names'
+// "Use In-Game Names" (fill boxes, nothing saved until Save is pressed).
+let uselessCapturesDraft = null;
+
+function openUselessCaptures() {
+  const saved = state.settings.useless_capture_keys;
+  uselessCapturesDraft = (Array.isArray(saved) ? saved : APC.USELESS_CAPTURE_DEFAULT_KEYS).slice();
+  buildUselessCapturesBody();
+  document.getElementById('useless-captures-modal').classList.remove('hidden');
+}
+
+function closeUselessCaptures() {
+  uselessCapturesDraft = null;
+  document.getElementById('useless-captures-modal').classList.add('hidden');
+}
+
+function buildUselessCapturesBody() {
+  const body = document.getElementById('useless-captures-body');
+  body.innerHTML = '';
+  // Same 52-capture pool the main Captures for Sale grid draws from (see
+  // notes.html's openShopSalePicker render()) - Coin Grind and the two
+  // captures moved into the Ability tab's Extra Abilities column (Jaxi/
+  // Scooter) were never part of that grid, so they're left out here too.
+  const pool = APC.CAPTURES.filter(i =>
+    !APC.SHOP_ABILITY_MOVED_CAPTURE_KEYS.includes(i.key) && i.key !== 'Coin_Grind_Capture');
+  pool.forEach(item => {
+    const cell = document.createElement('button');
+    cell.type = 'button';
+    cell.className = 'req-picker-item req-picker-item--capture';
+    cell.classList.toggle('selected', uselessCapturesDraft.includes(item.key));
+    const img = document.createElement('img');
+    img.src = item.src;
+    img.alt = item.name;
+    const label = document.createElement('span');
+    label.textContent = item.name;
+    cell.appendChild(img);
+    cell.appendChild(label);
+    cell.addEventListener('click', () => {
+      const idx = uselessCapturesDraft.indexOf(item.key);
+      if (idx === -1) uselessCapturesDraft.push(item.key);
+      else uselessCapturesDraft.splice(idx, 1);
+      cell.classList.toggle('selected', uselessCapturesDraft.includes(item.key));
+    });
+    body.appendChild(cell);
+  });
+}
+
+function saveUselessCaptures() {
+  state.settings.useless_capture_keys = (uselessCapturesDraft || []).slice();
+  saveState();
+  closeUselessCaptures();
+}
+
+function revertUselessCaptures() {
+  if (!confirm('Reset the Useless Captures list back to its default (Poison Piranha Plant, Boulder, Fire Piranha Plant, Chargin\' Chuck)? This only changes what\'s shown here - press Save to keep it.')) return;
+  uselessCapturesDraft = APC.USELESS_CAPTURE_DEFAULT_KEYS.slice();
+  buildUselessCapturesBody();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Save State download / load
 // ─────────────────────────────────────────────────────────────────────────────
 // Every localStorage key that makes up a full save, EXCLUDING connection info
@@ -3280,7 +3350,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Version stamp. If this doesn't appear in the console, or the number is
   // lower than the one apc-data.js prints, the browser is serving a cached
   // copy of a file - hard-refresh with Ctrl+F5.
-  console.log('SMO tracker app.js v2');
+  console.log('SMO tracker app.js v3');
   loadState();
   buildAllMoonRows();
   buildCaptureRow();
@@ -3361,6 +3431,13 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('zn-use-ingame').addEventListener('click', useInGameNames);
   document.getElementById('zn-revert').addEventListener('click', revertZoneNames);
   document.getElementById('btn-download-save').addEventListener('click', downloadSaveState);
+
+  // ── Notes tab: Useless Captures Edit List ──────
+  document.getElementById('btn-edit-useless-captures').addEventListener('click', openUselessCaptures);
+  document.getElementById('useless-captures-save').addEventListener('click', saveUselessCaptures);
+  document.getElementById('useless-captures-revert').addEventListener('click', revertUselessCaptures);
+  document.getElementById('useless-captures-cancel').addEventListener('click', closeUselessCaptures);
+  document.getElementById('useless-captures-close').addEventListener('click', closeUselessCaptures);
   const loadInput = document.getElementById('input-load-save');
   document.getElementById('btn-load-save').addEventListener('click', () => loadInput.click());
   loadInput.addEventListener('change', (e) => {
