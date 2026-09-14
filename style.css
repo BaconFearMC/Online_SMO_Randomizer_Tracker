@@ -1551,17 +1551,113 @@ h1 {
   opacity: 1;
 }
 
+/* ── HUD-style corner frame accents ──────────────────────────────────
+   Four small L-shaped brackets pinned to the popup's corners, purely
+   decorative (pointer-events: none) so they never block clicks on the
+   header/tabs/grid beneath them. Kept faint + thin so the grey popup
+   background stays uncluttered - just a hint of "targeting frame" that
+   matches the tracker's general HUD language. */
+.req-picker-corner {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.55;
+  border-color: color-mix(in srgb, var(--picker-active-color, var(--accent)) 70%, var(--border));
+  transition: border-color 0.3s ease;
+}
+.req-picker-corner--tl {
+  top: 10px; left: 10px;
+  border-top: 2px solid;
+  border-left: 2px solid;
+  border-top-left-radius: 6px;
+}
+.req-picker-corner--tr {
+  top: 10px; right: 10px;
+  border-top: 2px solid;
+  border-right: 2px solid;
+  border-top-right-radius: 6px;
+}
+.req-picker-corner--bl {
+  bottom: 10px; left: 10px;
+  border-bottom: 2px solid;
+  border-left: 2px solid;
+  border-bottom-left-radius: 6px;
+}
+.req-picker-corner--br {
+  bottom: 10px; right: 10px;
+  border-bottom: 2px solid;
+  border-right: 2px solid;
+  border-bottom-right-radius: 6px;
+}
+
+/* ── Selection feedback: a quick radiating ring + a few sparkle motes
+   centered on a picker cell the instant it's selected. Purely additive
+   (absolutely positioned over the cell, pointer-events: none) and
+   self-removing - never delays or alters the actual selection click. */
+@keyframes req-picker-select-ring {
+  0%   { transform: scale(0.3); opacity: 0.9; border-width: 3px; }
+  100% { transform: scale(1.8); opacity: 0; border-width: 1px; }
+}
+.req-picker-select-ring {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 70%;
+  height: 70%;
+  border-radius: 50%;
+  border: 3px solid var(--select-ring-color, var(--accent));
+  pointer-events: none;
+  z-index: 5;
+  animation: req-picker-select-ring 0.5s ease-out forwards;
+}
+@keyframes req-picker-select-sparkle {
+  0%   { transform: translate(0, 0) scale(1); opacity: 1; }
+  100% { transform: translate(var(--sx), var(--sy)) scale(0); opacity: 0; }
+}
+.req-picker-select-sparkle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  margin: -2.5px;
+  border-radius: 50%;
+  background: var(--select-ring-color, var(--accent));
+  pointer-events: none;
+  z-index: 5;
+  animation: req-picker-select-sparkle 0.55s ease-out forwards;
+}
+
 .req-picker-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-shrink: 0;
 }
+.req-picker-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+.req-picker-title-icon {
+  height: 22px;
+  width: 22px;
+  flex-shrink: 0;
+  object-fit: contain;
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--picker-active-color, var(--accent)) 75%, transparent))
+          drop-shadow(0 0 10px color-mix(in srgb, var(--picker-active-color, var(--accent)) 45%, transparent));
+  transition: filter 0.3s ease;
+}
 .req-picker-title {
   font-size: 1.15rem;
   font-weight: 700;
   color: var(--text);
   letter-spacing: 0.02em;
+  text-shadow: 0 0 12px color-mix(in srgb, var(--picker-active-color, var(--accent)) 35%, transparent);
+  transition: text-shadow 0.3s ease;
 }
 .req-picker-close {
   height: 32px;
@@ -1641,56 +1737,97 @@ h1 {
   color: #a9bcf7;
 }
 
+/* ── Unified sliding-tab segmented control ──────────────────────────
+   One connected pill-shaped rail per popup (instead of separate buttons),
+   with a single colored indicator (.req-picker-tab-indicator) that a JS
+   helper (positionTabIndicator, see notes.html) slides beneath whichever
+   tab is active via a measured left/width transform - so it works for any
+   number of tabs (2 for the Shop Sale popup, 3 for Add a Requirement)
+   without per-tab-count CSS. */
 .req-picker-tabs {
+  position: relative;
   display: flex;
-  gap: 6px;
+  gap: 2px;
   flex-shrink: 0;
+  background: var(--bg-card2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 3px;
+}
+.req-picker-tab-indicator {
+  position: absolute;
+  top: 3px;
+  left: 0;
+  height: calc(100% - 6px);
+  width: 0;
+  border-radius: calc(var(--radius-sm) - 2px);
+  background: var(--indicator-color, var(--accent));
+  box-shadow: 0 2px 12px color-mix(in srgb, var(--indicator-color, var(--accent)) 45%, transparent);
+  transition: transform 0.32s cubic-bezier(.34,1.56,.64,1),
+              width 0.32s cubic-bezier(.34,1.56,.64,1),
+              background-color 0.25s ease, box-shadow 0.25s ease;
+  z-index: 0;
+  pointer-events: none;
 }
 .req-picker-tab {
+  position: relative;
+  z-index: 1;
   flex: 1;
   height: 34px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
+  border-radius: calc(var(--radius-sm) - 2px);
+  border: none;
   background: transparent;
   color: var(--text-dim);
   font-family: var(--font);
   font-size: 0.88rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s;
+  transition: color 0.2s ease;
 }
 .req-picker-tab:hover { color: var(--text); }
-.req-picker-tab--capture.active {
-  background: var(--capture-color);
-  border-color: var(--capture-color);
-  color: var(--capture-color-ink);
-  box-shadow: 0 2px 10px rgba(248, 246, 240, 0.25);
-}
-.req-picker-tab--ability.active {
-  background: var(--ability-color);
-  border-color: var(--ability-color);
-  color: var(--ability-color-ink);
-  box-shadow: 0 2px 10px rgba(253, 246, 178, 0.3);
-}
-.req-picker-tab--kingdom.active {
-  background: var(--kingdomtab-color);
-  border-color: var(--kingdomtab-color);
-  color: var(--kingdomtab-color-ink);
-  box-shadow: 0 2px 10px rgba(95, 227, 192, 0.3);
-}
+.req-picker-tab--capture.active { color: var(--capture-color-ink); }
+.req-picker-tab--ability.active { color: var(--ability-color-ink); }
+.req-picker-tab--kingdom.active { color: var(--kingdomtab-color-ink); }
 
-.req-picker-search {
+/* ── Search bar: magnifying-glass icon + focus glow tinted to the
+   currently active tab's color (--picker-active-color, set by JS) ──── */
+.req-picker-search-wrap {
+  position: relative;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+.req-picker-search-icon {
+  position: absolute;
+  left: 10px;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  pointer-events: none;
+  opacity: 0.75;
+  transition: color 0.25s ease;
+}
+.req-picker-search-wrap:focus-within .req-picker-search-icon {
+  color: var(--picker-active-color, var(--accent));
+  opacity: 1;
+}
+.req-picker-search {
+  flex: 1;
   height: 34px;
-  padding: 0 10px;
+  padding: 0 10px 0 30px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);
   background: var(--bg-card2);
   color: var(--text);
   font-family: var(--font);
   font-size: 0.88rem;
+  width: 100%;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
-.req-picker-search:focus { outline: none; border-color: var(--accent); }
+.req-picker-search:focus {
+  outline: none;
+  border-color: var(--picker-active-color, var(--accent));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--picker-active-color, var(--accent)) 25%, transparent);
+}
 
 .req-picker-grid {
   display: grid;
