@@ -1235,6 +1235,14 @@
     // getBoundingClientRect (not percentages) so it works unmodified for
     // any tab count/width - the 3-tab Add a Requirement popup and the
     // 2-tab Items For Sale popup share this exact same helper.
+    //
+    // The indicator starts hidden (opacity:0, see .req-picker-tab-indicator
+    // in style.css) and only appears once a real tab click positions it
+    // (animate !== false below). The initial open/resize calls pass
+    // animate=false and deliberately do NOT reveal it - that way a bad
+    // first-frame measurement (stale tab width/layout right as a popup
+    // opens) is never visible sitting under the wrong tab; the indicator
+    // simply isn't shown at all until the person actually clicks a tab.
     function setupTabIndicator(tabsEl) {
       const indicator = document.createElement('div');
       indicator.className = 'req-picker-tab-indicator';
@@ -1250,6 +1258,8 @@
         if (animate === false) {
           void indicator.offsetWidth;
           indicator.style.transition = '';
+        } else {
+          indicator.classList.add('is-visible');
         }
       };
     }
