@@ -3935,7 +3935,9 @@
       // correct instead of stale/zero-sized.
       requestAnimationFrame(() => {
         render();
-        positionIndicator(SALE_TAB_BTN_BY_KIND[activeKind], SALE_TAB_COLORS[activeKind], false);
+        requestAnimationFrame(() => {
+          positionIndicator(SALE_TAB_BTN_BY_KIND[activeKind], SALE_TAB_COLORS[activeKind], false);
+        });
       });
       const onResize = () => {
         render();
@@ -4901,7 +4903,9 @@
       // animation and no stale 0-width starting position.
       requestAnimationFrame(() => {
         renderGrid();
-        positionIndicator(TAB_BTN_BY_KIND[activeKind], TAB_COLORS[activeKind], false);
+        requestAnimationFrame(() => {
+          positionIndicator(TAB_BTN_BY_KIND[activeKind], TAB_COLORS[activeKind], false);
+        });
       });
       const onResize = () => {
         updateGridFit(grid.children.length);
