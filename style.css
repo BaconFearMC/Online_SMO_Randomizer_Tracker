@@ -1497,7 +1497,7 @@ h1 {
   background: rgba(0,0,0,0);
   opacity: 0;
   pointer-events: none;
-  transition: background .35s ease, opacity .3s ease;
+  transition: background .22s ease, opacity .2s ease;
 }
 .req-picker-overlay.active {
   /* Lighter dim (was .86) so the loading-zone note being edited stays
@@ -1542,13 +1542,19 @@ h1 {
   height: min(94vh, 960px);
   z-index: 10000;
   box-shadow: 0 10px 60px rgba(0,0,0,.65);
-  transform: scale(.6) rotate(-2deg);
+  /* Pop-out (overlay losing .active): quick shrink-and-fade, snappier than
+     the pop-in so closing reads as a distinct, deliberate "poof" rather
+     than the pop-in simply playing backwards. */
+  transform: scale(.35) rotate(-6deg);
   opacity: 0;
-  transition: transform .4s cubic-bezier(.34,1.56,.64,1), opacity .3s ease;
+  transition: transform .22s cubic-bezier(.55,0,.85,.35), opacity .18s ease;
 }
 .req-picker-overlay.active .req-picker-popup {
+  /* Pop-in: bigger, springier overshoot (scale past 1 before settling) so
+     the popup visibly "pops" into place instead of gently scaling up. */
   transform: scale(1) rotate(0deg);
   opacity: 1;
+  transition: transform .5s cubic-bezier(.22,1.8,.36,1), opacity .28s ease;
 }
 
 /* ── HUD-style corner frame accents ──────────────────────────────────
