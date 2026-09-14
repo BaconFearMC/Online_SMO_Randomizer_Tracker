@@ -82,13 +82,14 @@
       border-radius: 10px;
       box-shadow: 0 10px 60px rgba(0,0,0,.65);
       cursor: zoom-out;
-      transform: scale(.6) rotate(-2deg);
+      transform: scale(.35) rotate(-6deg);
       opacity: 0;
-      transition: transform .4s cubic-bezier(.34,1.56,.64,1), opacity .3s ease;
+      transition: transform .22s cubic-bezier(.55,0,.85,.35), opacity .18s ease;
     }
     #lz-lightbox.active img {
       transform: scale(1) rotate(0deg);
       opacity: 1;
+      transition: transform .5s cubic-bezier(.22,1.8,.36,1), opacity .28s ease;
     }
 
     /* Fallback so a 3rd kingdom-tab column (Shops, added alongside the
@@ -3239,7 +3240,7 @@
         overlay.classList.remove('active');
         document.removeEventListener('keydown', onKeyDown);
         window.removeEventListener('resize', onResize);
-        setTimeout(() => overlay.remove(), 320);
+        setTimeout(() => overlay.remove(), 230);
       }
       overlay.addEventListener('click', (e) => { if (e.target === overlay) closePicker(); });
       document.addEventListener('keydown', onKeyDown);
@@ -3350,7 +3351,7 @@
         overlay.classList.remove('active');
         document.removeEventListener('keydown', onKeyDown);
         window.removeEventListener('resize', onResize);
-        setTimeout(() => overlay.remove(), 320);
+        setTimeout(() => overlay.remove(), 230);
       }
       overlay.addEventListener('click', (e) => { if (e.target === overlay) closePicker(); });
       document.addEventListener('keydown', onKeyDown);
@@ -3495,7 +3496,7 @@
       function closePicker() {
         overlay.classList.remove('active');
         window.removeEventListener('resize', onResize);
-        setTimeout(() => overlay.remove(), 320);
+        setTimeout(() => overlay.remove(), 230);
       }
       // Intentionally no outside-click or Escape handler here - this picker
       // must stay open until one of the subarea buttons above is clicked.
@@ -3928,15 +3929,13 @@
 
       document.body.appendChild(overlay);
       render();
-      // Deliberately animate=true here (not false): the indicator's CSS
-      // default is width:0 at the left edge, so this first call is the
-      // stroke that actually slides/grows it into place under the active
-      // tab when the popup opens. Disabling the transition here left the
-      // indicator visibly "stagnant" - it snapped straight to its resting
-      // spot with no motion instead of sliding there.
+      // animate=false: land the indicator exactly where a real click would
+      // put it the instant the popup opens - no grow-from-zero animation.
+      // rAF ensures the popup has real layout first so the measurement is
+      // correct instead of stale/zero-sized.
       requestAnimationFrame(() => {
         render();
-        positionIndicator(SALE_TAB_BTN_BY_KIND[activeKind], SALE_TAB_COLORS[activeKind], true);
+        positionIndicator(SALE_TAB_BTN_BY_KIND[activeKind], SALE_TAB_COLORS[activeKind], false);
       });
       const onResize = () => {
         render();
@@ -3949,7 +3948,7 @@
         overlay.classList.remove('active');
         document.removeEventListener('keydown', onKeyDown);
         window.removeEventListener('resize', onResize);
-        setTimeout(() => overlay.remove(), 320);
+        setTimeout(() => overlay.remove(), 230);
         if (onChange) onChange();
       }
       overlay.addEventListener('click', (e) => { if (e.target === overlay) closePicker(); });
@@ -4897,17 +4896,12 @@
       // clientWidth/getBoundingClientRect are 0 before the popup is in the
       // DOM/laid out, so redo the row math (and the indicator's position)
       // once it actually has real dimensions. animate=false so the
-      // indicator lands under the Kingdom tab directly, with no visible
-      // slide-in from a stale 0-width starting position.
-      // Deliberately animate=true here (not false): the indicator's CSS
-      // default is width:0 at the left edge, so this first call is the
-      // stroke that actually slides/grows it into place under the active
-      // tab when the popup opens. Disabling the transition here left the
-      // indicator visibly "stagnant" - it snapped straight to its resting
-      // spot with no motion instead of sliding there.
+      // indicator lands under the Kingdom tab exactly where a real click
+      // would put it, the instant the popup opens - no grow-from-zero
+      // animation and no stale 0-width starting position.
       requestAnimationFrame(() => {
         renderGrid();
-        positionIndicator(TAB_BTN_BY_KIND[activeKind], TAB_COLORS[activeKind], true);
+        positionIndicator(TAB_BTN_BY_KIND[activeKind], TAB_COLORS[activeKind], false);
       });
       const onResize = () => {
         updateGridFit(grid.children.length);
@@ -4927,7 +4921,7 @@
         overlay.classList.remove('active');
         document.removeEventListener('keydown', onKeyDown);
         window.removeEventListener('resize', onResize);
-        setTimeout(() => overlay.remove(), 320);
+        setTimeout(() => overlay.remove(), 230);
       }
       overlay.addEventListener('click', (e) => {
         if (e.target === overlay) closePicker();
