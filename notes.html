@@ -1212,6 +1212,73 @@
       el.classList.add('click-bounce');
     }
 
+    // ── Shared segmented-tab indicator helper ───────────────────────────
+    // Inserts one sliding, colored indicator as the first child of a
+    // .req-picker-tabs rail and returns a function that moves it under
+    // whichever tab button is now active. Positioning is measured with
+    // getBoundingClientRect (not percentages) so it works unmodified for
+    // any tab count/width - the 3-tab Add a Requirement popup and the
+    // 2-tab Items For Sale popup share this exact same helper.
+    function setupTabIndicator(tabsEl) {
+      const indicator = document.createElement('div');
+      indicator.className = 'req-picker-tab-indicator';
+      tabsEl.insertBefore(indicator, tabsEl.firstChild);
+      return function positionTabIndicator(activeBtn, color, animate) {
+        if (!activeBtn) return;
+        if (animate === false) indicator.style.transition = 'none';
+        const tabsRect = tabsEl.getBoundingClientRect();
+        const btnRect = activeBtn.getBoundingClientRect();
+        indicator.style.transform = 'translateX(' + (btnRect.left - tabsRect.left) + 'px)';
+        indicator.style.width = btnRect.width + 'px';
+        if (color) indicator.style.setProperty('--indicator-color', color);
+        if (animate === false) {
+          void indicator.offsetWidth;
+          indicator.style.transition = '';
+        }
+      };
+    }
+
+    // Picks the right accent color for a just-selected picker cell's
+    // radiating-ring/sparkle feedback, matching whatever tint that kind of
+    // cell already uses elsewhere (Kingdom cells carry their own
+    // --kingdom-color; Refights/Shops carry --refight-c1).
+    function pickerFeedbackColor(kind) {
+      switch (kind) {
+        case 'abilities': return 'var(--ability-color)';
+        case 'captures':  return 'var(--capture-color)';
+        case 'kingdoms':  return 'var(--kingdom-color, var(--kingdomtab-color))';
+        case 'refights':
+        case 'shops':     return 'var(--refight-c1, var(--refight-color))';
+        default:          return 'var(--accent)';
+      }
+    }
+
+    // ── Shared selection feedback: a quick radiating ring + a few sparkle
+    // motes centered on a picker cell, purely cosmetic (see the matching
+    // .req-picker-select-ring/-sparkle CSS) - appended and later removed,
+    // never blocking or delaying the click that triggered it.
+    function spawnSelectionFeedback(cell, color) {
+      if (!cell) return;
+      const ring = document.createElement('div');
+      ring.className = 'req-picker-select-ring';
+      if (color) ring.style.setProperty('--select-ring-color', color);
+      cell.appendChild(ring);
+      ring.addEventListener('animationend', () => ring.remove(), { once: true });
+
+      const sparkleCount = 5;
+      for (let i = 0; i < sparkleCount; i++) {
+        const sparkle = document.createElement('div');
+        sparkle.className = 'req-picker-select-sparkle';
+        if (color) sparkle.style.setProperty('--select-ring-color', color);
+        const angle = (Math.PI * 2 * i) / sparkleCount + Math.random() * 0.4;
+        const dist = 22 + Math.random() * 10;
+        sparkle.style.setProperty('--sx', Math.round(Math.cos(angle) * dist) + 'px');
+        sparkle.style.setProperty('--sy', Math.round(Math.sin(angle) * dist) + 'px');
+        cell.appendChild(sparkle);
+        sparkle.addEventListener('animationend', () => sparkle.remove(), { once: true });
+      }
+    }
+
     // ── Shared constants (mirrors app.js) ──────────────────────────
     const STATE_KEY = 'tracker_state';
     const MOBILE_BREAKPOINT  = 540;
@@ -3478,18 +3545,33 @@
 
       const header = document.createElement('div');
       header.className = 'req-picker-header';
+      const titleWrap = document.createElement('div');
+      titleWrap.className = 'req-picker-title-wrap';
+      const titleIcon = document.createElement('img');
+      titleIcon.className = 'req-picker-title-icon';
+      titleIcon.src = shopItem ? shopItem.src : 'assets/SMO-ColoredGlobe.png';
+      titleIcon.alt = '';
+      titleIcon.onerror = () => { titleIcon.style.display = 'none'; };
       const title = document.createElement('div');
       title.className = 'req-picker-title';
       title.textContent = (shopItem ? shopItem.name : 'Shop') + ' — Items For Sale';
+      titleWrap.appendChild(titleIcon);
+      titleWrap.appendChild(title);
       const closeBtn = document.createElement('button');
       closeBtn.type = 'button';
       closeBtn.className = 'req-picker-close';
       closeBtn.textContent = '✕';
       closeBtn.title = 'Close';
       closeBtn.addEventListener('click', () => closePicker());
-      header.appendChild(title);
+      header.appendChild(titleWrap);
       header.appendChild(closeBtn);
       popup.appendChild(header);
+
+      ['tl', 'tr', 'bl', 'br'].forEach(pos => {
+        const corner = document.createElement('div');
+        corner.className = 'req-picker-corner req-picker-corner--' + pos;
+        popup.appendChild(corner);
+      });
 
       const tabs = document.createElement('div');
       tabs.className = 'req-picker-tabs';
@@ -3504,12 +3586,24 @@
       tabs.appendChild(tabCaptures);
       tabs.appendChild(tabAbilities);
       popup.appendChild(tabs);
+      const positionIndicator = setupTabIndicator(tabs);
+      const SALE_TAB_COLORS = { captures: 'var(--capture-color)', abilities: 'var(--ability-color)' };
+      const SALE_TAB_BTN_BY_KIND = { captures: tabCaptures, abilities: tabAbilities };
+      popup.style.setProperty('--picker-active-color', SALE_TAB_COLORS.captures);
 
+      const searchWrap = document.createElement('div');
+      searchWrap.className = 'req-picker-search-wrap';
+      const searchIcon = document.createElement('span');
+      searchIcon.className = 'req-picker-search-icon';
+      searchIcon.textContent = '🔍';
+      searchIcon.setAttribute('aria-hidden', 'true');
       const search = document.createElement('input');
       search.type = 'text';
       search.className = 'req-picker-search';
       search.placeholder = 'Search…';
-      popup.appendChild(search);
+      searchWrap.appendChild(searchIcon);
+      searchWrap.appendChild(search);
+      popup.appendChild(searchWrap);
 
       // Ability tab only: wrapper holding the regular 21-ability grid on the
       // left and the 3 sale-only extras (Moon Gravity/Grab/Swim) in their
@@ -3571,6 +3665,9 @@
         cell.addEventListener('click', () => {
             bounce(cell);
             const alreadySelected = item.key === selectedKey;
+            if (!alreadySelected) {
+              spawnSelectionFeedback(cell, activeKind === 'captures' ? 'var(--capture-color)' : 'var(--ability-color)');
+            }
             const prevSale = APC.getShopSale(fullState, shopKey);
             const prevText = noteArea ? saleText(prevSale) : null;
             APC.setShopSale(fullState, shopKey, activeKind, alreadySelected ? null : item.key);
@@ -3722,10 +3819,12 @@
         }
       }
 
-      function setTab(kind) {
+      function setTab(kind, animateIndicator) {
         activeKind = kind;
         tabCaptures.classList.toggle('active', kind === 'captures');
         tabAbilities.classList.toggle('active', kind === 'abilities');
+        positionIndicator(SALE_TAB_BTN_BY_KIND[kind], SALE_TAB_COLORS[kind], animateIndicator);
+        popup.style.setProperty('--picker-active-color', SALE_TAB_COLORS[kind]);
         render();
       }
       tabCaptures.addEventListener('click', () => { bounce(tabCaptures); setTab('captures'); });
@@ -3734,8 +3833,14 @@
 
       document.body.appendChild(overlay);
       render();
-      requestAnimationFrame(render);
-      const onResize = () => render();
+      requestAnimationFrame(() => {
+        render();
+        positionIndicator(SALE_TAB_BTN_BY_KIND[activeKind], SALE_TAB_COLORS[activeKind], false);
+      });
+      const onResize = () => {
+        render();
+        positionIndicator(SALE_TAB_BTN_BY_KIND[activeKind], SALE_TAB_COLORS[activeKind], false);
+      };
       window.addEventListener('resize', onResize);
 
       function onKeyDown(e) { if (e.key === 'Escape') closePicker(); }
@@ -3773,18 +3878,35 @@
 
       const header = document.createElement('div');
       header.className = 'req-picker-header';
+      const titleWrap = document.createElement('div');
+      titleWrap.className = 'req-picker-title-wrap';
+      const titleIcon = document.createElement('img');
+      titleIcon.className = 'req-picker-title-icon';
+      titleIcon.src = 'assets/SMO-ColoredGlobe.png';
+      titleIcon.alt = '';
+      titleIcon.onerror = () => { titleIcon.style.display = 'none'; };
       const title = document.createElement('div');
       title.className = 'req-picker-title';
       title.textContent = 'Add a Requirement';
+      titleWrap.appendChild(titleIcon);
+      titleWrap.appendChild(title);
       const closeBtn = document.createElement('button');
       closeBtn.type = 'button';
       closeBtn.className = 'req-picker-close';
       closeBtn.textContent = '✕';
       closeBtn.title = 'Close';
       closeBtn.addEventListener('click', () => closePicker());
-      header.appendChild(title);
+      header.appendChild(titleWrap);
       header.appendChild(closeBtn);
       popup.appendChild(header);
+
+      // Four subtle HUD-style corner brackets, purely decorative
+      // (pointer-events: none via CSS) so they never interfere with clicks.
+      ['tl', 'tr', 'bl', 'br'].forEach(pos => {
+        const corner = document.createElement('div');
+        corner.className = 'req-picker-corner req-picker-corner--' + pos;
+        popup.appendChild(corner);
+      });
 
       const toolbar = document.createElement('div');
       toolbar.className = 'req-picker-toolbar';
@@ -3811,30 +3933,50 @@
       });
       popup.appendChild(toolbar);
 
+      // Unified sliding-tab segmented control - one connected rail with a
+      // single colored indicator (positionIndicator, set up below) that
+      // slides beneath whichever tab is active, instead of 3 separate
+      // buttons each styling their own "active" state independently.
       const tabs = document.createElement('div');
       tabs.className = 'req-picker-tabs';
       const tabCaptures = document.createElement('button');
       tabCaptures.type = 'button';
-      tabCaptures.className = 'req-picker-tab req-picker-tab--capture active';
-      tabCaptures.textContent = 'Captures';
+      tabCaptures.className = 'req-picker-tab req-picker-tab--capture';
+      tabCaptures.textContent = 'Capture';
       const tabAbilities = document.createElement('button');
       tabAbilities.type = 'button';
       tabAbilities.className = 'req-picker-tab req-picker-tab--ability';
-      tabAbilities.textContent = 'Abilities';
+      tabAbilities.textContent = 'Ability';
       const tabKingdom = document.createElement('button');
       tabKingdom.type = 'button';
-      tabKingdom.className = 'req-picker-tab req-picker-tab--kingdom';
+      tabKingdom.className = 'req-picker-tab req-picker-tab--kingdom active';
       tabKingdom.textContent = 'Kingdom';
       tabs.appendChild(tabCaptures);
       tabs.appendChild(tabAbilities);
       tabs.appendChild(tabKingdom);
       popup.appendChild(tabs);
+      const positionIndicator = setupTabIndicator(tabs);
 
+      const TAB_COLORS = {
+        captures: 'var(--capture-color)',
+        abilities: 'var(--ability-color)',
+        kingdom: 'var(--kingdomtab-color)',
+      };
+      const TAB_BTN_BY_KIND = { captures: tabCaptures, abilities: tabAbilities, kingdom: tabKingdom };
+
+      const searchWrap = document.createElement('div');
+      searchWrap.className = 'req-picker-search-wrap';
+      const searchIcon = document.createElement('span');
+      searchIcon.className = 'req-picker-search-icon';
+      searchIcon.textContent = '🔍';
+      searchIcon.setAttribute('aria-hidden', 'true');
       const search = document.createElement('input');
       search.type = 'text';
       search.className = 'req-picker-search';
       search.placeholder = 'Search…';
-      popup.appendChild(search);
+      searchWrap.appendChild(searchIcon);
+      searchWrap.appendChild(search);
+      popup.appendChild(searchWrap);
 
       // Captures tab: a wrapper holding the regular grid on the left and a
       // "One-Time Captures" column on the right, past a divider line. The
@@ -4082,7 +4224,10 @@
       kingdomWrap.appendChild(kingdomCol);
       popup.appendChild(kingdomWrap);
 
-      let activeKind = 'captures';
+      // Kingdom is the tab that should be selected every time this popup
+      // opens (regardless of what was active last time it was closed) -
+      // see setActiveTab/renderGrid below, which both key off activeKind.
+      let activeKind = 'kingdom';
 
       // Computes a rows x cols grid that (a) has at least itemCount cells,
       // (b) fills the box's actual width/height with no leftover gap, and
@@ -4253,6 +4398,7 @@
           }
           const nowSelected = toggleRequirement(zs, kind, item.key, noteArea);
           cell.classList.toggle('selected', nowSelected);
+          if (nowSelected) spawnSelectionFeedback(cell, pickerFeedbackColor(kind));
           onChange();
 
           // First time this Shop gets picked as a requirement, prompt for
@@ -4556,6 +4702,7 @@
             bounce(btn);
             const nowSelected = toggleRequirement(zs, opt.kind, opt.key, noteArea, coinGrindDisplayText(opt), { coinGrind: true });
             btn.classList.toggle('selected', nowSelected);
+            if (nowSelected) spawnSelectionFeedback(btn, opt.colors ? opt.colors[0] : 'var(--refight-color)');
             onChange();
             if (onDone) onDone();
           });
@@ -4620,7 +4767,7 @@
 
       const TAB_ORDER = ['captures', 'abilities', 'kingdom'];
 
-      function setActiveTab(kind) {
+      function setActiveTab(kind, animateIndicator) {
         const fromIdx = TAB_ORDER.indexOf(activeKind);
         const toIdx = TAB_ORDER.indexOf(kind);
         const dir = toIdx > fromIdx ? 1 : -1;
@@ -4629,6 +4776,8 @@
         tabCaptures.classList.toggle('active', kind === 'captures');
         tabAbilities.classList.toggle('active', kind === 'abilities');
         tabKingdom.classList.toggle('active', kind === 'kingdom');
+        positionIndicator(TAB_BTN_BY_KIND[kind], TAB_COLORS[kind], animateIndicator);
+        popup.style.setProperty('--picker-active-color', TAB_COLORS[kind]);
         renderGrid();
         const slideTarget = kind === 'kingdom' ? kingdomWrap : capturesWrap;
         slideTarget.style.setProperty('--tab-slide-from', (dir * 24) + 'px');
@@ -4642,11 +4791,21 @@
       search.addEventListener('input', renderGrid);
 
       renderGrid();
+      popup.style.setProperty('--picker-active-color', TAB_COLORS[activeKind]);
       document.body.appendChild(overlay);
-      // clientWidth is 0 before the popup is in the DOM/laid out, so redo
-      // the row math once it actually has real dimensions.
-      requestAnimationFrame(renderGrid);
-      const onResize = () => updateGridFit(grid.children.length);
+      // clientWidth/getBoundingClientRect are 0 before the popup is in the
+      // DOM/laid out, so redo the row math (and the indicator's position)
+      // once it actually has real dimensions. animate=false so the
+      // indicator lands under the Kingdom tab directly, with no visible
+      // slide-in from a stale 0-width starting position.
+      requestAnimationFrame(() => {
+        renderGrid();
+        positionIndicator(TAB_BTN_BY_KIND[activeKind], TAB_COLORS[activeKind], false);
+      });
+      const onResize = () => {
+        updateGridFit(grid.children.length);
+        positionIndicator(TAB_BTN_BY_KIND[activeKind], TAB_COLORS[activeKind], false);
+      };
       window.addEventListener('resize', onResize);
 
       function onKeyDown(e) {
@@ -4734,6 +4893,7 @@
     const NOTES_LAYOUT_KEYS = [
       'notes_layout', 'notes_columns', 'notes_compact',
       'show_painting_notes', 'show_kingdom_moon', 'zone_names',
+      'show_kingdomsubicons',
     ];
 
     window.addEventListener('storage', (e) => {
