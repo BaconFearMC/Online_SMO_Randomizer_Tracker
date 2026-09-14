@@ -1826,7 +1826,7 @@ h1 {
   opacity: 1;
 }
 .req-picker-search {
-  flex: 1;
+  flex: 0 0 34px;
   height: 34px;
   padding: 0 10px 0 30px;
   border-radius: var(--radius-sm);
