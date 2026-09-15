@@ -37,21 +37,34 @@
     .notes-page-header h2 { font-size: 1.1rem; }
     #lz-content { padding: 16px; }
 
-    /* ── Notes sync bar ───────────────────────────────────────────── */
+    /* ── Notes sync menu (small floating dropdown off the Sync button) ── */
+    #notes-sync-menu-wrap {
+      position: relative;
+      display: inline-block;
+    }
     #notes-sync-bar {
+      position: absolute;
+      top: calc(100% + 6px);
+      right: 0;
+      z-index: 20;
       display: flex;
-      align-items: center;
+      flex-direction: column;
+      align-items: stretch;
       gap: 8px;
-      padding: 8px 18px;
-      border-bottom: 1px solid var(--border);
-      flex-shrink: 0;
+      padding: 12px;
+      background: var(--panel, #222);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      box-shadow: 0 6px 18px rgba(0,0,0,.4);
       font-size: .85em;
+      white-space: nowrap;
     }
     #notes-sync-bar #notes-room-code {
-      max-width: 140px;
+      width: 140px;
     }
     #notes-sync-bar #notes-sync-status {
       opacity: .8;
+      text-align: center;
     }
 
     /* ── Dark Side map thumbnail ──────────────────────────────────── */
@@ -1174,14 +1187,16 @@
     <div class="modal-header-actions">
       <button class="ctrl-btn" id="notes-page-collapse-all" title="Collapse all Kingdoms" style="font-size: .78em; padding: 3px 8px;">⊟ Collapse</button>
       <button class="modal-icon-btn-red" id="notes-page-clear" title="Clear all notes">Clear</button>
-      <button class="ctrl-btn" id="notes-page-sync-toggle" title="Sync settings">🔄 Sync</button>
+      <div id="notes-sync-menu-wrap">
+        <button class="ctrl-btn" id="notes-page-sync-toggle" title="Sync settings">🔄 Sync</button>
+        <div id="notes-sync-bar" class="hidden">
+          <input type="password" id="notes-room-code" placeholder="Room code" maxlength="12" spellcheck="false">
+          <button class="ctrl-btn" id="notes-btn-connect-room">Connect</button>
+          <span id="notes-sync-status">Offline</span>
+        </div>
+      </div>
       <button class="ctrl-btn gear-btn" id="notes-page-settings" title="Settings">⚙</button>
     </div>
-  </div>
-  <div id="notes-sync-bar" class="hidden">
-    <input type="password" id="notes-room-code" placeholder="Room code" maxlength="12" spellcheck="false">
-    <button class="ctrl-btn" id="notes-btn-connect-room">Connect</button>
-    <span id="notes-sync-status">Offline</span>
   </div>
   <div class="lz-scroll-wrap">
     <div id="lz-content"></div>
@@ -1777,8 +1792,14 @@
 
       const toggleBtn = document.getElementById('notes-page-sync-toggle');
       const bar = document.getElementById('notes-sync-bar');
+      const menuWrap = document.getElementById('notes-sync-menu-wrap');
       if (toggleBtn && bar) {
-        toggleBtn.addEventListener('click', () => bar.classList.toggle('hidden'));
+        toggleBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          bar.classList.toggle('hidden');
+        });
+        bar.addEventListener('click', (e) => e.stopPropagation());
+        document.addEventListener('click', () => bar.classList.add('hidden'));
       }
 
       // Auto-connect using whatever room the main tracker (or this page,
