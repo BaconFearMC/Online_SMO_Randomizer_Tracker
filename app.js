@@ -1736,7 +1736,7 @@ function saveWsUrl(url) {
 }
 
 function getObsPageUrl(room, wsUrl) {
-  const base = 'https://firerisingraging.github.io/Online_SMO_Randomizer_Tracker/obs.html';
+  const base = 'https://baconfearmc.github.io/Online_SMO_Randomizer_Tracker/obs.html';
   if (!room) return base;
   const scale = getBrowserSourceScale();
   return `${base}?room=${room}&ws=${encodeURIComponent(wsUrl || window.SMOSync.getWsUrl())}&scale=${scale}`;
