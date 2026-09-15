@@ -37,6 +37,23 @@
     .notes-page-header h2 { font-size: 1.1rem; }
     #lz-content { padding: 16px; }
 
+    /* ── Notes sync bar ───────────────────────────────────────────── */
+    #notes-sync-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 18px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      font-size: .85em;
+    }
+    #notes-sync-bar #notes-room-code {
+      max-width: 140px;
+    }
+    #notes-sync-bar #notes-sync-status {
+      opacity: .8;
+    }
+
     /* ── Dark Side map thumbnail ──────────────────────────────────── */
     .lz-darkside-map-wrap {
       margin-top: 10px;
@@ -1157,13 +1174,20 @@
     <div class="modal-header-actions">
       <button class="ctrl-btn" id="notes-page-collapse-all" title="Collapse all Kingdoms" style="font-size: .78em; padding: 3px 8px;">⊟ Collapse</button>
       <button class="modal-icon-btn-red" id="notes-page-clear" title="Clear all notes">Clear</button>
+      <button class="ctrl-btn" id="notes-page-sync-toggle" title="Sync settings">🔄 Sync</button>
       <button class="ctrl-btn gear-btn" id="notes-page-settings" title="Settings">⚙</button>
     </div>
+  </div>
+  <div id="notes-sync-bar" class="hidden">
+    <input type="password" id="notes-room-code" placeholder="Room code" maxlength="12" spellcheck="false">
+    <button class="ctrl-btn" id="notes-btn-connect-room">Connect</button>
+    <span id="notes-sync-status">Offline</span>
   </div>
   <div class="lz-scroll-wrap">
     <div id="lz-content"></div>
   </div>
 
+  <script src="sync.js"></script>
   <script src="apc-data.js?v=8"></script>
   <script>
     'use strict';
@@ -1307,6 +1331,10 @@
 
     // ── Shared constants (mirrors app.js) ──────────────────────────
     const STATE_KEY = 'tracker_state';
+    // Same keys app.js uses for its Sync section, so a room code entered on
+    // either page is picked up by the other.
+    const WS_URL_KEY = 'tracker_ws_url';
+    const ROOM_CODE_KEY = 'tracker_room_code';
     const MOBILE_BREAKPOINT  = 540;
     const ZONE_SPLIT_THRESHOLD = 10 ;
 
@@ -1489,6 +1517,9 @@
     };
 
     let fullState = null;
+    // Set while a remote sync payload is being merged in, so saveFullState()
+    // doesn't immediately broadcast it right back out to the room.
+    let applyingRemoteNotesSync = false;
 
     function buildDefaultLoadingZones() {
       const result = {};
@@ -1612,6 +1643,157 @@
       } catch (e) {
         console.error('Failed to save state:', e);
       }
+      // Push the change out over the sync room (if connected) so other
+      // devices - the main tracker tab, OBS overlay, another synced
+      // browser - pick up note edits live instead of only via same-browser
+      // localStorage 'storage' events.
+      if (!applyingRemoteNotesSync && window.SMOSync && window.SMOSync.getRoom()) {
+        window.SMOSync.broadcast(fullState);
+      }
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // Sync - lets this page (whether popped out into its own window or
+    // embedded as the side panel) join the same room as the main tracker,
+    // so note edits made here reach every other connected device live,
+    // and edits made elsewhere show up here without a manual refresh.
+    // ─────────────────────────────────────────────────────────────────
+    function updateNotesSyncUI() {
+      const sync = window.SMOSync;
+      const room = sync ? sync.getRoom() : null;
+      const roomInput = document.getElementById('notes-room-code');
+      const connectBtn = document.getElementById('notes-btn-connect-room');
+      if (roomInput) roomInput.value = room || '';
+      if (connectBtn) connectBtn.textContent = room ? 'Disconnect' : 'Connect';
+    }
+
+    function notesConnectRoom() {
+      const roomInput = document.getElementById('notes-room-code');
+      const room = roomInput ? roomInput.value.trim() : '';
+      if (!room || !window.SMOSync) return;
+      let wsUrl = '';
+      try { wsUrl = localStorage.getItem(WS_URL_KEY) || ''; } catch (e) { }
+      try { localStorage.setItem(ROOM_CODE_KEY, room); } catch (e) { }
+      window.SMOSync.connect(room, wsUrl);
+    }
+
+    function notesDisconnectRoom() {
+      if (window.SMOSync) window.SMOSync.disconnect();
+      try { localStorage.removeItem(ROOM_CODE_KEY); } catch (e) { }
+      updateNotesSyncUI();
+    }
+
+    // Merges an incoming sync payload into fullState the same way app.js's
+    // applyRemoteState() does, but only for the parts this page displays
+    // (loading zone notes/requirements, kingdom collapse state, painting
+    // notes/destinations, shop sales, and settings). Anything else in the
+    // payload (moons, captures, abilities, apc) is preserved as-is on
+    // fullState since it was already loaded from the same tracker_state.
+    function applyRemoteNotesState(remote) {
+      if (!remote || typeof remote !== 'object') return;
+      applyingRemoteNotesSync = true;
+
+      if (remote.settings) {
+        for (const key of Object.keys(DEFAULT_SETTINGS)) {
+          if (key in remote.settings) fullState.settings[key] = remote.settings[key];
+        }
+      }
+
+      if (remote.loading_zones) {
+        for (const [kingdom, data] of Object.entries(fullState.loading_zones)) {
+          if (!remote.loading_zones[kingdom]) continue;
+          const savedKingdom = remote.loading_zones[kingdom];
+          for (const zone of Object.keys(data.zones)) {
+            if (savedKingdom.zones && savedKingdom.zones[zone]) {
+              Object.assign(fullState.loading_zones[kingdom].zones[zone], savedKingdom.zones[zone]);
+            }
+          }
+        }
+      }
+
+      if (remote.kingdom_collapsed) {
+        for (const k of Object.keys(fullState.kingdom_collapsed)) {
+          if (k in remote.kingdom_collapsed) fullState.kingdom_collapsed[k] = remote.kingdom_collapsed[k];
+        }
+      }
+
+      if (remote.painting_notes) Object.assign(fullState.painting_notes, remote.painting_notes);
+      if (remote.painting_destinations) Object.assign(fullState.painting_destinations, remote.painting_destinations);
+      if (remote.shop_sales) Object.assign(fullState.shop_sales, remote.shop_sales);
+
+      saveFullState();
+
+      // Don't steal focus/interrupt typing - if a note box is active, defer
+      // the rebuild until the user leaves it (mirrors the 'storage' handler
+      // below).
+      const active = document.activeElement;
+      if (active && active.classList && active.classList.contains('zone-note')) {
+        active.addEventListener('blur', function rebuildOnce() {
+          active.removeEventListener('blur', rebuildOnce);
+          buildLoadingZonesContent();
+          applyNotesLayout();
+        }, { once: true });
+      } else {
+        buildLoadingZonesContent();
+        applyNotesLayout();
+      }
+
+      applyingRemoteNotesSync = false;
+    }
+
+    function setupNotesSync() {
+      if (!window.SMOSync) return;
+
+      window.SMOSync.onStatus((status) => {
+        const statusEl = document.getElementById('notes-sync-status');
+        if (statusEl) {
+          const labels = {
+            connected: 'Connected - notes are syncing',
+            connecting: 'Connecting...',
+            disconnected: 'Offline',
+            error: 'Connection error'
+          };
+          statusEl.textContent = labels[status] || status;
+        }
+        updateNotesSyncUI();
+      });
+
+      window.SMOSync.onState((remoteState) => applyRemoteNotesState(remoteState));
+
+      const connectBtn = document.getElementById('notes-btn-connect-room');
+      if (connectBtn) {
+        connectBtn.addEventListener('click', () => {
+          if (window.SMOSync.getRoom()) notesDisconnectRoom();
+          else notesConnectRoom();
+        });
+      }
+
+      const roomInput = document.getElementById('notes-room-code');
+      if (roomInput) {
+        roomInput.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') notesConnectRoom();
+        });
+      }
+
+      const toggleBtn = document.getElementById('notes-page-sync-toggle');
+      const bar = document.getElementById('notes-sync-bar');
+      if (toggleBtn && bar) {
+        toggleBtn.addEventListener('click', () => bar.classList.toggle('hidden'));
+      }
+
+      // Auto-connect using whatever room the main tracker (or this page,
+      // last time) already saved, so opening Notes doesn't require
+      // re-entering the room code every time.
+      let room = null;
+      try { room = localStorage.getItem(ROOM_CODE_KEY); } catch (e) { }
+      if (room) {
+        if (roomInput) roomInput.value = room;
+        let wsUrl = '';
+        try { wsUrl = localStorage.getItem(WS_URL_KEY) || ''; } catch (e) { }
+        window.SMOSync.connect(room, wsUrl);
+      }
+
+      updateNotesSyncUI();
     }
 
     // Clears the note text and the selected Captures/Abilities requirements
@@ -5077,6 +5259,7 @@
       buildLoadingZonesContent();
       // layoutMasonryColumns();
       setupScroll();
+      setupNotesSync();
     });
   </script>
 </body>
