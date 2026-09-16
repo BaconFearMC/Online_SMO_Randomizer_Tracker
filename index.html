@@ -453,6 +453,75 @@
             </label>
           </div>
 
+          <!-- Custom Font: applies site-wide. Default stays the default. -->
+          <div class="settings-subsection" id="subsection-custom-font">
+            <div class="subsection-title">Custom Font</div>
+            <div class="settings-row">
+              <span>Font</span>
+              <div class="segmented" id="seg-custom-font">
+                <button type="button" class="seg-btn" data-value="default">Default</button>
+                <button type="button" class="seg-btn" data-value="fredoka">Fredoka One</button>
+                <button type="button" class="seg-btn" data-value="luckiest">Luckiest Guy</button>
+                <button type="button" class="seg-btn" data-value="comicsans">Comic Sans</button>
+              </div>
+            </div>
+            <div class="settings-row settings-subrow">
+              <span>Browse Google Fonts</span>
+              <button class="rebind-btn" id="btn-browse-google-fonts">Browse Fonts</button>
+            </div>
+          </div>
+
+          <!-- Sync moved to bottom of Notes Settings. Enabling it requires a
+               Username, reveals an Unhide Password button on the sync
+               password field, and shows a small scrollable Sync Activity
+               chatbox in the bottom-right corner of the screen. -->
+          <div class="settings-subsection" id="subsection-sync">
+            <div class="subsection-title">Sync</div>
+            <div class="settings-row">
+              <span>Enable Sync</span>
+              <label class="toggle-switch">
+                <input type="checkbox" id="toggle-sync-enabled">
+                <span class="toggle-track"></span>
+              </label>
+            </div>
+            <div class="settings-row settings-subrow" id="row-sync-username">
+              <span>Username</span>
+              <div class="input-save-pair">
+                <input type="text" id="input-sync-username" placeholder="Required" maxlength="24" spellcheck="false">
+                <button class="save-inline-btn" id="save-sync-username">Save</button>
+              </div>
+            </div>
+            <div class="settings-row settings-subrow" id="row-sync-password">
+              <span>Sync Password</span>
+              <div class="input-save-pair">
+                <input type="password" id="input-sync-password" placeholder="Password" spellcheck="false">
+                <button class="rebind-btn" id="btn-unhide-sync-password">Unhide Password</button>
+                <button class="save-inline-btn" id="save-sync-password">Save</button>
+              </div>
+            </div>
+            <div class="settings-row settings-subrow" id="row-sync-usercolor">
+              <span>Your Activity Color</span>
+              <input type="color" id="input-sync-usercolor" value="#4d96ff">
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ══ SYSTEM TAB ═══════════════════════════════════════════ -->
+        <div class="settings-panel" data-panel="system">
+
+          <button class="sys-btn sys-btn-outline-orange" id="btn-zone-names">Zone Names</button>
+
+          <button class="sys-btn sys-btn-blue" id="btn-download-save">Download Save State</button>
+
+          <button class="sys-btn sys-btn-outline-blue" id="btn-load-save">Load Save State</button>
+          <input type="file" id="input-load-save" accept="application/json,.json" hidden>
+
+          <!-- Spoiler Log: gray fill, yellow border.
+               Wired up in spoiler-log.js. -->
+          <button class="sys-btn sys-btn-gray-yellow" id="btn-spoiler-log">Spoiler Log</button>
+          <input type="file" id="sl-file-input" accept=".txt,text/plain" hidden>
+
           <div class="settings-row">
             <span>Scroll Left Button</span>
             <button class="rebind-btn" id="rebind-scroll-left">Mouse 4</button>
@@ -463,10 +532,14 @@
             <button class="rebind-btn" id="rebind-scroll-right">Mouse 5</button>
           </div>
 
+          <!-- Hidden by default; only shown when at least one Extra Tab is
+               enabled (see applyTabVisibility() in app.js). -->
+          <button class="sys-btn sys-btn-outline-green hidden" id="btn-hotkeys">Hotkeys</button>
+
           <!-- Individually show/hide each top-left main tab. Notes itself
                can't be hidden from here (it's where this control lives). -->
           <div class="settings-subsection" id="subsection-tab-visibility">
-            <div class="subsection-title">Top-Left Tabs</div>
+            <div class="subsection-title">Extra Tabs</div>
             <div class="settings-row">
               <span>Tracker</span>
               <label class="toggle-switch">
@@ -489,25 +562,6 @@
               </label>
             </div>
           </div>
-
-        </div>
-
-        <!-- ══ SYSTEM TAB ═══════════════════════════════════════════ -->
-        <div class="settings-panel" data-panel="system">
-
-          <button class="sys-btn sys-btn-outline-orange" id="btn-zone-names">Zone Names</button>
-
-          <button class="sys-btn sys-btn-outline-green" id="btn-hotkeys">Hotkeys</button>
-
-          <button class="sys-btn sys-btn-blue" id="btn-download-save">Download Save State</button>
-
-          <button class="sys-btn sys-btn-outline-blue" id="btn-load-save">Load Save State</button>
-          <input type="file" id="input-load-save" accept="application/json,.json" hidden>
-
-          <!-- Spoiler Log: gray fill, yellow border. Last option in System.
-               Wired up in spoiler-log.js. -->
-          <button class="sys-btn sys-btn-gray-yellow" id="btn-spoiler-log">Spoiler Log</button>
-          <input type="file" id="sl-file-input" accept=".txt,text/plain" hidden>
 
         </div>
 
@@ -568,6 +622,26 @@
         <button class="ctrl-btn revert-btn" id="useless-captures-revert">Reset to Default</button>
         <button class="ctrl-btn" id="useless-captures-cancel">Cancel</button>
         <button class="zn-save-btn" id="useless-captures-save">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Sync Activity Chatbox (bottom-right, small & scrollable) ─── -->
+  <div id="sync-activity-box" class="hidden">
+    <div id="sync-activity-header">Sync Activity</div>
+    <div id="sync-activity-list"></div>
+  </div>
+
+  <!-- ── Google Fonts Browser Modal ───────────────────────────────── -->
+  <div id="google-fonts-modal" class="modal-backdrop hidden" role="dialog" aria-label="Browse Google Fonts">
+    <div class="modal-box google-fonts-modal-box">
+      <div class="modal-header">
+        <h2>Browse Google Fonts</h2>
+        <button class="modal-close" id="google-fonts-close" aria-label="Close">✕</button>
+      </div>
+      <div class="modal-body google-fonts-body">
+        <input type="text" id="google-fonts-search" class="settings-select" placeholder="Search fonts…" spellcheck="false" style="width:100%; margin-bottom:10px;">
+        <div id="google-fonts-list"></div>
       </div>
     </div>
   </div>

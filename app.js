@@ -140,6 +140,19 @@ const DEFAULT_SETTINGS = {
   merge_deep_woods_vines: true, // Merge the 4 Deep Woods "Vine" zones into one "Vines" zone
   _tabs_default_off_migrated: true, // internal: see the one-time migration in loadState()
   kingdom_order: null,         // custom moon-row display order (array of KINGDOMS indices) or null
+
+  // ── Custom Font (Notes Settings) ────────────────────────────────
+  custom_font: 'default',       // 'default' | 'fredoka' | 'luckiest' | 'comicsans' | 'google:<Font Name>'
+
+  // ── Sync activity/attribution (Notes Settings > Sync) ───────────
+  // Layered on top of the existing room-code SMOSync connection: adds a
+  // required username, an optional password, and a per-user activity
+  // color used both for the user's own log lines and (derived) for
+  // Kingdom-based coloring in the activity chatbox.
+  sync_enabled: false,
+  sync_username: '',
+  sync_password: '',
+  sync_user_color: '#4d96ff',
 };
 
 function cloneDefaultSettings() {
@@ -365,6 +378,12 @@ function applyTabVisibility() {
   }
 
   applySettingsTabVisibility(anyOtherVisible);
+
+  // Hotkeys button (System Settings) is hidden by default and only shown
+  // once at least one Extra Tab is enabled - hotkeys only do anything useful
+  // once there's more than just Notes to jump between.
+  const hotkeysBtn = document.getElementById('btn-hotkeys');
+  if (hotkeysBtn) hotkeysBtn.classList.toggle('hidden', !anyOtherVisible);
 }
 
 // If Tracker, Connection Map, and Abilities & Captures (the three
@@ -621,7 +640,10 @@ function saveState() {
     console.error('Failed to save state:', e);
   }
   if (!applyingRemote && window.SMOSync && window.SMOSync.getRoom()) {
-    window.SMOSync.broadcast(state);
+    const payload = (typeof annotateAndLogOutgoingSync === 'function')
+      ? annotateAndLogOutgoingSync(state)
+      : state;
+    window.SMOSync.broadcast(payload);
   }
   notifyApcIfChanged();
 }
@@ -1296,9 +1318,38 @@ function openSettings() {
   document.getElementById('rebind-scroll-left').textContent = bindingLabel(state.settings.scroll_left_binding);
   document.getElementById('rebind-scroll-right').textContent = bindingLabel(state.settings.scroll_right_binding);
 
+  // Custom Font (segmented)
+  const fontVal = (state.settings.custom_font || 'default');
+  const fontPreset = fontVal.indexOf('google:') === 0 ? 'default' : fontVal;
+  document.querySelectorAll('#seg-custom-font .seg-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.value === fontPreset);
+  });
+
+  // Sync fields
+  const syncToggle = document.getElementById('toggle-sync-enabled');
+  if (syncToggle) syncToggle.checked = !!state.settings.sync_enabled;
+  const syncUserInput = document.getElementById('input-sync-username');
+  if (syncUserInput) syncUserInput.value = state.settings.sync_username || '';
+  const syncPassInput = document.getElementById('input-sync-password');
+  if (syncPassInput) syncPassInput.value = state.settings.sync_password || '';
+  const syncColorInput = document.getElementById('input-sync-usercolor');
+  if (syncColorInput) syncColorInput.value = state.settings.sync_user_color || '#4d96ff';
+  updateSyncSettingsEnablement();
+
   updateSettingsEnablement();
   applyTabVisibility();
   modal.classList.remove('hidden');
+}
+
+// Sync Settings sub-rows (Username / Password / Color) only matter while
+// Sync itself is enabled, matching the dim/hide pattern used elsewhere in
+// Settings (see updateSettingsEnablement above).
+function updateSyncSettingsEnablement() {
+  const on = !!state.settings.sync_enabled;
+  ['row-sync-username', 'row-sync-password', 'row-sync-usercolor'].forEach(id => {
+    const row = document.getElementById(id);
+    if (row) row.classList.toggle('row-disabled', !on);
+  });
 }
 
 // Enable/disable and show/hide sub-controls based on their parent toggle:
@@ -1399,6 +1450,7 @@ function applyAllSettings() {
   updateMoonTotal();
   applySidePanel();
   applyTabVisibility();
+  applyCustomFont();
 }
 
 // ── Zone name overrides ───────────────────────────────────────────
@@ -3411,6 +3463,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ── Sync UI ────────────────────────────────────
   setupSyncUI();
+  setupSyncActivityUI();
+  setupCustomFontUI();
+  applyCustomFont();
 
   // ── OBS Info modal ─────────────────────────────
   document.getElementById('btn-obs-info').addEventListener('click', () => {
@@ -3633,3 +3688,328 @@ document.addEventListener('DOMContentLoaded', () => {
     panelResizeTimer = setTimeout(applySidePanel, 150);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Custom Font (Notes Settings > Custom Font)
+// ─────────────────────────────────────────────────────────────────────────────
+const FONT_PRESETS = {
+  default:   null,
+  fredoka:   { family: 'Fredoka One', css: "'Fredoka One', cursive" },
+  luckiest:  { family: 'Luckiest Guy', css: "'Luckiest Guy', cursive" },
+  comicsans: { family: 'Comic Sans MS', css: "'Comic Sans MS', 'Comic Sans', cursive" },
+};
+
+const GOOGLE_FONT_PRESET_LINKS = {
+  fredoka: 'https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap',
+  luckiest: 'https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap',
+};
+
+// A small curated list so the "Browse Google Fonts" picker has something to
+// show and preview without needing a live Google Fonts API key. Each entry
+// loads on demand via the standard Google Fonts stylesheet URL.
+const GOOGLE_FONTS_CATALOG = [
+  'Roboto', 'Open Sans', 'Lato', 'Montserrat', 'Poppins', 'Oswald', 'Raleway',
+  'Nunito', 'Merriweather', 'Playfair Display', 'Quicksand', 'Baloo 2',
+  'Bangers', 'Press Start 2P', 'Pacifico', 'Chewy', 'Righteous', 'Rubik',
+  'Dosis', 'Comfortaa', 'Caveat', 'Indie Flower', 'Shadows Into Light',
+  'Anton', 'Archivo Black', 'Titan One', 'Sniglet', 'Varela Round',
+  'Baloo Bhai 2', 'Fredoka', 'Patrick Hand', 'Kalam', 'Josefin Sans'
+];
+
+function loadGoogleFontLink(href, id) {
+  if (document.getElementById(id)) return;
+  const link = document.createElement('link');
+  link.id = id;
+  link.rel = 'stylesheet';
+  link.href = href;
+  document.head.appendChild(link);
+}
+
+function googleFontHref(family) {
+  return 'https://fonts.googleapis.com/css2?family=' + encodeURIComponent(family).replace(/%20/g, '+') + '&display=swap';
+}
+
+function applyCustomFont() {
+  const val = state.settings.custom_font || 'default';
+  let cssFamily = null;
+
+  if (val === 'default') {
+    cssFamily = null;
+  } else if (val.indexOf('google:') === 0) {
+    const family = val.slice('google:'.length);
+    loadGoogleFontLink(googleFontHref(family), 'custom-google-font-link');
+    cssFamily = `'${family}', sans-serif`;
+  } else if (FONT_PRESETS[val]) {
+    const preset = FONT_PRESETS[val];
+    if (GOOGLE_FONT_PRESET_LINKS[val]) {
+      loadGoogleFontLink(GOOGLE_FONT_PRESET_LINKS[val], 'custom-preset-font-link');
+    }
+    cssFamily = preset.css;
+  }
+
+  if (cssFamily) {
+    document.documentElement.style.setProperty('--font', cssFamily);
+  } else {
+    document.documentElement.style.removeProperty('--font');
+  }
+}
+
+function setCustomFont(value) {
+  state.settings.custom_font = value;
+  saveState();
+  applyCustomFont();
+  document.querySelectorAll('#seg-custom-font .seg-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.value === (value.indexOf('google:') === 0 ? 'default' : value));
+  });
+}
+
+function buildGoogleFontsList(filter) {
+  const list = document.getElementById('google-fonts-list');
+  if (!list) return;
+  list.innerHTML = '';
+  const q = (filter || '').trim().toLowerCase();
+  GOOGLE_FONTS_CATALOG
+    .filter(f => !q || f.toLowerCase().includes(q))
+    .forEach(family => {
+      const row = document.createElement('div');
+      row.className = 'google-font-row';
+      row.style.fontFamily = `'${family}', sans-serif`;
+      row.textContent = family;
+      row.title = 'Click to use this font';
+      row.addEventListener('click', () => {
+        setCustomFont('google:' + family);
+        document.getElementById('google-fonts-modal').classList.add('hidden');
+      });
+      list.appendChild(row);
+      // Load the font lazily so the preview actually renders in-picker.
+      loadGoogleFontLink(googleFontHref(family), 'gf-preview-' + family.replace(/\s+/g, '-'));
+    });
+}
+
+function setupCustomFontUI() {
+  document.querySelectorAll('#seg-custom-font .seg-btn').forEach(btn => {
+    btn.addEventListener('click', () => setCustomFont(btn.dataset.value));
+  });
+
+  const browseBtn = document.getElementById('btn-browse-google-fonts');
+  const modal = document.getElementById('google-fonts-modal');
+  const closeBtn = document.getElementById('google-fonts-close');
+  const searchInput = document.getElementById('google-fonts-search');
+
+  if (browseBtn && modal) {
+    browseBtn.addEventListener('click', () => {
+      buildGoogleFontsList(searchInput ? searchInput.value : '');
+      modal.classList.remove('hidden');
+    });
+  }
+  if (closeBtn && modal) {
+    closeBtn.addEventListener('click', () => modal.classList.add('hidden'));
+  }
+  if (searchInput) {
+    searchInput.addEventListener('input', () => buildGoogleFontsList(searchInput.value));
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Sync Activity (Notes Settings > Sync)
+// -----------------------------------------------------------------------------
+// Layered on top of the existing room-code SMOSync connection (sync.js), which
+// only understands { type: 'join' } and { type: 'state', data }. There's no
+// server-side concept of "users" or per-field change tracking, so this layer:
+//   1. Requires a Username once "Enable Sync" is on (gates connecting).
+//   2. Diffs the outgoing state against the previous local snapshot right
+//      before every broadcast, in order to describe *what* changed.
+//   3. Piggybacks that description on the broadcast payload as `_activity`
+//      so every other connected client can render it (and re-broadcasts it
+//      isn't itself the source of), then shows it in a small chatbox.
+// ─────────────────────────────────────────────────────────────────────────────
+let lastSyncSnapshot = null;
+let syncActivityLog = []; // { time, user, color, text }
+const SYNC_ACTIVITY_MAX = 200;
+
+// Deterministic color per Kingdom name, so the chatbox can tint a line by
+// which Kingdom the change happened in even though there's no explicit
+// per-kingdom color table elsewhere in the app.
+function kingdomActivityColor(kingdomName) {
+  if (!kingdomName) return null;
+  let hash = 0;
+  for (let i = 0; i < kingdomName.length; i++) {
+    hash = (hash * 31 + kingdomName.charCodeAt(i)) >>> 0;
+  }
+  const hue = hash % 360;
+  return `hsl(${hue}, 65%, 55%)`;
+}
+
+function militaryTime(date) {
+  const d = date || new Date();
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  return `${hh}:${mm}`;
+}
+
+function currentSyncUsername() {
+  return (state.settings.sync_username || '').trim() || 'Someone';
+}
+
+function currentSyncColor() {
+  return state.settings.sync_user_color || '#4d96ff';
+}
+
+// Best-effort, human readable description of what changed between two
+// state snapshots. Deliberately shallow/targeted at the two most common
+// edits (a loading-zone note, and a moon count) rather than a full generic
+// diff, since a generic diff of the whole state tree reads as noise.
+function describeStateChange(prevState, nextState) {
+  try {
+    if (prevState && nextState && prevState.loading_zones && nextState.loading_zones) {
+      for (const kingdom of Object.keys(nextState.loading_zones)) {
+        const prevK = prevState.loading_zones[kingdom];
+        const nextK = nextState.loading_zones[kingdom];
+        if (!prevK || !nextK) continue;
+        for (const zoneKey of Object.keys(nextK.zones || {})) {
+          const prevZone = prevK.zones && prevK.zones[zoneKey];
+          const nextZone = nextK.zones[zoneKey];
+          if (!prevZone) continue;
+          if (prevZone.note !== nextZone.note) {
+            return { kingdom, text: `marked "${kingdom} ${zoneKey}" - ${nextZone.note || '(cleared note)'}` };
+          }
+          const prevReqs = JSON.stringify(prevZone.requirements || []);
+          const nextReqs = JSON.stringify(nextZone.requirements || []);
+          if (prevReqs !== nextReqs) {
+            return { kingdom, text: `updated requirements on "${kingdom} ${zoneKey}"` };
+          }
+        }
+      }
+    }
+    if (prevState && nextState && Array.isArray(prevState.moons) && Array.isArray(nextState.moons)) {
+      for (let i = 0; i < nextState.moons.length; i++) {
+        const p = prevState.moons[i];
+        const n = nextState.moons[i];
+        if (p && n && p.count !== n.count) {
+          const kingdom = (KINGDOMS[i] && KINGDOMS[i].name) || null;
+          return { kingdom, text: `changed ${kingdom || 'a'} moon count to ${n.count}` };
+        }
+      }
+    }
+  } catch (e) { /* fall through to generic message */ }
+  return { kingdom: null, text: 'made a change' };
+}
+
+function logSyncActivity(user, color, text) {
+  syncActivityLog.push({ time: new Date(), user, color, text });
+  if (syncActivityLog.length > SYNC_ACTIVITY_MAX) syncActivityLog.shift();
+  renderSyncActivity();
+}
+
+function renderSyncActivity() {
+  const list = document.getElementById('sync-activity-list');
+  if (!list) return;
+  list.innerHTML = '';
+  syncActivityLog.forEach(entry => {
+    const row = document.createElement('div');
+    row.className = 'sync-activity-row';
+    const kColor = entry.kingdomColor;
+    row.innerHTML =
+      `<span class="sync-activity-time">${militaryTime(entry.time)}</span> - ` +
+      `<span class="sync-activity-user" style="color:${entry.color}">${escapeHtml(entry.user)}</span> ` +
+      `<span class="sync-activity-text"${kColor ? ` style="color:${kColor}"` : ''}>${escapeHtml(entry.text)}</span>`;
+    list.appendChild(row);
+  });
+  list.scrollTop = list.scrollHeight;
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = String(str);
+  return div.innerHTML;
+}
+
+function syncActivityBoxVisible(visible) {
+  const box = document.getElementById('sync-activity-box');
+  if (box) box.classList.toggle('hidden', !visible);
+}
+
+// Called right before every outgoing broadcast (see the hook in saveState's
+// SMOSync.broadcast call site) so a locally-made change is logged and
+// attached to the payload for remote clients to log on their end too.
+function annotateAndLogOutgoingSync(fullState) {
+  if (!state.settings.sync_enabled) return fullState;
+  const change = describeStateChange(lastSyncSnapshot, fullState);
+  lastSyncSnapshot = JSON.parse(JSON.stringify(fullState));
+
+  const user = currentSyncUsername();
+  const color = currentSyncColor();
+  const kingdomColor = kingdomActivityColor(change.kingdom);
+  logSyncActivity(user, color, change.text);
+
+  return Object.assign({}, fullState, {
+    _activity: { user, color, text: change.text, kingdomColor, time: Date.now() }
+  });
+}
+
+function setupSyncActivityUI() {
+  const enableToggle = document.getElementById('toggle-sync-enabled');
+  const usernameInput = document.getElementById('input-sync-username');
+  const saveUsernameBtn = document.getElementById('save-sync-username');
+  const passwordInput = document.getElementById('input-sync-password');
+  const savePasswordBtn = document.getElementById('save-sync-password');
+  const unhideBtn = document.getElementById('btn-unhide-sync-password');
+  const colorInput = document.getElementById('input-sync-usercolor');
+
+  if (enableToggle) {
+    enableToggle.addEventListener('change', (e) => {
+      if (e.target.checked && !(state.settings.sync_username || '').trim()) {
+        alert('Please enter a Username before enabling Sync.');
+        e.target.checked = false;
+        return;
+      }
+      state.settings.sync_enabled = e.target.checked;
+      saveState();
+      updateSyncSettingsEnablement();
+      syncActivityBoxVisible(state.settings.sync_enabled);
+    });
+  }
+
+  if (saveUsernameBtn && usernameInput) {
+    saveUsernameBtn.addEventListener('click', () => {
+      state.settings.sync_username = usernameInput.value.trim();
+      saveState();
+    });
+  }
+
+  if (savePasswordBtn && passwordInput) {
+    savePasswordBtn.addEventListener('click', () => {
+      state.settings.sync_password = passwordInput.value;
+      saveState();
+    });
+  }
+
+  if (unhideBtn && passwordInput) {
+    unhideBtn.addEventListener('click', () => {
+      const showing = passwordInput.type === 'text';
+      passwordInput.type = showing ? 'password' : 'text';
+      unhideBtn.textContent = showing ? 'Unhide Password' : 'Hide Password';
+    });
+  }
+
+  if (colorInput) {
+    colorInput.addEventListener('input', () => {
+      state.settings.sync_user_color = colorInput.value;
+      saveState();
+    });
+  }
+
+  syncActivityBoxVisible(!!state.settings.sync_enabled);
+  renderSyncActivity();
+
+  // Log incoming remote activity too, so the chatbox shows everyone's
+  // changes, not just this client's own.
+  if (window.SMOSync) {
+    window.SMOSync.onState((remoteState) => {
+      if (remoteState && remoteState._activity && state.settings.sync_enabled) {
+        const a = remoteState._activity;
+        logSyncActivity(a.user, a.color, a.text);
+      }
+    });
+  }
+}

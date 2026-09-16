@@ -2712,3 +2712,73 @@ mark.sl-hit-current {
   .sl-searchbar { padding: 8px 10px; }
   .sl-search-count { min-width: 34px; }
 }
+
+/* ── Sync Activity Chatbox (bottom-right, small & scrollable) ─────────── */
+#sync-activity-box {
+  position: fixed;
+  right: 14px;
+  bottom: 14px;
+  width: 260px;
+  max-height: 220px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.4);
+  display: flex;
+  flex-direction: column;
+  z-index: 900;
+  font-size: 12px;
+  overflow: hidden;
+}
+#sync-activity-header {
+  padding: 6px 10px;
+  font-weight: bold;
+  background: var(--bg-card2);
+  border-bottom: 1px solid var(--border);
+  color: var(--text-dim);
+}
+#sync-activity-list {
+  overflow-y: auto;
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.sync-activity-row {
+  line-height: 1.35;
+  word-break: break-word;
+}
+.sync-activity-time {
+  color: var(--text-dim);
+}
+.sync-activity-user {
+  font-weight: bold;
+}
+
+/* ── Google Fonts Browser Modal ─────────────────────────────────────── */
+.google-fonts-modal-box {
+  width: min(420px, 92vw);
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+.google-fonts-body {
+  overflow-y: auto;
+}
+#google-fonts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+.google-font-row {
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 18px;
+  color: var(--text);
+}
+.google-font-row:hover {
+  background: var(--bg-hover);
+}
