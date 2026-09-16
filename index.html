@@ -140,6 +140,7 @@
         <button class="settings-tab" data-tab="kingdom" role="tab">Kingdom Tracking</button>
         <button class="settings-tab" data-tab="streamer" role="tab">Streamer</button>
         <button class="settings-tab" data-tab="notes" role="tab">Notes</button>
+        <button class="settings-tab" data-tab="notes-sync" role="tab">Notes Sync <span class="beta-tag">BETA</span></button>
         <button class="settings-tab" data-tab="system" role="tab">System</button>
       </div>
 
@@ -483,29 +484,52 @@
             </div>
           </div>
 
-          <!-- Sync moved to bottom of Notes Settings. Enabling it requires a
-               Username, reveals an Unhide Password button on the sync
-               password field, and shows a small scrollable Sync Activity
-               chatbox in the bottom-right corner of the screen. -->
+        </div>
+
+        <!-- ══ NOTES SYNC [BETA] TAB ═══════════════════════════════════
+             Its own page rather than a subsection tucked under Notes, so
+             it's easy to find and doesn't get lost among the rest of the
+             Notes settings. Enabling Sync requires a Username first (see
+             updateSyncSettingsEnablement()/setupSyncActivityUI() in app.js
+             - the Username field itself is ALWAYS editable regardless of
+             whether Sync is on, specifically so you can set a username
+             before turning Sync on; only Password/Activity Color, which
+             genuinely don't matter until you're synced, stay dimmed while
+             Sync is off). Turning Sync on also reveals an Unhide Password
+             button on the password field, and shows a small scrollable
+             Sync Activity chatbox in the bottom-right corner of the screen. -->
+        <div class="settings-panel" data-panel="notes-sync">
+
+          <p class="hotkeys-hint hotkeys-hint-dim">
+            <strong>Notes Sync</strong> keeps your Loading Zone Notes, painting
+            destinations, and shop sales live-synced with everyone else in the
+            same room. This feature is in <strong>BETA</strong> - expect rough
+            edges.
+          </p>
+
           <div class="settings-subsection" id="subsection-sync">
             <div class="subsection-title">Sync</div>
             <!-- The actual room-code connect UI (#sync-section) is moved here
                  from the main view on load - see relocateSyncSectionIntoSettings()
                  in app.js. -->
             <div id="settings-sync-room-mount"></div>
+
+            <!-- Username comes first and is never disabled - you need it set
+                 BEFORE Sync can be turned on. -->
+            <div class="settings-row" id="row-sync-username">
+              <span>Username</span>
+              <div class="input-save-pair">
+                <input type="text" id="input-sync-username" placeholder="Required" maxlength="24" spellcheck="false">
+                <button class="save-inline-btn" id="save-sync-username">Save</button>
+              </div>
+            </div>
+
             <div class="settings-row">
               <span>Enable Sync</span>
               <label class="toggle-switch">
                 <input type="checkbox" id="toggle-sync-enabled">
                 <span class="toggle-track"></span>
               </label>
-            </div>
-            <div class="settings-row settings-subrow" id="row-sync-username">
-              <span>Username</span>
-              <div class="input-save-pair">
-                <input type="text" id="input-sync-username" placeholder="Required" maxlength="24" spellcheck="false">
-                <button class="save-inline-btn" id="save-sync-username">Save</button>
-              </div>
             </div>
             <div class="settings-row settings-subrow" id="row-sync-password">
               <span>Sync Password</span>

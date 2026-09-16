@@ -1108,6 +1108,20 @@ h1 {
   border-bottom-color: var(--accent);
 }
 
+/* Small "BETA" pill next to a settings tab label (e.g. Notes Sync). */
+.beta-tag {
+  display: inline-block;
+  font-size: 0.62em;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  padding: 1px 4px;
+  margin-left: 3px;
+  border-radius: 4px;
+  background: rgba(255, 190, 60, 0.18);
+  color: #ffbe3c;
+  vertical-align: 1px;
+}
+
 /* Body remains the single scroll region (inherits .modal-body overflow-y). */
 .settings-body { display: block; }
 

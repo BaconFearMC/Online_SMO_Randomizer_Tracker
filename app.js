@@ -179,7 +179,7 @@ const LOADING_ZONES_TEMPLATE = {
   "Bowser's": { color: '#d3304c', icon: 'Bowser.png', zones: { "Jizo": { num: 2 }, "Shop": { num: 1 }, "Outfit": { num: 2 }, "Treasure Room": { num: 1 }, "Spinning Tower": { num: 2 }, "Vine Clouds": { num: 2 }, "Hexagon Tower": { num: 2 }, "Wooden Tower": { num: 2 } } },
   'Mushroom': { color: '#fff672', icon: 'Star.png', zones: { "Shop": { num: 1 }, "Castle Door": { num: 2 }, "Outfit": { num: 2 }, "Cloud Sea": { num: 2 }, "Well": { num: 2 }, "Knucklotec": { num: 1 }, "Torkdrift": { num: 1 }, "Mechawiggler": { num: 1 }, "Octopus": { num: 1 }, "Cookatiel": { num: 1 }, "Dragon": { num: 1 }, "Rocket": { num: 2 } } },
   'Darkside': { color: '#fff2c6', icon: 'Dark.png', zones: { 'Breakdown': { num: 2 }, 'Invisible': { num: 2 }, 'Vanishing': { num: 2 }, 'Yoshi Siege': { num: 2 }, 'Lava Rising': { num: 2 }, 'Magma Swamp': { num: 2 } } },
-  'Darkerside': { color: '#fff2c6', icon: 'Dark.png', zones: { 'End': { num: 1 } } },
+  'Darkerside': { color: '#fff2c6', icon: 'Dark.png', zones: { 'Odyssey': { num: 1 } } },
   'Moon':       { color:'#b5c1cb', icon:'MoonK.png',    zones:{ '2D Snowman': {num:2},'Shop': {num:1},'Swings': {num:2},'Sphynx': {num:1}} },
   'Cloud':      { color:'#65ceff', icon:'Cloud.png',    zones:{ '2D Cube': {num:2},'Picture Match': {num:2} } },
   'Deep Woods': { color: '#1e65e7', icon: 'Wooded.png', zones: { "Vine #1 (Dino)": { num: 0 }, "Vine #2 (Peculiar Pipes)": { num: 0 }, "Vine #3 (Babbling Brook)": { num: 0 }, "Vine #4 (Creek)": { num: 0 }, "Treasure": { num: 1 }, "Outfit": { num: 1 } } },
@@ -1348,12 +1348,16 @@ function openSettings() {
   modal.classList.remove('hidden');
 }
 
-// Sync Settings sub-rows (Username / Password / Color) only matter while
-// Sync itself is enabled, matching the dim/hide pattern used elsewhere in
-// Settings (see updateSettingsEnablement above).
+// Sync Settings sub-rows (Password / Color) only matter while Sync itself
+// is enabled, matching the dim/hide pattern used elsewhere in Settings (see
+// updateSettingsEnablement above). Username is deliberately NOT included
+// here - it must stay editable even while Sync is off, since a Username is
+// required before Sync can be turned on in the first place (see the
+// enableToggle change handler in setupSyncActivityUI() below). Dimming it
+// alongside Sync would make it impossible to ever satisfy that requirement.
 function updateSyncSettingsEnablement() {
   const on = !!state.settings.sync_enabled;
-  ['row-sync-username', 'row-sync-password', 'row-sync-usercolor'].forEach(id => {
+  ['row-sync-password', 'row-sync-usercolor'].forEach(id => {
     const row = document.getElementById(id);
     if (row) row.classList.toggle('row-disabled', !on);
   });

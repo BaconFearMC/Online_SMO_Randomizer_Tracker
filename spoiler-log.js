@@ -73,7 +73,7 @@
     // Dark Side Yoshi levels whose map labels differ from log names:
     'yoshi on the sinking island':  'zone:Darkside:Lava Rising',  // TODO verify
     // Darker Side final area:
-    'inside culmina crater':        'zone:Darkerside:End'         // TODO (vs kingdom:Darkerside)
+    'inside culmina crater':        'zone:Darkerside:Odyssey'         // TODO (vs kingdom:Darkerside)
     // The *Boss Re-fight rooms, Inverted Pyramid, Underground Ruins/Caverns,
     // Wedding Room, Sky Garden Tower, Secret Flower Field and the vanilla
     // Picture-Match / Underwater-Tunnel rooms have no corresponding map node

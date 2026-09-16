@@ -1114,7 +1114,7 @@
       flex: 0 0 auto;
       white-space: nowrap;
     }
-    /* Darkerside "End" zone's Extra + (Multimoon picker) - same shape as
+    /* Darkerside "Odyssey" zone's Extra + (Multimoon picker) - same shape as
        the normal + but a subtly different color so it reads as a second,
        distinct add-action rather than a duplicate of the main +. */
     .zone-req-add--extra {
@@ -1187,7 +1187,13 @@
     <div class="modal-header-actions">
       <button class="ctrl-btn" id="notes-page-collapse-all" title="Collapse all Kingdoms" style="font-size: .78em; padding: 3px 8px;">⊟ Collapse</button>
       <button class="modal-icon-btn-red" id="notes-page-clear" title="Clear all notes">Clear</button>
-      <div id="notes-sync-menu-wrap">
+      <!-- Sync button hidden from this main view - Sync now lives entirely
+           in its own "Notes Sync [BETA]" page (gear icon → Settings → Notes
+           Sync). The controls/status below still exist in the DOM (kept
+           hidden) so setupNotesSync()'s background auto-connect - joining
+           whatever room was already saved - keeps working unchanged; only
+           the visible entry point moved. -->
+      <div id="notes-sync-menu-wrap" class="hidden">
         <button class="ctrl-btn" id="notes-page-sync-toggle" title="Sync settings">🔄 Sync</button>
         <div id="notes-sync-bar" class="hidden">
           <input type="password" id="notes-room-code" placeholder="Room code" maxlength="12" spellcheck="false">
@@ -1444,7 +1450,7 @@
       "Bowser's":   { color:'#d3304c', icon:'Bowser.png',   zones:{ "Jizo":{num:2},"Shop":{num:1},"Outfit":{num:2},"Treasure Room":{num:1},"Spinning Tower":{num:2},"Vine Clouds":{num:2},"Hexagon Tower":{num:2},"Wooden Tower":{num:2}}},
       'Mushroom':   { color:'#fff672', icon:'Star.png',     zones:{ "Shop":{num:1},"Castle Door":{num:2},"Outfit":{num:2},"Cloud Sea":{num:2},"Well":{num:2},"Knucklotec":{num:1},"Torkdrift":{num:1},"Mechawiggler":{num:1},"Octopus":{num:1},"Cookatiel":{num:1},"Dragon":{num:1},"Rocket":{num:2}}},
       'Darkside':   { color:'#fff2c6', icon:'Dark.png',     zones:{ 'Breakdown':{num:2},'Invisible':{num:2},'Vanishing':{num:2},'Yoshi Siege':{num:2},'Lava Rising':{num:2},'Magma Swamp':{num:2} }},
-      'Darkerside': { color:'#fff2c6', icon:'Darker.png',     zones:{ 'End':{num:1} }},
+      'Darkerside': { color:'#fff2c6', icon:'Darker.png',     zones:{ 'Odyssey':{num:1} }},
       'Moon':       { color:'#b5c1cb', icon:'MoonK.png',    zones:{ '2D Snowman': {num:2},'Shop': {num:1},'Swings': {num:2},'Sphynx': {num:1}} },
       'Cloud':      { color:'#65ceff', icon:'Cloud.png',    zones:{ '2D Cube': {num:2},'Picture Match': {num:2} } },
       'Deep Woods': { color:'#1e65e7', icon:'deepwoods.png', zones:{ "Vine #1 (Dino)":{num:0},"Vine #2 (Peculiar Pipes)":{num:0},"Vine #3 (Babbling Brook)":{num:0},"Vine #4 (Creek)":{num:0},"Treasure":{num:1},"Outfit":{num:1}}},
@@ -1482,7 +1488,7 @@
       "Bowser's":   ['Shop','Outfit','Jizo','Treasure Room','Spinning Tower','Vine Clouds','Hexagon Tower','Wooden Tower'],
       'Mushroom':   ['Well','Castle Door','Shop','Outfit','Cloud Sea','Knucklotec','Mechawiggler','Octopus','Cookatiel','Torkdrift','Dragon','Rocket'],
       'Darkside':   ['Breakdown','Magma Swamp','Lava Rising','Invisible','Yoshi Siege','Vanishing'],
-      'Darkerside': ['End'],
+      'Darkerside': ['Odyssey'],
       'Moon':       ['Shop','Sphynx','Swings','2D Snowman'],
       'Cloud':      ['2D Cube','Picture Match'],
       // Deep Woods: both the 4 individual Vine entries AND the merged
@@ -1621,7 +1627,7 @@
       for (const kingdom of Object.values(fullState.loading_zones)) {
         for (const zone of Object.values(kingdom.zones)) {
           if (!Array.isArray(zone.requirements)) zone.requirements = [];
-          // multimoons: only ever populated on Darkerside's "End" zone (see
+          // multimoons: only ever populated on Darkerside's "Odyssey" zone (see
           // MULTIMOON_KINGDOMS / openMultimoonPicker) - an ordered list of
           // Kingdom keys, one per Multimoon painting seen there. Harmless
           // (and unused) on every other zone.
@@ -3067,11 +3073,11 @@
           reqsWrap.appendChild(img);
         });
 
-        // Darkerside's "End" zone gets an Extra + for the row of Multimoon
+        // Darkerside's "Odyssey" zone gets an Extra + for the row of Multimoon
         // paintings found there - separate from the normal Capture/Ability/
         // Refight/Shop/Kingdom + above, since a Multimoon can point back to
         // more than one Kingdom at once (multi-select, not radio-select).
-        if (kingdom === 'Darkerside' && zone === 'End') {
+        if (kingdom === 'Darkerside' && zone === 'Odyssey') {
           const extraBtn = document.createElement('button');
           extraBtn.type = 'button';
           extraBtn.className = 'zone-req-add zone-req-add--extra';
@@ -3456,8 +3462,8 @@
       requestAnimationFrame(() => overlay.classList.add('active'));
     }
 
-    // ── Multimoon picker (Darkerside Kingdom: "End" zone's Extra + button) ──
-    // Darkerside's "End" is the room with the row of Multimoon paintings -
+    // ── Multimoon picker (Darkerside Kingdom: "Odyssey" zone's Extra + button) ──
+    // Darkerside's "Odyssey" is the room with the row of Multimoon paintings -
     // each one leads back to a specific other Kingdom. Multi-select (toggle
     // on/off), since more than one painting can be present/known at once;
     // stored as zs.multimoons, an array of Kingdom keys, in whatever order

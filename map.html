@@ -372,6 +372,62 @@
   }
   .chain-badge-new:hover { color: var(--green) !important; border-color: var(--green) !important; }
 
+  /* ── Click-to-connect wizard popup (Kingdom → Area → In/Out/Main) ─── */
+  .connect-wizard-popup {
+    position: fixed;
+    z-index: 1000;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 8px 10px 10px;
+    box-shadow: 0 8px 28px rgba(0,0,0,0.55);
+    min-width: 160px;
+    max-width: 260px;
+    max-height: 320px;
+    overflow-y: auto;
+  }
+  .connect-wizard-header {
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    margin-bottom: 7px;
+    font-weight: bold;
+    letter-spacing: 0.02em;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .connect-wizard-back {
+    cursor: pointer;
+    color: var(--text-dim);
+    font-size: 0.72rem;
+    font-weight: normal;
+    text-decoration: underline;
+    background: none;
+    border: none;
+    padding: 0;
+  }
+  .connect-wizard-back:hover { color: var(--text); }
+  .connect-wizard-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .connect-wizard-opt {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 0.8rem;
+    padding: 6px 9px;
+    cursor: pointer;
+    transition: background 0.1s, border-color 0.1s;
+  }
+  .connect-wizard-opt:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
+
   /* ── Arrow chain tooltip (hover label) ──────────────────────── */
   #arrow-chain-tooltip {
     position: fixed;
@@ -1346,8 +1402,9 @@
     <div class="controls-desktop">
       <div class="controls-section-title">Controls</div>
       <div class="controls-grid">
-        <div class="ctrl-card"><span class="ctrl-key">Drag a node</span><div class="ctrl-desc">Hold left mouse and drag from one node to another to <strong>draw a connection arrow</strong>. A node can carry any number of arrows, except dead-end nodes.</div></div>
-        <div class="ctrl-card"><span class="ctrl-key">Left-click a node</span><div class="ctrl-desc">Highlights every chain running through it, and opens the connection navigator below the header. Click again (or empty canvas) to clear.</div></div>
+        <div class="ctrl-card"><span class="ctrl-key">Click a node</span><div class="ctrl-desc">Opens the connect wizard: pick which Kingdom it goes to, then which Area, then that Area's In / Out / Main Node - no dragging needed. A node can carry any number of arrows, except dead-end nodes.</div></div>
+        <div class="ctrl-card"><span class="ctrl-key">Drag a node</span><div class="ctrl-desc">Still works too - hold left mouse and drag from one node to another to <strong>draw a connection arrow</strong> directly.</div></div>
+        <div class="ctrl-card"><span class="ctrl-key">Shift + click a node</span><div class="ctrl-desc">Highlights every chain running through it, and opens the connection navigator below the header. Shift-click again (or empty canvas) to clear.</div></div>
         <div class="ctrl-card"><span class="ctrl-key">Right-click a node</span><div class="ctrl-desc">Cycles its color through the palette, then back to none. With Segmented Nodes on, colors the entrance, name, or exit separately.</div></div>
         <div class="ctrl-card"><span class="ctrl-key">Double-click a node</span><div class="ctrl-desc">Removes all of its outgoing arrows at once.</div></div>
         <div class="ctrl-card"><span class="ctrl-key">Double-click an arrow</span><div class="ctrl-desc">Removes just that connection and splits its chain (the part after the break becomes a new chain).</div></div>
@@ -1366,7 +1423,7 @@
     <div class="controls-mobile">
       <div class="controls-section-title">Controls</div>
       <div class="controls-grid">
-        <div class="ctrl-card"><span class="ctrl-key">Drag a node</span><div class="ctrl-desc">Hold and drag from one node to another to draw a connection arrow.</div></div>
+        <div class="ctrl-card"><span class="ctrl-key">Drag a node</span><div class="ctrl-desc">Hold and drag from one node to another to draw a connection arrow. (The click-to-connect wizard is desktop-only for now.)</div></div>
         <div class="ctrl-card"><span class="ctrl-key">Single tap a node</span><div class="ctrl-desc">Cycles its color through the palette, then back to none.</div></div>
         <div class="ctrl-card"><span class="ctrl-key">Double-tap a node</span><div class="ctrl-desc">Removes all of its outgoing arrows.</div></div>
         <div class="ctrl-card"><span class="ctrl-key">Hold a node</span><div class="ctrl-desc">Opens its loading-zone screenshot (Stage Previews must be on). Moving your finger cancels it and starts a connection drag.</div></div>
@@ -1770,17 +1827,23 @@ const LOADING_ZONES_TEMPLATE = {
   'Cascade':   { color: '#ff9900', icon: 'Cascade.png', zones: { 'Dino': {}, '2D': {}, 'Chain Chomp': {}, 'Swings': {}, 'Windy': {} } },
   'Sand':      { color: '#8bf12c', icon: 'Sand.png',    zones: { "Icy Cave": {}, "Moe-eye": {}, "Shop": {}, "Employees": {}, "Slots": {}, "Rumble": {}, "Outfit": {}, "Jaxi Ruins": {}, "Bullet Bill": {}, "Gushen": {}, "Sphynx": {}, "Moving Platform": {}, "Rocket": {}, "Colossal Ruins": {} } },
   'Lake':      { color: '#e46cab', icon: 'Lake.png',    zones: { "Poison Waves": {}, "Zipper": {}, "Grab Climb": {}, "Shop": {}, "Puzzle": {} } },
-  'Wooded':    { color: '#1e65e7', icon: 'Wooded.png',  zones: { "DW Odyssey": {}, "DW Red Maze": {}, "DW Pond": {}, "DW Treasure": {}, "DW Outfit": {}, "Rocket": {}, "Sheep": {}, "Tank": {}, "Vine Clouds": {}, "Breakdown": {}, "Invisible": {}, "Flooded Pipes": {}, "Flower Road": {}, "Treasure Room": {} } },
+  'Wooded':    { color: '#1e65e7', icon: 'Wooded.png',  zones: { "Deep Woods Fall": {}, "Rocket": {}, "Sheep": {}, "Tank": {}, "Vine Clouds": {}, "Breakdown": {}, "Invisible": {}, "Flooded Pipes": {}, "Flower Road": {}, "Treasure Room": {} } },
+  // Deep Woods is its own area now (matches notes.html) - the 4 individual
+  // Vine zones are always shown merged into one "Vines" node here, unlike
+  // Notes where merging them is optional (see the merge_deep_woods_vines
+  // setting there). All 3 of these areas are dead-ends: see DEAD_END_IDS
+  // below, which is what limits each to an In + Main Node (no Out).
+  'Deep Woods': { color: '#1e65e7', icon: 'deepwoods.png', zones: { "Vines": {}, "Treasure": {}, "Outfit": {} } },
   'Lost':      { color: '#e71edd', icon: 'Lost.png',    zones: { 'Wiggler': {}, 'Shop': {}, 'Klepto': {} } },
   'Metro':     { color: '#de7d5e', icon: 'Metro.png',   zones: { "Yellow Shop": {}, "Purple Shop": {}, "Dino": {}, "Bullet Billding": {}, "Taxi": {}, "Notes": {}, "2D": {}, "Slots": {}, "People": {}, "Outfit": {}, "Rocket": {}, "Dark": {}, "Scaffolding": {}, "Scooter": {}, "Rotating Maze": {}, "RC Car": {} } },
   'Snow':      { color: '#e7930a', icon: 'Snow.png',    zones: { "Puzzle": {}, "Capless": {}, "Rocket Flower": {}, "Iceburn Circuit": {}, "Flower Road": {}, "Tracewalking": {}, "Clouds": {}, "Outfit": {}, "Shop": {} } },
-  'Seaside':   { color: '#b36fe9', icon: 'Seaside.png', zones: { "Well Enter": {}, "Well Exit": {}, "Rumble": {}, "Rocket": {}, "Outfit": {}, "Gushen": {}, "Sphynx": {}, "Pokio": {}, "Lava Rising": {}, "Sandy Bottom": {}, "Spinning Maze": {} } },
+  'Seaside':   { color: '#b36fe9', icon: 'Seaside.png', zones: { "Rumble": {}, "Rocket": {}, "Outfit": {}, "Gushen": {}, "Sphynx": {}, "Pokio": {}, "Lava Rising": {}, "Sandy Bottom": {}, "Spinning Maze": {} } },
   'Luncheon':  { color: '#3fddbb', icon: 'Luncheon.png',zones: { "Magma Swamp": {}, "Forks": {}, "Cheese Rocks": {}, "Veggie Room": {}, "Slots": {}, "Shop": {}, "Outfit": {}, "Spinning Athletics": {}, "Lava Islands": {}, "Volcano Cave": {}, "Gears": {}, "Magma Path": {} } },
   'Ruined':    { color: '#ffd7e2', icon: 'Ruin.png',    zones: { "Chargin' Chuck": {}, 'Rocket': {} } },
   "Bowser's":  { color: '#d3304c', icon: 'Bowser.png',  zones: { "Jizo": {}, "Shop": {}, "Outfit": {}, "Treasure Room": {}, "Spinning Tower": {}, "Vine Clouds": {}, "Hexagon Tower": {}, "Wooden Tower": {} } },
   'Mushroom':  { color: '#fff672', icon: 'Star.png',    zones: { "Shop": {}, "Castle Door": {}, "Outfit": {}, "Cloud Sea": {}, "Well": {}, "Knucklotec": {}, "Torkdrift": {}, "Mechawiggler": {}, "Octopus": {}, "Cookatiel": {}, "Dragon": {}, "Rocket": {} } },
   'Darkside':  { color: '#fff2c6', icon: 'Dark.png',    zones: { 'Breakdown': {}, 'Invisible': {}, 'Vanishing': {}, 'Yoshi Siege': {}, 'Lava Rising': {}, 'Magma Swamp': {} } },
-  'Darkerside':{ color: '#fff2c6', icon: 'Dark.png',    zones: { 'End': {} } },
+  'Darkerside':{ color: '#fff2c6', icon: 'Dark.png',    zones: { 'Odyssey': {} } },
   'Moon':      { color: '#b5c1cb', icon: 'MoonK.png',   zones: { '2D Snowman': {}, 'Shop': {}, 'Swings': {}, 'Sphynx': {}} },
   'Cloud':     { color: '#65ceff', icon: 'Cloud.png',   zones: { '2D Cube': {}, 'Picture Match': {} } },
 };
@@ -1840,8 +1903,10 @@ function isPaintingChain(cid) {
 const DEAD_END_IDS = new Set([
   ['Cap','Frog'],['Cascade','Dino'],['Sand','Shop'],['Sand','Employees'],['Sand','Slots'],['Sand','Rumble'],
   ['Sand','Outfit'],['Sand','Sphynx'],['Sand','Colossal Ruins'],['Lake','Zipper'],
-  ['Lake','Shop'],['Lake','Puzzle'],['Wooded','DW Treasure'],['Wooded','DW Outfit'],
+  ['Lake','Shop'],['Lake','Puzzle'],
   ['Wooded','Sheep'],['Wooded','Vine Clouds'],['Wooded','Breakdown'],['Wooded','Rocket'],['Lost','Shop'],
+  // All 3 Deep Woods areas: In + Main Node only, never an Out.
+  ['Deep Woods','Vines'],['Deep Woods','Treasure'],['Deep Woods','Outfit'],
   ['Lost','Klepto'],['Metro','Yellow Shop'],['Metro','Purple Shop'],['Metro','Notes'],
   ['Metro','2D'],['Metro','Slots'],['Metro','Dark'],['Metro','Rotating Maze'],['Metro','RC Car'],
   ['Snow','Puzzle'],['Snow','Iceburn Circuit'],['Snow','Tracewalking'],['Snow','Clouds'],
@@ -1871,6 +1936,7 @@ const ZONE_IMAGES = {
   'kingdom:Sand':       'SandWorldHomeStage.jpg',
   'kingdom:Lake':       'LakeWorldHomeStage.jpg',
   'kingdom:Wooded':     'ForestWorldHomeStage_1.jpg',
+  'kingdom:Deep Woods': 'ForestWorldWoodsStage.jpg',
   'kingdom:Lost':       'ClashWorldHomeStage.jpg',
   'kingdom:Metro':      'CityWorldHomeStage.jpg',
   'kingdom:Snow':       'SnowWorldHomeStage.jpg',
@@ -1921,11 +1987,7 @@ const ZONE_IMAGES = {
   'zone:Lake:Puzzle':        'GotogotonExStage.jpg',
 
   // Wooded zones
-  'zone:Wooded:DW Odyssey':   'ForestWorldHomeStage_6.jpg',
-  'zone:Wooded:DW Red Maze':  'ForestWorldWoodsStage.jpg',
-  'zone:Wooded:DW Pond':      'ForestWorldHomeStage_3.jpg',
-  'zone:Wooded:DW Treasure':  'ForestWorldWoodsTreasureStage.jpg',
-  'zone:Wooded:DW Outfit':    'ForestWorldWoodsCostumeStage.jpg',
+  'zone:Wooded:Deep Woods Fall': 'ForestWorldHomeStage_3.jpg',
   'zone:Wooded:Rocket':       'FogMountainExStage.jpg',
   'zone:Wooded:Sheep':        'AnimalChaseExStage.jpg',
   'zone:Wooded:Tank':         'ShootingElevatorExStage.jpg',
@@ -1935,6 +1997,12 @@ const ZONE_IMAGES = {
   'zone:Wooded:Flooded Pipes':'ForestWorldWaterExStage.jpg',
   'zone:Wooded:Flower Road':  'RailCollisionExStage.jpg',
   'zone:Wooded:Treasure Room':'ForestWorldBonusStage.jpg',
+
+  // Deep Woods zones (carried over from the old Wooded "DW *" zones, now
+  // that Deep Woods is its own area - see LOADING_ZONES_TEMPLATE above).
+  'zone:Deep Woods:Vines':    'ForestWorldWoodsStage.jpg',
+  'zone:Deep Woods:Treasure': 'ForestWorldWoodsTreasureStage.jpg',
+  'zone:Deep Woods:Outfit':   'ForestWorldWoodsCostumeStage.jpg',
 
   // Lost zones
   'zone:Lost:Wiggler':  'ImomuPoisonExStage.jpg',
@@ -1971,8 +2039,6 @@ const ZONE_IMAGES = {
   'zone:Snow:Shop':          'SnowWorldShopStage.jpg',
 
   // Seaside zones
-  'zone:Seaside:Well Enter':     'SeaWorldUtsuboCaveStage.jpg',
-  'zone:Seaside:Well Exit':      'SeaWorldHomeStage.jpg',
   'zone:Seaside:Rumble':         'SeaWorldVibrationStage.jpg',
   'zone:Seaside:Rocket':         'CloudExStage.jpg',
   'zone:Seaside:Outfit':         'SeaWorldCostumeStage.jpg',
@@ -2034,7 +2100,7 @@ const ZONE_IMAGES = {
   'zone:Darkside:Magma Swamp':  'LavaWorldUpDownYoshiExStage.jpg',
 
   // Darkerside zones
-  'zone:Darkerside:End': 'Special2WorldHomeStage.jpg',
+  'zone:Darkerside:Odyssey': 'Special2WorldHomeStage.jpg',
 
   //Moon zones
   'zone:Moon:2D Snowman':  'Galaxy2DExStage.jpg',
@@ -2086,11 +2152,7 @@ const ZONE_ENT = {
   'zone:Lake:Grab Climb': 'JGCC1.webp',
   'zone:Lake:Shop': 'crazy-cap-lake-kingdom.900x.webp',
   'zone:Lake:Puzzle': 'Repair1.webp',
-  'zone:Wooded:DW Odyssey': 'maxresdefault (1).jpg',
-  'zone:Wooded:DW Red Maze': 'maxresdefault (1).jpg',
-  'zone:Wooded:DW Pond': 'Screenshot_7.png',
-  'zone:Wooded:DW Treasure': 'smo180-600x338.png',
-  'zone:Wooded:DW Outfit': 'Screenshot_6.png',
+  'zone:Wooded:Deep Woods Fall': 'Screenshot_7.png',
   'zone:Wooded:Rocket': 'Fog1.webp',
   'zone:Wooded:Sheep': 'WoodedK_73-1.webp',
   'zone:Wooded:Tank': 'Escalation2.webp',
@@ -2100,6 +2162,9 @@ const ZONE_ENT = {
   'zone:Wooded:Flooded Pipes': 'Flood1.webp',
   'zone:Wooded:Flower Road': 'WoodedK_43-1.webp',
   'zone:Wooded:Treasure Room': 'Screenshot_5.png',
+  'zone:Deep Woods:Vines': 'maxresdefault (1).jpg',
+  'zone:Deep Woods:Treasure': 'smo180-600x338.png',
+  'zone:Deep Woods:Outfit': 'Screenshot_6.png',
   'zone:Lost:Wiggler': 'Traverse1.webp',
   'zone:Lost:Shop': 'EnjoyView1.webp',
   'zone:Lost:Klepto': 'Klepto1.webp',
@@ -2128,8 +2193,6 @@ const ZONE_ENT = {
   'zone:Snow:Clouds': 'smo340-600x338.png',
   'zone:Snow:Outfit': 'SnowK29-1.webp',
   'zone:Snow:Shop': 'crazy-cap-snow-kingdom.large.webp',
-  'zone:Seaside:Well Enter': 'smo371-600x338.png',
-  'zone:Seaside:Well Exit': 'SeasideK_39-1.webp',
   'zone:Seaside:Rumble': 'SeasideK_41-1.webp',
   'zone:Seaside:Rocket': 'SeaCloud1.webp',
   'zone:Seaside:Outfit': 'Resort1.webp',
@@ -2216,8 +2279,10 @@ const ZONE_MOON_COUNT = {
   'zone:Lake:Grab Climb': 2,
   'zone:Lake:Shop': 1,
   'zone:Lake:Puzzle': 1,
-  'zone:Wooded:DW Treasure': 1,
-  'zone:Wooded:DW Outfit': 1,
+  'zone:Wooded:Deep Woods Fall': 0,
+  'zone:Deep Woods:Vines': 0,
+  'zone:Deep Woods:Treasure': 1,
+  'zone:Deep Woods:Outfit': 1,
   'zone:Wooded:Rocket': 2,
   'zone:Wooded:Sheep': 2,
   'zone:Wooded:Tank': 2,
@@ -2255,8 +2320,6 @@ const ZONE_MOON_COUNT = {
   'zone:Snow:Clouds': 2,
   'zone:Snow:Outfit': 2,
   'zone:Snow:Shop': 1,
-  'zone:Seaside:Well Enter': 1,
-  'zone:Seaside:Well Exit': 1,
   'zone:Seaside:Rumble': 1,
   'zone:Seaside:Rocket': 2,
   'zone:Seaside:Outfit': 1,
@@ -2361,11 +2424,11 @@ const ZONE_INGAME = {
   'zone:Lake:Grab Climb': 'Jump, Grab, Cling, Climb',
   'zone:Lake:Shop': 'Crazy Cap Store',
   'zone:Lake:Puzzle': 'Puzzle Room',
-  'zone:Wooded:DW Odyssey': 'Wooded Kingdom',
-  'zone:Wooded:DW Red Maze': 'Deep Woods',
-  'zone:Wooded:DW Pond': 'Wooded Kingdom',
-  'zone:Wooded:DW Treasure': 'Deep Woods Treasure Vault',
-  'zone:Wooded:DW Outfit': 'Costume Room',
+  'zone:Wooded:Deep Woods Fall': 'Deep Woods',
+  'kingdom:Deep Woods': 'Deep Woods',
+  'zone:Deep Woods:Vines': 'Deep Woods',
+  'zone:Deep Woods:Treasure': 'Deep Woods Treasure Vault',
+  'zone:Deep Woods:Outfit': 'Costume Room',
   'zone:Wooded:Rocket': 'Shards in the Fog',
   'zone:Wooded:Sheep': 'Herding Sheep',
   'zone:Wooded:Tank': 'Crowded Elevator',
@@ -2403,8 +2466,6 @@ const ZONE_INGAME = {
   'zone:Snow:Clouds': 'Spinning Above the Clouds',
   'zone:Snow:Outfit': 'Cold Room',
   'zone:Snow:Shop': 'Crazy Cap Store',
-  'zone:Seaside:Well Enter': 'Underwater Tunnel',
-  'zone:Seaside:Well Exit': 'Seaside Kingdom',
   'zone:Seaside:Rumble': 'Rumbling Floor Cave',
   'zone:Seaside:Rocket': 'A Sea of Clouds',
   'zone:Seaside:Outfit': 'Costume Room',
@@ -2454,7 +2515,7 @@ const ZONE_INGAME = {
   'zone:Darkside:Yoshi Siege': 'Yoshi Under Siege',
   'zone:Darkside:Lava Rising': 'Yoshi\'s Magma Swamp',
   'zone:Darkside:Magma Swamp': 'Yoshi\'s Magma Swamp',
-  'zone:Darkerside:End': 'Darker Side',
+  'zone:Darkerside:Odyssey': 'Darker Side',
   'zone:Moon:2D Snowman': '8-Bit Galaxy',
   'zone:Moon:Shop': 'Crazy Cap Store',
   'zone:Moon:Swings': 'Giant Swings',
@@ -4294,6 +4355,171 @@ function openChainPicker(event, ed) {
   }, 0);
 }
 
+// ─────────────────────────────────────────────────────────────────
+// Click-to-connect wizard
+// ─────────────────────────────────────────────────────────────────
+// Replaces manually dragging an arrow from one node to another. A plain
+// click on a node (no drag - see wireNodeEvents' mouseup handler) opens
+// this instead: pick which Kingdom the connection goes to, then which Area
+// in that Kingdom, then which of that Area's In / Out / Main Node it lands
+// on (only the options that Area actually has are listed - see
+// availableConnectParts() below). The node/part you clicked on is used as-is
+// for the source side, exactly like a drag would have started from there.
+// Popups are chained together at the same screen position (each replacing
+// the last) so it reads as a single flow, same visual language as the
+// existing chain-assignment popup above.
+// ─────────────────────────────────────────────────────────────────
+let activeConnectWizardEl = null;
+let connectWizardOutsideCloseHandler = null;
+
+function closeConnectWizard() {
+  if (activeConnectWizardEl && activeConnectWizardEl.parentNode) activeConnectWizardEl.remove();
+  activeConnectWizardEl = null;
+  if (connectWizardOutsideCloseHandler) {
+    document.removeEventListener('click', connectWizardOutsideCloseHandler);
+    connectWizardOutsideCloseHandler = null;
+  }
+}
+
+/** Human-readable label for an In / Out / Main Node part. */
+function partLabel(part) {
+  if (part === PART_IN)  return 'In';
+  if (part === PART_OUT) return 'Out';
+  return 'Main Node';
+}
+
+/**
+ * Which parts a node can actually be connected to, in display order. Mirrors
+ * normalizePart()'s rules so the wizard only ever offers options connect()
+ * will accept:
+ *   - Paintings / kingdom nodes: Main Node only.
+ *   - Dead-end areas (incl. all 3 Deep Woods areas): In + Main Node only.
+ *   - Everything else: In, Out, and Main Node.
+ */
+function availableConnectParts(id) {
+  if (!canSegment(id)) return [PART_MID];
+  if (DEAD_END_IDS.has(id)) return [PART_IN, PART_MID];
+  return [PART_IN, PART_OUT, PART_MID];
+}
+
+/** Builds the popup shell (header + optional back button + option list). */
+function buildConnectWizardPopup(anchorX, anchorY, headerText, onBack, optionDefs) {
+  closeConnectWizard();
+
+  const popup = document.createElement('div');
+  popup.className = 'connect-wizard-popup';
+
+  const hdr = document.createElement('div');
+  hdr.className = 'connect-wizard-header';
+  const hdrText = document.createElement('span');
+  hdrText.textContent = headerText;
+  hdr.appendChild(hdrText);
+  if (onBack) {
+    const back = document.createElement('button');
+    back.type = 'button';
+    back.className = 'connect-wizard-back';
+    back.textContent = '← Back';
+    back.addEventListener('click', (e) => { e.stopPropagation(); onBack(); });
+    hdr.appendChild(back);
+  }
+  popup.appendChild(hdr);
+
+  const list = document.createElement('div');
+  list.className = 'connect-wizard-list';
+  optionDefs.forEach(({ label, onClick }) => {
+    const opt = document.createElement('button');
+    opt.type = 'button';
+    opt.className = 'connect-wizard-opt';
+    opt.textContent = label;
+    opt.addEventListener('click', (e) => { e.stopPropagation(); onClick(); });
+    list.appendChild(opt);
+  });
+  popup.appendChild(list);
+
+  document.body.appendChild(popup);
+  activeConnectWizardEl = popup;
+
+  const pw = 260, ph = Math.min(320, 50 + optionDefs.length * 34);
+  let x = anchorX + 14, y = anchorY + 14;
+  if (x + pw > window.innerWidth)  x = anchorX - pw - 8;
+  if (y + ph > window.innerHeight) y = anchorY - ph - 8;
+  popup.style.left = `${Math.max(8, x)}px`;
+  popup.style.top  = `${Math.max(8, y)}px`;
+
+  setTimeout(() => {
+    connectWizardOutsideCloseHandler = (e) => {
+      if (activeConnectWizardEl && !activeConnectWizardEl.contains(e.target)) closeConnectWizard();
+    };
+    document.addEventListener('click', connectWizardOutsideCloseHandler);
+  }, 0);
+
+  return popup;
+}
+
+/** Step 3: pick the target's In / Out / Main Node, then finish the connection. */
+function openConnectPartPicker(x, y, srcId, srcPart, tgtId, tgtLabel, backTo) {
+  const parts = availableConnectParts(tgtId);
+  buildConnectWizardPopup(
+    x, y,
+    `Connect to ${tgtLabel} at:`,
+    backTo,
+    parts.map(part => ({
+      label: partLabel(part),
+      onClick: () => {
+        connect(srcId, srcPart, tgtId, part);
+        closeConnectWizard();
+      }
+    }))
+  );
+}
+
+/** Step 2: pick which Area within the chosen Kingdom. */
+function openConnectAreaPicker(x, y, srcId, srcPart, kingdomKey, backTo) {
+  const tmpl = sectionTemplate(kingdomKey);
+  if (!tmpl) return;
+  const options = [];
+
+  // Every real Kingdom (not Paintings) can also be connected straight into
+  // its own Main Stage node, same as dragging into open kingdom-panel space.
+  if (kingdomKey !== PAINTINGS_KEY) {
+    options.push({
+      label: `🏠 ${kingdomKey} (Main Stage)`,
+      onClick: () => {
+        const tgtId = `kingdom:${kingdomKey}`;
+        openConnectPartPicker(x, y, srcId, srcPart, tgtId, `${kingdomKey} Main Stage`,
+          () => openConnectAreaPicker(x, y, srcId, srcPart, kingdomKey, backTo));
+      }
+    });
+  }
+
+  Object.keys(tmpl.zones || {}).forEach(zoneName => {
+    const tgtId = kingdomKey === PAINTINGS_KEY
+      ? `zone:${PAINTINGS_KEY}:${zoneName}`
+      : `zone:${kingdomKey}:${zoneName}`;
+    if (!nodes[tgtId]) return; // area not actually placed on the map
+    options.push({
+      label: zoneName,
+      onClick: () => {
+        openConnectPartPicker(x, y, srcId, srcPart, tgtId, zoneName,
+          () => openConnectAreaPicker(x, y, srcId, srcPart, kingdomKey, backTo));
+      }
+    });
+  });
+
+  buildConnectWizardPopup(x, y, `Area in ${kingdomKey}:`, backTo, options);
+}
+
+/** Step 1: pick which Kingdom the connection goes to. */
+function openConnectWizard(event, srcId, srcPart) {
+  const x = event.clientX, y = event.clientY;
+  const kingdomKeys = Object.keys(LOADING_ZONES_TEMPLATE).concat([PAINTINGS_KEY]);
+  const options = kingdomKeys.map(kingdomKey => ({
+    label: kingdomKey,
+    onClick: () => openConnectAreaPicker(x, y, srcId, srcPart, kingdomKey, () => openConnectWizard(event, srcId, srcPart))
+  }));
+  buildConnectWizardPopup(x, y, 'Connect to which Kingdom?', null, options);
+}
+
 function renderConnections() {
   linesLayer.setAttribute('width', canvasW);
   linesLayer.setAttribute('height', canvasH);
@@ -5114,9 +5340,14 @@ function wireNodeEvents(el, id) {
       // (Same-node drops are only meaningful from the mid segment, and only
       // land as a valid connection if canConnect() accepts it -- see there.)
       connect(connecting.id, connecting.part, id, partAtPoint(el, e.clientX));
-    } else if (!moved) {
-      // Plain click → toggle this node's chain highlight
-      toggleNodeHighlight(id);
+    } else if (!moved && connecting) {
+      // Plain click, no drag: open the click-to-connect wizard (Kingdom →
+      // Area → In/Out/Main Node) instead of requiring a drag. The part
+      // clicked on becomes the source side, same as a drag would've used.
+      // Shift+Click keeps the old behavior of highlighting chains through
+      // this node instead, since a plain click is now taken by the wizard.
+      if (e.shiftKey) toggleNodeHighlight(id);
+      else openConnectWizard(e, connecting.id, connecting.part);
     }
   });
 
