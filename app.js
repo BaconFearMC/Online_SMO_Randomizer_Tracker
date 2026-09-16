@@ -153,6 +153,11 @@ const DEFAULT_SETTINGS = {
   sync_username: '',
   sync_password: '',
   sync_user_color: '#4d96ff',
+
+  // ── Unbold (Notes Settings > Custom Font) ───────────────────────
+  // null = automatic (Default font -> bold as normal, any other font ->
+  // auto-unbolded). true/false = the user has explicitly overridden that.
+  bold_text_override: null,
 };
 
 function cloneDefaultSettings() {
@@ -1324,6 +1329,8 @@ function openSettings() {
   document.querySelectorAll('#seg-custom-font .seg-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.value === fontPreset);
   });
+  const boldToggleEl = document.getElementById('toggle-bold-text');
+  if (boldToggleEl) boldToggleEl.checked = state.settings.bold_text_override === true;
 
   // Sync fields
   const syncToggle = document.getElementById('toggle-sync-enabled');
@@ -3463,6 +3470,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ── Sync UI ────────────────────────────────────
   setupSyncUI();
+  relocateSyncSectionIntoSettings();
   setupSyncActivityUI();
   setupCustomFontUI();
   applyCustomFont();
@@ -3717,7 +3725,9 @@ const GOOGLE_FONTS_CATALOG = [
 ];
 
 function loadGoogleFontLink(href, id) {
-  if (document.getElementById(id)) return;
+  const existing = document.getElementById(id);
+  if (existing && existing.href === href) return;
+  if (existing) existing.remove();
   const link = document.createElement('link');
   link.id = id;
   link.rel = 'stylesheet';
@@ -3742,7 +3752,7 @@ function applyCustomFont() {
   } else if (FONT_PRESETS[val]) {
     const preset = FONT_PRESETS[val];
     if (GOOGLE_FONT_PRESET_LINKS[val]) {
-      loadGoogleFontLink(GOOGLE_FONT_PRESET_LINKS[val], 'custom-preset-font-link');
+      loadGoogleFontLink(GOOGLE_FONT_PRESET_LINKS[val], 'custom-preset-font-link-' + val);
     }
     cssFamily = preset.css;
   }
@@ -3752,15 +3762,22 @@ function applyCustomFont() {
   } else {
     document.documentElement.style.removeProperty('--font');
   }
+
+  const boldOverride = state.settings.bold_text_override; // true|false|null
+  const shouldUnbold = (val !== 'default') && boldOverride !== true;
+  document.documentElement.classList.toggle('force-unbold', shouldUnbold);
 }
 
 function setCustomFont(value) {
   state.settings.custom_font = value;
+  if (value === 'default') state.settings.bold_text_override = null;
   saveState();
   applyCustomFont();
   document.querySelectorAll('#seg-custom-font .seg-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.value === (value.indexOf('google:') === 0 ? 'default' : value));
   });
+  const boldToggleEl = document.getElementById('toggle-bold-text');
+  if (boldToggleEl) boldToggleEl.checked = state.settings.bold_text_override === true;
 }
 
 function buildGoogleFontsList(filter) {
@@ -3790,6 +3807,15 @@ function setupCustomFontUI() {
   document.querySelectorAll('#seg-custom-font .seg-btn').forEach(btn => {
     btn.addEventListener('click', () => setCustomFont(btn.dataset.value));
   });
+
+  const boldToggle = document.getElementById('toggle-bold-text');
+  if (boldToggle) {
+    boldToggle.addEventListener('change', (e) => {
+      state.settings.bold_text_override = e.target.checked ? true : (state.settings.custom_font === 'default' ? null : false);
+      saveState();
+      applyCustomFont();
+    });
+  }
 
   const browseBtn = document.getElementById('btn-browse-google-fonts');
   const modal = document.getElementById('google-fonts-modal');
@@ -3945,6 +3971,14 @@ function annotateAndLogOutgoingSync(fullState) {
   return Object.assign({}, fullState, {
     _activity: { user, color, text: change.text, kingdomColor, time: Date.now() }
   });
+}
+
+function relocateSyncSectionIntoSettings() {
+  const section = document.getElementById('sync-section');
+  const mount = document.getElementById('settings-sync-room-mount');
+  if (!section || !mount) return;
+  section.classList.remove('hidden');
+  mount.appendChild(section);
 }
 
 function setupSyncActivityUI() {

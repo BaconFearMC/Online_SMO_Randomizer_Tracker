@@ -32,8 +32,13 @@
     <!-- Moon Rows -->
     <div id="moon-rows"></div>
 
-    <!-- Sync -->
-    <div id="sync-section">
+    <!-- Sync room-code controls. Moved out of the main view - now only
+         reachable via Notes Settings > Sync (see #settings-sync-room-mount
+         below, which relocates this same block into the settings panel on
+         load). Kept as real markup with all its original ids so the existing
+         connect/generate/OBS-url wiring in app.js keeps working unchanged;
+         it's simply not rendered in the main view anymore. -->
+    <div id="sync-section" class="hidden">
       <div id="sync-room-row">
         <input type="password" id="input-room-code" placeholder="Room code" maxlength="12" spellcheck="false">
         <button class="ctrl-btn" id="btn-toggle-visibility" title="Show/hide room code and URL">Show</button>
@@ -469,6 +474,13 @@
               <span>Browse Google Fonts</span>
               <button class="rebind-btn" id="btn-browse-google-fonts">Browse Fonts</button>
             </div>
+            <div class="settings-row settings-subrow">
+              <span>Bold Text</span>
+              <label class="toggle-switch">
+                <input type="checkbox" id="toggle-bold-text">
+                <span class="toggle-track"></span>
+              </label>
+            </div>
           </div>
 
           <!-- Sync moved to bottom of Notes Settings. Enabling it requires a
@@ -477,6 +489,10 @@
                chatbox in the bottom-right corner of the screen. -->
           <div class="settings-subsection" id="subsection-sync">
             <div class="subsection-title">Sync</div>
+            <!-- The actual room-code connect UI (#sync-section) is moved here
+                 from the main view on load - see relocateSyncSectionIntoSettings()
+                 in app.js. -->
+            <div id="settings-sync-room-mount"></div>
             <div class="settings-row">
               <span>Enable Sync</span>
               <label class="toggle-switch">
@@ -519,7 +535,7 @@
 
           <!-- Spoiler Log: gray fill, yellow border.
                Wired up in spoiler-log.js. -->
-          <button class="sys-btn sys-btn-gray-yellow" id="btn-spoiler-log">Spoiler Log</button>
+          <button class="sys-btn sys-btn-gray-yellow sys-tooltip" id="btn-spoiler-log" data-tooltip="This will open a new tab">Spoiler Log</button>
           <input type="file" id="sl-file-input" accept=".txt,text/plain" hidden>
 
           <div class="settings-row">

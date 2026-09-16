@@ -1738,6 +1738,8 @@
 
       saveFullState();
 
+      applyNotesCustomFont();
+
       // Don't steal focus/interrupt typing - if a note box is active, defer
       // the rebuild until the user leaves it (mirrors the 'storage' handler
       // below).
@@ -5219,6 +5221,11 @@
 
       fullState.settings = fresh.settings;
 
+      // Font/bold changes are just a CSS variable + class toggle - always
+      // safe to apply immediately, even mid-typing, since it never touches
+      // the DOM structure or steals focus.
+      applyNotesCustomFont();
+
       // Note-text echoes and unrelated writes (moons, captures, abilities)
       // don't touch our layout ignore them completely so typing is never
       // interrupted.
@@ -5274,6 +5281,65 @@
       alert('Open the main Moon Tracker tab/window to access Settings.');
     });
 
+    // ─────────────────────────────────────────────────────────────────
+    // Custom Font + Unbold (Notes Settings). Mirrors the same logic in
+    // app.js so the font/bold setting applies consistently here too, since
+    // notes.html is its own standalone page (and can be popped out into its
+    // own window) rather than sharing app.js's DOM/script context.
+    // ─────────────────────────────────────────────────────────────────
+    const NOTES_FONT_PRESETS = {
+      default:   null,
+      fredoka:   { family: 'Fredoka One', css: "'Fredoka One', cursive" },
+      luckiest:  { family: 'Luckiest Guy', css: "'Luckiest Guy', cursive" },
+      comicsans: { family: 'Comic Sans MS', css: "'Comic Sans MS', 'Comic Sans', cursive" },
+    };
+    const NOTES_GOOGLE_FONT_PRESET_LINKS = {
+      fredoka: 'https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap',
+      luckiest: 'https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap',
+    };
+    function notesLoadGoogleFontLink(href, id) {
+      const existing = document.getElementById(id);
+      if (existing && existing.href === href) return;
+      if (existing) existing.remove();
+      const link = document.createElement('link');
+      link.id = id;
+      link.rel = 'stylesheet';
+      link.href = href;
+      document.head.appendChild(link);
+    }
+    function notesGoogleFontHref(family) {
+      return 'https://fonts.googleapis.com/css2?family=' + encodeURIComponent(family).replace(/%20/g, '+') + '&display=swap';
+    }
+    function applyNotesCustomFont() {
+      const val = (fullState.settings && fullState.settings.custom_font) || 'default';
+      let cssFamily = null;
+      if (val === 'default') {
+        cssFamily = null;
+      } else if (val.indexOf('google:') === 0) {
+        const family = val.slice('google:'.length);
+        notesLoadGoogleFontLink(notesGoogleFontHref(family), 'custom-google-font-link');
+        cssFamily = `'${family}', sans-serif`;
+      } else if (NOTES_FONT_PRESETS[val]) {
+        const preset = NOTES_FONT_PRESETS[val];
+        if (NOTES_GOOGLE_FONT_PRESET_LINKS[val]) {
+          notesLoadGoogleFontLink(NOTES_GOOGLE_FONT_PRESET_LINKS[val], 'custom-preset-font-link-' + val);
+        }
+        cssFamily = preset.css;
+      }
+      if (cssFamily) {
+        document.documentElement.style.setProperty('--font', cssFamily);
+      } else {
+        document.documentElement.style.removeProperty('--font');
+      }
+
+      // Unbold: Default preserves the site's normal bold styling; any other
+      // font auto-unbolds everything unless the user explicitly turned Bold
+      // Text back on.
+      const boldOverride = fullState.settings && fullState.settings.bold_text_override; // true|false|null
+      const shouldUnbold = (val !== 'default') && boldOverride !== true;
+      document.documentElement.classList.toggle('force-unbold', shouldUnbold);
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
       loadFullState();
       ensureNotesToolbar();
@@ -5281,6 +5347,7 @@
       // layoutMasonryColumns();
       setupScroll();
       setupNotesSync();
+      applyNotesCustomFont();
     });
   </script>
 </body>

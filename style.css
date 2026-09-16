@@ -2782,3 +2782,43 @@ mark.sl-hit-current {
 .google-font-row:hover {
   background: var(--bg-hover);
 }
+
+/* ── Unbold override (Notes Settings > Custom Font > Unbold) ──────────── */
+/* When a non-Default font is chosen, all text is auto-unbolded unless the
+   user explicitly turns Bold Text back on. Toggled via the html.force-unbold
+   class (see applyCustomFont() in app.js / applyNotesCustomFont() in
+   notes.html). !important is needed since bold is set in many scattered,
+   more-specific rules throughout this file. */
+html.force-unbold, html.force-unbold * {
+  font-weight: normal !important;
+}
+
+/* ── Small hover tooltip (e.g. Spoiler Log "opens in a new tab") ──────── */
+.sys-tooltip {
+  position: relative;
+}
+.sys-tooltip::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-card2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 5px 9px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: normal;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.12s ease;
+  z-index: 20;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.35);
+}
+.sys-tooltip:hover::after {
+  opacity: 1;
+  visibility: visible;
+}

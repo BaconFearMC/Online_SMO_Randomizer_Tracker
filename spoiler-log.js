@@ -370,7 +370,7 @@
   // "Spoiler Log" settings button: if we already have a log, just open the
   // modal; otherwise ask for the file first (then the modal opens itself).
   function onSpoilerSettingsClick() {
-    window.location.href = 'https://dadev123.github.io/Rando-Releases/';
+    window.open('https://dadev123.github.io/Rando-Releases/', '_blank', 'noopener');
   }
 
   // =====================================================================
