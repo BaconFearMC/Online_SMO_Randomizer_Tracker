@@ -428,6 +428,241 @@
   }
   .connect-wizard-opt:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
 
+  /* ── Kingdom/Area picker (ported from notes.html's req-picker so the
+     Connect wizard's Kingdom → Area steps look/animate identically to the
+     Notes tab's openKingdomOnlyPicker / openKingdomSubareaPicker). ────── */
+  .req-picker-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0);
+    opacity: 0;
+    pointer-events: none;
+    transition: background .22s ease, opacity .2s ease;
+  }
+  .req-picker-overlay.active {
+    background: rgba(0,0,0,.45);
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .req-picker-popup {
+    position: relative;
+    background: linear-gradient(160deg, rgba(38,38,38,.62), rgba(26,26,26,.62));
+    backdrop-filter: blur(14px) saturate(1.2);
+    -webkit-backdrop-filter: blur(14px) saturate(1.2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: min(96vw, 1200px);
+    height: min(94vh, 960px);
+    z-index: 10000;
+    box-shadow: 0 10px 60px rgba(0,0,0,.65);
+    transform: scale(.35) rotate(-6deg);
+    opacity: 0;
+    transition: transform .22s cubic-bezier(.55,0,.85,.35), opacity .18s ease;
+  }
+  .req-picker-overlay.active .req-picker-popup {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+    transition: transform .5s cubic-bezier(.22,1.8,.36,1), opacity .28s ease;
+  }
+  .req-picker-popup--scroll { overflow-y: auto !important; }
+  .req-picker-popup--scroll .req-picker-grid { overflow: visible; max-height: none; }
+  .req-picker-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .req-picker-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: 0.02em;
+  }
+  .req-picker-close {
+    height: 32px;
+    width: 32px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--bg-card2);
+    color: var(--text-dim);
+    font-family: var(--font);
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, transform 0.2s, border-color 0.15s;
+  }
+  .req-picker-close:hover {
+    background: var(--red);
+    border-color: var(--red);
+    color: #fff;
+    transform: rotate(90deg);
+  }
+  .req-picker-search {
+    flex: 0 0 34px;
+    height: 34px;
+    padding: 0 10px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--bg-card2);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 0.88rem;
+    width: 100%;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+  .req-picker-search:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
+  }
+  .req-picker-grid {
+    display: grid;
+    grid-template-columns: repeat(var(--req-picker-cols, 6), 1fr);
+    grid-template-rows: repeat(var(--req-picker-rows, 4), 1fr);
+    gap: 8px;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 4px 6px 4px 2px;
+  }
+  .req-picker-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4%;
+    padding: 6% 4%;
+    border-radius: 10px;
+    border: 2px solid var(--border);
+    background: var(--bg-card2);
+    cursor: pointer;
+    min-height: 0;
+    min-width: 0;
+    position: relative;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+  }
+  .req-picker-item:hover { transform: translateY(-3px) scale(1.05); }
+  .req-picker-item:active { transform: translateY(-1px) scale(0.98); }
+  .req-picker-item img {
+    height: 60%;
+    width: auto;
+    max-width: 90%;
+    flex: 1 1 auto;
+    min-height: 0;
+    object-fit: contain;
+    border-radius: 6px;
+    padding: 4%;
+    box-sizing: border-box;
+    transition: transform 0.18s ease;
+  }
+  .req-picker-item span {
+    font-size: clamp(0.55rem, 1.6vw, 0.72rem);
+    color: var(--text-dim);
+    text-align: center;
+    line-height: 1.15;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .req-picker-item.selected span { color: var(--text); font-weight: 600; }
+  .req-picker-item--kingdom {
+    background: linear-gradient(160deg, color-mix(in srgb, var(--kingdom-color, var(--accent)) 18%, transparent), transparent);
+    border-color: color-mix(in srgb, var(--kingdom-color, var(--accent)) 40%, transparent);
+  }
+  .req-picker-item--kingdom:hover {
+    border-color: var(--kingdom-color, var(--accent));
+    box-shadow: 0 6px 18px color-mix(in srgb, var(--kingdom-color, var(--accent)) 30%, transparent);
+  }
+  .req-picker-item--kingdom.selected {
+    background: color-mix(in srgb, var(--kingdom-color, var(--accent)) 26%, transparent);
+    border-color: var(--kingdom-color, var(--accent));
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--kingdom-color, var(--accent)) 28%, transparent),
+                0 6px 20px color-mix(in srgb, var(--kingdom-color, var(--accent)) 25%, transparent);
+  }
+  .req-picker-item--kingdom img { background: rgba(255,255,255,.07); }
+  .req-picker-item--capture {
+    background: linear-gradient(160deg, rgba(248,246,240,.12), rgba(248,246,240,.04));
+    border-color: rgba(248,246,240,.3);
+  }
+  .req-picker-item--capture:hover {
+    border-color: color-mix(in srgb, var(--kingdom-color, var(--accent)) 70%, white);
+    box-shadow: 0 6px 18px rgba(248,246,240,.2);
+  }
+  .req-picker-item--capture.selected {
+    background: rgba(248,246,240,.18);
+    border-color: color-mix(in srgb, var(--kingdom-color, var(--accent)) 70%, white);
+    box-shadow: 0 0 0 3px rgba(248,246,240,.2), 0 6px 20px rgba(248,246,240,.25);
+  }
+  .req-picker-item--capture img { background: rgba(255,255,255,.07); }
+  .req-picker-empty {
+    grid-column: 1 / -1;
+    text-align: center;
+    font-size: 0.9rem;
+    color: var(--text-dim);
+    padding: 24px 0;
+  }
+  .req-picker-item--broken-icon img { visibility: hidden; }
+  .req-picker-item--broken-icon::before {
+    content: '?';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--text-dim);
+  }
+  /* Kingdom-arrival subarea picker (Area step): name chip above icon,
+     same treatment as notes.html's .req-picker-overlay--subarea. */
+  .req-picker-overlay--subarea .req-picker-item {
+    display: flex !important;
+    flex-direction: column-reverse !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+  }
+  .req-picker-overlay--subarea .req-picker-item span {
+    display: inline-block !important;
+    order: -1 !important;
+    margin-bottom: 8px !important;
+    padding: 5px 12px !important;
+    border-radius: 999px !important;
+    font-weight: 700 !important;
+    font-size: 1rem !important;
+    color: var(--kingdom-color, #fff) !important;
+    background: color-mix(in srgb, var(--kingdom-color, #888) 16%, transparent) !important;
+    border: 1px solid color-mix(in srgb, var(--kingdom-color, #888) 55%, transparent) !important;
+    text-shadow: none !important;
+    opacity: 1 !important;
+    line-height: 1.3;
+  }
+  .req-picker-overlay--subarea .req-picker-item img {
+    flex: 0 0 auto !important;
+    width: 78% !important;
+    height: 78% !important;
+    max-width: none !important;
+    max-height: none !important;
+    aspect-ratio: 1 / 1;
+    object-fit: contain;
+  }
+  @keyframes click-bounce {
+    0%   { transform: scale(1); }
+    35%  { transform: scale(0.9); }
+    65%  { transform: scale(1.08); }
+    100% { transform: scale(1); }
+  }
+  .click-bounce { animation: click-bounce 0.32s cubic-bezier(.34,1.56,.64,1); }
+
   /* ── Arrow chain tooltip (hover label) ──────────────────────── */
   #arrow-chain-tooltip {
     position: fixed;
@@ -4402,6 +4637,278 @@ function availableConnectParts(id) {
   return [PART_IN, PART_OUT, PART_MID];
 }
 
+/** Shared click-bounce feedback, matching notes.html's bounce(). */
+function bounce(el) {
+  if (!el) return;
+  el.classList.remove('click-bounce');
+  void el.offsetWidth;
+  el.classList.add('click-bounce');
+}
+
+/**
+ * Sizes a picker's icon grid to exactly fill its box for the given item
+ * count (same algorithm as notes.html's fitPickerGrid, so both apps'
+ * pickers grid-fit identically).
+ */
+function fitPickerGrid(grid, itemCount, minCell) {
+  if (!itemCount) itemCount = 1;
+  const w = grid.clientWidth || 1;
+  const h = grid.clientHeight || 1;
+  const gap = 8;
+  if (!minCell) minCell = 70;
+  const maxCols = Math.max(1, Math.floor((w + gap) / (minCell + gap)));
+
+  let best = null;
+  for (let cols = 1; cols <= maxCols; cols++) {
+    const rows = Math.ceil(itemCount / cols);
+    const cellW = (w - gap * (cols - 1)) / cols;
+    const cellH = (h - gap * (rows - 1)) / rows;
+    if (cellW < minCell || cellH < minCell * 0.75) continue;
+    const emptyCells = rows * cols - itemCount;
+    const aspect = Math.max(cellW / cellH, cellH / cellW);
+    const score = emptyCells * 1000 + aspect;
+    if (!best || score < best.score) best = { cols, rows, score };
+  }
+  if (!best) best = { cols: maxCols, rows: Math.ceil(itemCount / maxCols) };
+
+  grid.style.setProperty('--req-picker-cols', best.cols);
+  grid.style.setProperty('--req-picker-rows', best.rows);
+}
+
+/** Subarea/zone icon path, same convention as notes.html's kingdomSubareaIconSrc. */
+function subareaIconSlug(text) {
+  return (text || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+function connectZoneIconSrc(kingdomKey, zoneName) {
+  const kSlug = subareaIconSlug(kingdomKey);
+  const zSlug = subareaIconSlug(zoneName);
+  return 'assets/kingdomsubicons/' + kSlug + zSlug + '.png';
+}
+
+/**
+ * Full-screen Kingdom picker, visually and behaviorally identical to
+ * notes.html's openKingdomOnlyPicker (same .req-picker-overlay/-popup/
+ * -header/-search/-grid classes, same fitPickerGrid sizing, same open/close
+ * animation, Escape/outside-click to cancel). Search box filters by name.
+ * Calls onPick(kingdomKey) once, then closes.
+ */
+function openConnectKingdomPicker(kingdomKeys, headerText, onPick, onCancel) {
+  document.querySelectorAll('.req-picker-overlay').forEach(p => p.remove());
+
+  const overlay = document.createElement('div');
+  overlay.className = 'req-picker-overlay';
+  const popup = document.createElement('div');
+  popup.className = 'req-picker-popup req-picker-popup--scroll';
+  popup.addEventListener('click', (e) => e.stopPropagation());
+  overlay.appendChild(popup);
+
+  const header = document.createElement('div');
+  header.className = 'req-picker-header';
+  const title = document.createElement('div');
+  title.className = 'req-picker-title';
+  title.textContent = headerText;
+  const closeBtn = document.createElement('button');
+  closeBtn.type = 'button';
+  closeBtn.className = 'req-picker-close';
+  closeBtn.textContent = '✕';
+  closeBtn.title = 'Close';
+  closeBtn.addEventListener('click', () => closePicker());
+  header.appendChild(title);
+  header.appendChild(closeBtn);
+  popup.appendChild(header);
+
+  const search = document.createElement('input');
+  search.type = 'text';
+  search.className = 'req-picker-search';
+  search.placeholder = 'Search…';
+  popup.appendChild(search);
+
+  const grid = document.createElement('div');
+  grid.className = 'req-picker-grid';
+  popup.appendChild(grid);
+
+  function render() {
+    grid.innerHTML = '';
+    const q = search.value.trim().toLowerCase();
+    const list = q ? kingdomKeys.filter(k => k.toLowerCase().includes(q)) : kingdomKeys;
+    fitPickerGrid(grid, list.length);
+    if (!list.length) {
+      const empty = document.createElement('div');
+      empty.className = 'req-picker-empty';
+      empty.textContent = 'No matches';
+      grid.appendChild(empty);
+      return;
+    }
+    list.forEach(kingdomKey => {
+      const tmpl = sectionTemplate(kingdomKey);
+      const cell = document.createElement('button');
+      cell.type = 'button';
+      cell.className = 'req-picker-item req-picker-item--kingdom';
+      if (tmpl && tmpl.color) cell.style.setProperty('--kingdom-color', tmpl.color);
+      const img = document.createElement('img');
+      img.src = kingdomKey === PAINTINGS_KEY ? 'assets/Painting.png' : `assets/${tmpl.icon}`;
+      img.alt = kingdomKey;
+      img.addEventListener('error', () => {
+        cell.classList.add('req-picker-item--broken-icon');
+      }, { once: true });
+      const label = document.createElement('span');
+      label.textContent = kingdomKey;
+      cell.appendChild(img);
+      cell.appendChild(label);
+      cell.addEventListener('click', () => {
+        bounce(cell);
+        onPick(kingdomKey);
+        closePicker();
+      });
+      grid.appendChild(cell);
+    });
+  }
+
+  search.addEventListener('input', render);
+  document.body.appendChild(overlay);
+  render();
+  requestAnimationFrame(render);
+  const onResize = () => render();
+  window.addEventListener('resize', onResize);
+
+  function onKeyDown(e) { if (e.key === 'Escape') closePicker(); }
+  function closePicker() {
+    overlay.classList.remove('active');
+    document.removeEventListener('keydown', onKeyDown);
+    window.removeEventListener('resize', onResize);
+    setTimeout(() => overlay.remove(), 230);
+    if (onCancel) onCancel();
+  }
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) closePicker(); });
+  document.addEventListener('keydown', onKeyDown);
+
+  void overlay.offsetWidth;
+  requestAnimationFrame(() => overlay.classList.add('active'));
+  search.focus();
+
+  return { close: () => { onCancel = null; closePicker(); } };
+}
+
+/**
+ * Full-screen Area picker for one Kingdom, visually and behaviorally
+ * identical to notes.html's openKingdomSubareaPicker (same
+ * .req-picker-overlay--subarea treatment: name chip above icon, same
+ * fitPickerGrid sizing, same animation). Includes a "Main Stage" option
+ * (Painting kingdoms excluded) alongside every placed Area/zone node.
+ * Calls onPick(areaLabel, tgtId) once, then closes.
+ */
+function openConnectAreaPickerFullscreen(kingdomKey, headerText, onPick, onCancel) {
+  document.querySelectorAll('.req-picker-overlay').forEach(p => p.remove());
+
+  const tmpl = sectionTemplate(kingdomKey);
+  const zoneNames = tmpl ? Object.keys(tmpl.zones || {}).filter(zoneName => {
+    const tgtId = `zone:${kingdomKey}:${zoneName}`;
+    return !!nodes[tgtId];
+  }) : [];
+
+  const items = [];
+  if (kingdomKey !== PAINTINGS_KEY) {
+    items.push({ label: `${kingdomKey} (Main Stage)`, tgtId: `kingdom:${kingdomKey}`, isMain: true });
+  }
+  zoneNames.forEach(zoneName => {
+    items.push({ label: zoneName, tgtId: `zone:${kingdomKey}:${zoneName}`, isMain: false });
+  });
+
+  const overlay = document.createElement('div');
+  overlay.className = 'req-picker-overlay req-picker-overlay--subarea';
+  const popup = document.createElement('div');
+  popup.className = 'req-picker-popup req-picker-popup--scroll';
+  popup.addEventListener('click', (e) => e.stopPropagation());
+  overlay.appendChild(popup);
+
+  const header = document.createElement('div');
+  header.className = 'req-picker-header';
+  const title = document.createElement('div');
+  title.className = 'req-picker-title';
+  title.textContent = headerText;
+  const closeBtn = document.createElement('button');
+  closeBtn.type = 'button';
+  closeBtn.className = 'req-picker-close';
+  closeBtn.textContent = '✕';
+  closeBtn.title = 'Close';
+  closeBtn.addEventListener('click', () => closePicker());
+  header.appendChild(title);
+  header.appendChild(closeBtn);
+  popup.appendChild(header);
+
+  const search = document.createElement('input');
+  search.type = 'text';
+  search.className = 'req-picker-search';
+  search.placeholder = 'Search…';
+  popup.appendChild(search);
+
+  const grid = document.createElement('div');
+  grid.className = 'req-picker-grid';
+  popup.appendChild(grid);
+
+  function render() {
+    grid.innerHTML = '';
+    const q = search.value.trim().toLowerCase();
+    const list = q ? items.filter(it => it.label.toLowerCase().includes(q)) : items;
+    fitPickerGrid(grid, list.length);
+    if (!list.length) {
+      const empty = document.createElement('div');
+      empty.className = 'req-picker-empty';
+      empty.textContent = 'No matches';
+      grid.appendChild(empty);
+      return;
+    }
+    list.forEach(it => {
+      const cell = document.createElement('button');
+      cell.type = 'button';
+      cell.className = 'req-picker-item req-picker-item--capture';
+      if (tmpl && tmpl.color) cell.style.setProperty('--kingdom-color', tmpl.color);
+      const img = document.createElement('img');
+      img.src = it.isMain
+        ? (kingdomKey === PAINTINGS_KEY ? 'assets/Painting.png' : `assets/${tmpl.icon}`)
+        : connectZoneIconSrc(kingdomKey, it.label);
+      img.alt = it.label;
+      img.addEventListener('error', () => {
+        cell.classList.add('req-picker-item--broken-icon');
+      }, { once: true });
+      const label = document.createElement('span');
+      label.textContent = it.label;
+      cell.appendChild(img);
+      cell.appendChild(label);
+      cell.addEventListener('click', () => {
+        bounce(cell);
+        onPick(it.label, it.tgtId);
+        closePicker();
+      });
+      grid.appendChild(cell);
+    });
+  }
+
+  search.addEventListener('input', render);
+  document.body.appendChild(overlay);
+  render();
+  requestAnimationFrame(render);
+  const onResize = () => render();
+  window.addEventListener('resize', onResize);
+
+  function onKeyDown(e) { if (e.key === 'Escape') closePicker(); }
+  function closePicker() {
+    overlay.classList.remove('active');
+    document.removeEventListener('keydown', onKeyDown);
+    window.removeEventListener('resize', onResize);
+    setTimeout(() => overlay.remove(), 230);
+    if (onCancel) onCancel();
+  }
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) closePicker(); });
+  document.addEventListener('keydown', onKeyDown);
+
+  void overlay.offsetWidth;
+  requestAnimationFrame(() => overlay.classList.add('active'));
+  search.focus();
+
+  return { close: () => { onCancel = null; closePicker(); } };
+}
+
 /** Builds the popup shell (header + optional back button + option list). */
 function buildConnectWizardPopup(anchorX, anchorY, headerText, onBack, optionDefs) {
   closeConnectWizard();
@@ -4473,51 +4980,63 @@ function openConnectPartPicker(x, y, srcId, srcPart, tgtId, tgtLabel, backTo) {
   );
 }
 
-/** Step 2: pick which Area within the chosen Kingdom. */
-function openConnectAreaPicker(x, y, srcId, srcPart, kingdomKey, backTo) {
-  const tmpl = sectionTemplate(kingdomKey);
-  if (!tmpl) return;
-  const options = [];
-
-  // Every real Kingdom (not Paintings) can also be connected straight into
-  // its own Main Stage node, same as dragging into open kingdom-panel space.
-  if (kingdomKey !== PAINTINGS_KEY) {
-    options.push({
-      label: `🏠 ${kingdomKey} (Main Stage)`,
-      onClick: () => {
-        const tgtId = `kingdom:${kingdomKey}`;
-        openConnectPartPicker(x, y, srcId, srcPart, tgtId, `${kingdomKey} Main Stage`,
-          () => openConnectAreaPicker(x, y, srcId, srcPart, kingdomKey, backTo));
-      }
-    });
-  }
-
-  Object.keys(tmpl.zones || {}).forEach(zoneName => {
-    const tgtId = kingdomKey === PAINTINGS_KEY
-      ? `zone:${PAINTINGS_KEY}:${zoneName}`
-      : `zone:${kingdomKey}:${zoneName}`;
-    if (!nodes[tgtId]) return; // area not actually placed on the map
-    options.push({
-      label: zoneName,
-      onClick: () => {
-        openConnectPartPicker(x, y, srcId, srcPart, tgtId, zoneName,
-          () => openConnectAreaPicker(x, y, srcId, srcPart, kingdomKey, backTo));
-      }
-    });
-  });
-
-  buildConnectWizardPopup(x, y, `Area in ${kingdomKey}:`, backTo, options);
+/**
+ * Step 2: pick which Area within the chosen Kingdom, using the same
+ * full-screen picker UI as the Notes tab's openKingdomSubareaPicker (see
+ * openConnectAreaPickerFullscreen above) instead of the small anchored
+ * option-list popup. Landing on an Area still continues into the existing
+ * Step 3 (In/Out/Main Node) small popup, anchored back at the original
+ * click position.
+ */
+/**
+ * True if `tgtId` has only one node worth offering as a connection target:
+ * a dead-end area (In only - Main Node isn't a second meaningful option
+ * there) or any unsegmented node (Kingdom/Painting Main Stage, which only
+ * ever has Main Node). Everything else (normal areas: In/Out/Main) has
+ * multiple real options and still goes through the picker.
+ */
+function singleValidPart(tgtId) {
+  const parts = availableConnectParts(tgtId);
+  if (parts.length === 1) return parts[0];
+  if (DEAD_END_IDS.has(tgtId)) return PART_IN;
+  return null;
 }
 
-/** Step 1: pick which Kingdom the connection goes to. */
+function openConnectAreaPicker(x, y, srcId, srcPart, kingdomKey) {
+  openConnectAreaPickerFullscreen(
+    kingdomKey,
+    `Which ${kingdomKey} area?`,
+    (areaLabel, tgtId) => {
+      const tgtLabel = areaLabel === `${kingdomKey} (Main Stage)` ? `${kingdomKey} Main Stage` : areaLabel;
+      const onlyPart = singleValidPart(tgtId);
+      if (onlyPart !== null) {
+        // Only one possible node for this area: connect directly, no
+        // In/Out/Main Node step. Skip if that exact connection already exists.
+        if (!findEdge(srcId, srcPart, tgtId, onlyPart)) {
+          connect(srcId, srcPart, tgtId, onlyPart);
+        }
+        closeConnectWizard();
+        return;
+      }
+      openConnectPartPicker(x, y, srcId, srcPart, tgtId, tgtLabel, null);
+    }
+  );
+}
+
+/**
+ * Step 1: pick which Kingdom the connection goes to, using the same
+ * full-screen picker UI as the Notes tab's Kingdom picker (see
+ * openConnectKingdomPicker above) instead of the small anchored
+ * option-list popup.
+ */
 function openConnectWizard(event, srcId, srcPart) {
   const x = event.clientX, y = event.clientY;
   const kingdomKeys = Object.keys(LOADING_ZONES_TEMPLATE).concat([PAINTINGS_KEY]);
-  const options = kingdomKeys.map(kingdomKey => ({
-    label: kingdomKey,
-    onClick: () => openConnectAreaPicker(x, y, srcId, srcPart, kingdomKey, () => openConnectWizard(event, srcId, srcPart))
-  }));
-  buildConnectWizardPopup(x, y, 'Connect to which Kingdom?', null, options);
+  openConnectKingdomPicker(
+    kingdomKeys,
+    'Connect to which Kingdom?',
+    (kingdomKey) => openConnectAreaPicker(x, y, srcId, srcPart, kingdomKey)
+  );
 }
 
 function renderConnections() {
