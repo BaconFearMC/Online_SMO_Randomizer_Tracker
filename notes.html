@@ -1376,6 +1376,7 @@
       notes_columns: 1,            // vertical-mode kingdoms side-by-side (1|2|3)
       notes_compact: true,         // tighter spacing + shorter note boxes
       show_painting_notes: true,   // Paintings notes column (before Cascade); default on
+      extra_paintings: false,      // Extra Paintings: adds every Kingdom (except Deep Woods & Darker Side) to the Painting Tracker; default off
       show_kingdomsubicons: true,  // Small kingdom+subarea icon next to each zone's name; default on
       hide_useless_captures: true, // Hide the "Useless Captures for Sale" column in the Items For Sale picker; default on
       useless_capture_keys: null,  // null = use APC.USELESS_CAPTURE_DEFAULT_KEYS; else the user's saved list (Notes Settings > Edit List)
@@ -1528,6 +1529,17 @@
     const PAINTINGS_NOTES_KEY = 'Paintings';
     const PAINTING_NOTE_KINGDOMS = ['Cascade','Sand','Lake','Wooded','Metro','Snow','Seaside','Luncheon',"Bowser's",'Mushroom'];
 
+    // Extra Paintings (Settings toggle): adds every other Kingdom except Deep
+    // Woods & Darker Side, in this exact order. Kept separate from
+    // PAINTING_NOTE_KINGDOMS (the always-on default set) so turning the
+    // setting off cleanly drops back to the base list.
+    const EXTRA_PAINTING_KINGDOMS = ['Cap','Cascade','Sand','Lake','Wooded','Cloud','Lost','Metro','Snow','Seaside','Luncheon','Ruined',"Bowser's",'Moon','Mushroom','Darkside'];
+
+    /** Active list of painting rows: base set, or the full Extra Paintings set when on. */
+    function activePaintingKingdoms() {
+      return fullState.settings.extra_paintings ? EXTRA_PAINTING_KINGDOMS : PAINTING_NOTE_KINGDOMS;
+    }
+
     // Extra Shops that only live in the Paintings column (not real
     // in-loading-zone gates, so they never show up in the Kingdom tab's
     // "Shop" picker on a zone - see PAINTING_SHOP_ENTRIES/`paintingOnly` in
@@ -1645,7 +1657,7 @@
         fullState.kingdom_collapsed[PAINTINGS_NOTES_KEY] = false;
       }
       if (!fullState.painting_notes) fullState.painting_notes = {};
-      PAINTING_NOTE_KINGDOMS.forEach(k => {
+      EXTRA_PAINTING_KINGDOMS.forEach(k => {
         if (!(k in fullState.painting_notes)) fullState.painting_notes[k] = '';
       });
       if (!fullState.painting_destinations) fullState.painting_destinations = {};
@@ -2288,7 +2300,7 @@
       const zonesRoot = document.createElement('div');
       zonesRoot.className = 'zones-container';
 
-      PAINTING_NOTE_KINGDOMS.forEach(kingdom => {
+      activePaintingKingdoms().forEach(kingdom => {
         if (!(kingdom in fullState.painting_notes)) fullState.painting_notes[kingdom] = '';
         const kd = LOADING_ZONES_TEMPLATE[kingdom] || { color: '#e6e6ee' };
         const row = document.createElement('div');
@@ -2339,7 +2351,7 @@
               }
               saveFullState();
               renderDestChip();
-            });
+            }, kingdom); // excludeKey: this Painting can't lead to itself
           });
           reqsWrap.appendChild(addBtn);
           // Area name always sits immediately to the right of the + button,
@@ -3377,7 +3389,13 @@
     ]);
     const PAINTING_DEST_KINGDOMS = APC.KINGDOMS.filter(k => !PAINTING_DEST_EXCLUDED_KINGDOMS.has(k.key));
 
-    function openKingdomOnlyPicker(currentKey, onPick) {
+    // Extra Paintings destination list: every Kingdom Extra Paintings adds is a
+    // valid destination too (Deep Woods/Darker Side never appear either way).
+    const PAINTING_DEST_KINGDOMS_EXTRA = APC.KINGDOMS.filter(k => EXTRA_PAINTING_KINGDOMS.includes(k.key));
+
+    // `excludeKey`: the Painting's own kingdom is never a valid destination for
+    // itself (e.g. Cascade's + button never offers "Cascade").
+    function openKingdomOnlyPicker(currentKey, onPick, excludeKey) {
       document.querySelectorAll('.req-picker-overlay').forEach(p => p.remove());
 
       const overlay = document.createElement('div');
@@ -3408,7 +3426,8 @@
 
       function render() {
         grid.innerHTML = '';
-        const list = PAINTING_DEST_KINGDOMS;
+        const baseList = fullState.settings.extra_paintings ? PAINTING_DEST_KINGDOMS_EXTRA : PAINTING_DEST_KINGDOMS;
+        const list = excludeKey ? baseList.filter(k => k.key !== excludeKey) : baseList;
         fitPickerGrid(grid, list.length);
         if (!list.length) {
           const empty = document.createElement('div');
@@ -5209,7 +5228,7 @@
     // notes LAYOUT changed, and never yank focus out of a note mid-edit.
     const NOTES_LAYOUT_KEYS = [
       'notes_layout', 'notes_columns', 'notes_compact',
-      'show_painting_notes', 'show_kingdom_moon', 'zone_names',
+      'show_painting_notes', 'extra_paintings', 'show_kingdom_moon', 'zone_names',
       'show_kingdomsubicons',
     ];
 

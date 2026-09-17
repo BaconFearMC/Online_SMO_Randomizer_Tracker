@@ -128,6 +128,7 @@ const DEFAULT_SETTINGS = {
   notes_columns: 2,            // kingdoms side-by-side in vertical mode (1 | 2 | 3)
   notes_compact: false,        // tighter spacing + shorter note boxes
   show_painting_notes: true,   // Paintings notes column (before Cascade); default on
+  extra_paintings: false,      // Extra Paintings: adds every Kingdom (except Deep Woods & Darker Side) to the Painting Tracker; default off
   show_kingdomsubicons: true,  // Small kingdom+subarea icon next to each zone's name in Notes; default on
   hide_useless_captures: true, // Hide the "Useless Captures for Sale" column in the Items For Sale picker; default on
   useless_capture_keys: null,  // null = use APC.USELESS_CAPTURE_DEFAULT_KEYS; else the user's saved list (from Notes Settings > Edit List), including an explicitly-saved empty array
@@ -343,6 +344,7 @@ const TOGGLE_SETTINGS = [
   { id: 'toggle-cap-obs', key: 'show_cap_obs' },
   { id: 'toggle-moon-updater', key: 'show_moon_updater' },
   { id: 'toggle-painting-notes', key: 'show_painting_notes' },
+  { id: 'toggle-extra-paintings', key: 'extra_paintings' },
   { id: 'toggle-kingdomsubicons', key: 'show_kingdomsubicons' },
   { id: 'toggle-hide-useless-captures', key: 'hide_useless_captures' },
   { id: 'toggle-merge-vines', key: 'merge_deep_woods_vines' },
@@ -464,6 +466,15 @@ const KINGDOM_ROW_SETTING_KEYS = new Set(
 const PAINTINGS_NOTES_KEY = 'Paintings';
 const PAINTING_NOTE_KINGDOMS = ['Cascade','Sand','Lake','Wooded','Metro','Snow','Seaside','Luncheon',"Bowser's",'Mushroom'];
 
+// Extra Paintings (Settings toggle): every Kingdom except Deep Woods & Darker
+// Side, in this exact order. See activePaintingKingdoms().
+const EXTRA_PAINTING_KINGDOMS = ['Cap','Cascade','Sand','Lake','Wooded','Cloud','Lost','Metro','Snow','Seaside','Luncheon','Ruined',"Bowser's",'Moon','Mushroom','Darkside'];
+
+/** Active list of painting rows: base set, or the full Extra Paintings set when on. */
+function activePaintingKingdoms() {
+  return state.settings.extra_paintings ? EXTRA_PAINTING_KINGDOMS : PAINTING_NOTE_KINGDOMS;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // State
 // ─────────────────────────────────────────────────────────────────────────────
@@ -496,7 +507,7 @@ function getDefaultState() {
     apc: { captures: {}, abilities: {} },
     loading_zones: buildDefaultLoadingZones(),
     // Painting tracker notes (one free-text box per kingdom, no moons)
-    painting_notes: Object.fromEntries(PAINTING_NOTE_KINGDOMS.map(k => [k, ''])),
+    painting_notes: Object.fromEntries(EXTRA_PAINTING_KINGDOMS.map(k => [k, ''])),
     kingdom_collapsed: Object.fromEntries(
       [...Object.keys(LOADING_ZONES_TEMPLATE), PAINTINGS_NOTES_KEY].map(k => [k, false])),
   };
@@ -2151,7 +2162,7 @@ function buildPaintingNotesColumn() {
   const zonesRoot = document.createElement('div');
   zonesRoot.className = 'zones-container';
 
-  PAINTING_NOTE_KINGDOMS.forEach(kingdom => {
+  activePaintingKingdoms().forEach(kingdom => {
     if (!(kingdom in state.painting_notes)) state.painting_notes[kingdom] = '';
     const kd = LOADING_ZONES_TEMPLATE[kingdom] || { color: '#e6e6ee' };
     const row = document.createElement('div');
@@ -3533,7 +3544,8 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       // Painting notes column is added/removed, so rebuild the notes if open.
-      if (key === 'show_painting_notes') {
+      // Extra Paintings changes which rows appear inside that column too.
+      if (key === 'show_painting_notes' || key === 'extra_paintings') {
         const lzModal = document.getElementById('lz-modal');
         if (lzModal && !lzModal.classList.contains('hidden')) buildLoadingZonesContent();
       }

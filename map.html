@@ -428,6 +428,54 @@
   }
   .connect-wizard-opt:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
 
+  /* ── Node right-click context menu (Delete) ─────────────────────── */
+  .node-context-menu {
+    position: fixed;
+    z-index: 1001;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 4px;
+    box-shadow: 0 8px 28px rgba(0,0,0,0.55);
+    min-width: 130px;
+  }
+  .node-context-menu-item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 0.82rem;
+    padding: 7px 10px;
+    cursor: pointer;
+  }
+  .node-context-menu-item:hover { background: var(--bg-hover); }
+  .node-context-menu-item.danger { color: #ff6b6b; }
+  .node-context-menu-item.danger:hover { background: rgba(255,107,107,0.15); }
+
+  /* ── Kingdom isolate (right-click a Kingdom node) ────────────────── */
+  @keyframes kingdom-isolate-shake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-4px); }
+    40% { transform: translateX(4px); }
+    60% { transform: translateX(-3px); }
+    80% { transform: translateX(3px); }
+  }
+  .cluster-bg.kingdom-isolated {
+    animation: kingdom-isolate-shake 0.4s ease;
+    outline: 3px solid var(--accent, #6c8cff);
+    outline-offset: 2px;
+    z-index: 5;
+  }
+  .cluster-bg.kingdom-dimmed,
+  .map-node.kingdom-dimmed {
+    opacity: 0.12;
+    pointer-events: none;
+  }
+  .conn-line.kingdom-dimmed { opacity: 0.08; }
+
   /* ── Kingdom/Area picker (ported from notes.html's req-picker so the
      Connect wizard's Kingdom → Area steps look/animate identically to the
      Notes tab's openKingdomOnlyPicker / openKingdomSubareaPicker). ────── */
@@ -961,6 +1009,13 @@
   .map-node .node-seg-in  { border-right: 1px solid; }
   .map-node .node-seg-out { border-left:  1px solid; }
 
+  /* ── Hover highlight: which part (in/out/main) a click would connect ── */
+  .map-node .node-seg.part-hover,
+  .map-node .node-label.part-hover {
+    background: rgba(255,255,255,0.22);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.5);
+  }
+
   /* ── Decouple: per-node move handle ──────────────────────────── */
   .node-move-handle {
     position: absolute;
@@ -999,6 +1054,70 @@
   }
 
   /* ── Zoom control ───────────────────────────────────────────── */
+  /* ── Chain search button (above Zoom control) ──────────────────── */
+  #chain-search-btn {
+    position: absolute;
+    bottom: 52px; right: 14px;
+    width: 34px; height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(36,36,36,0.90);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background 0.12s, border-color 0.12s;
+  }
+  #chain-search-btn:hover { background: var(--bg-hover); border-color: var(--accent); }
+  #chain-search-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  #canvas.chain-search-mode .map-node { cursor: crosshair; }
+
+  /* ── Chain trace results popup ──────────────────────────────────── */
+  .chain-trace-popup {
+    position: fixed;
+    right: 14px;
+    bottom: 96px;
+    z-index: 1000;
+    width: min(340px, 90vw);
+    max-height: 60vh;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: 0 8px 28px rgba(0,0,0,0.55);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .chain-trace-popup.hidden { display: none; }
+  .chain-trace-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.85rem;
+    font-weight: bold;
+  }
+  .chain-trace-body {
+    padding: 8px 10px;
+    overflow-y: auto;
+    font-size: 0.82rem;
+    line-height: 1.5;
+  }
+  .chain-trace-empty { color: var(--text-dim); font-style: italic; }
+  .chain-trace-step {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 0;
+  }
+  .chain-trace-step + .chain-trace-step { border-top: 1px dashed var(--border); }
+  .chain-trace-step-label { flex: 1; }
+  .chain-trace-arrow { color: var(--text-dim); }
+
   #zoom-control {
     position: absolute;
     bottom: 10px; right: 14px;
@@ -1710,6 +1829,7 @@
           <svg id="lines-layer"></svg>
         </div>
         <div id="author-credit">Made by FireRisingRaging and gmo7</div>
+        <button type="button" id="chain-search-btn" title="Trace what leads to a node">🔍</button>
         <div id="zoom-control">
           <input id="zoom-slider" type="range" min="60" max="120" value="80" step="1" title="Zoom">
           <span id="zoom-readout" title="Click to type a zoom value">80%</span>
@@ -1718,6 +1838,15 @@
       </div>
     </div>
   </div>
+</div>
+
+<!-- Trace results popup (chain-search) -->
+<div id="chain-trace-popup" class="chain-trace-popup hidden">
+  <div class="chain-trace-header">
+    <span id="chain-trace-title">Trace</span>
+    <button type="button" id="chain-trace-close" class="req-picker-close" title="Close">✕</button>
+  </div>
+  <div id="chain-trace-body" class="chain-trace-body"></div>
 </div>
 
 <!-- Arrow chain tooltip -->
@@ -1773,6 +1902,20 @@
               <span class="toggle-track"></span>
             </span>
             <span class="toggle-label" id="toggle-painting-label">Off</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="settings-row">
+        <div class="settings-row-label">Extra Paintings</div>
+        <div class="settings-row-desc">Adds every Kingdom (except Deep Woods & Darker Side) to the Paintings section.</div>
+        <div class="settings-row-control">
+          <label class="toggle-wrap" for="toggle-extra-paintings">
+            <span class="toggle-switch">
+              <input type="checkbox" id="toggle-extra-paintings">
+              <span class="toggle-track"></span>
+            </span>
+            <span class="toggle-label" id="toggle-extra-paintings-label">Off</span>
           </label>
         </div>
       </div>
@@ -2093,10 +2236,19 @@ const LOADING_ZONES_TEMPLATE = {
 const PAINTINGS_KEY = 'Paintings';
 const PAINTING_KINGDOMS = ['Cascade','Sand','Lake','Wooded','Metro','Snow','Seaside','Luncheon',"Bowser's",'Mushroom'];
 
+// Extra Paintings (Settings toggle): every Kingdom except Deep Woods & Darker
+// Side, in this exact order. See activePaintingKingdoms().
+const EXTRA_PAINTING_KINGDOMS = ['Cap','Cascade','Sand','Lake','Wooded','Cloud','Lost','Metro','Snow','Seaside','Luncheon','Ruined',"Bowser's",'Moon','Mushroom','Darkside'];
+
+/** Active list of painting entries: base set, or the full Extra Paintings set when on. */
+function activePaintingKingdoms() {
+  return extraPaintings ? EXTRA_PAINTING_KINGDOMS : PAINTING_KINGDOMS;
+}
+
 /** Synthetic section template for the Paintings cluster. */
 function paintingsSectionTemplate() {
   const zones = {};
-  PAINTING_KINGDOMS.forEach(k => { zones[k] = {}; });
+  activePaintingKingdoms().forEach(k => { zones[k] = {}; });
   return { color: '#e6e6ee', icon: 'Painting.png', zones };
 }
 
@@ -2919,6 +3071,7 @@ let displayPosition = 'top';
 let displaySize = 150;
 let displayVisible = true;      // toggled by the Hide/Show Display button
 let paintingTracker = false; // Painting section shown on the map (default off)
+let extraPaintings = false;  // Extra Paintings: adds every Kingdom (except Deep Woods & Darker Side) to the Paintings section (default off)
 let moonTracking = false;    // Moon tracking: per-node moon icons + above-node icons (default off)
 
 // Per-node moon-icon choices, keyed by node id -> array of icon filenames (or
@@ -2984,6 +3137,12 @@ let pinnedHighlightChainId = null;
 // Node-click highlight: highlights every chain passing through a node, each in
 // its own chain color (multi-color). Independent of the single-chain highlight.
 let pinnedHighlightNodeId  = null;
+
+// Right-click a Kingdom node to isolate it: dims/hides every other Kingdom's
+// nodes and edges until clicked off or right-clicked again. See
+// toggleKingdomIsolate() / applyKingdomIsolate().
+let isolatedKingdomKey = null;
+let kingdomIsolateOutsideCloseHandler = null;
 
 // Chain picker state
 let activePickerEdge = null;
@@ -3265,6 +3424,7 @@ function loadAll() {
       displaySize       = s.displaySize     || displaySize;
       if (s.displayVisible !== undefined) displayVisible = !!s.displayVisible;
       paintingTracker   = !!s.paintingTracker;
+      extraPaintings    = !!s.extraPaintings;
       moonTracking      = !!s.moonTracking;
       segmentedNodes    = !!s.segmentedNodes;
       if (s.segmentStyle && SEGMENT_LABELS[s.segmentStyle]) segmentStyle = s.segmentStyle;
@@ -3363,7 +3523,7 @@ function saveSettings() {
   localStorage.setItem(STORAGE_SETTINGS, JSON.stringify({
     showImages, arrowColor, highlightColor, highlightEnabled,
     randomChainColors, arrowColorMode, displayPosition, displaySize, displayVisible, kingdomVisible,
-    paintingTracker, moonTracking, segmentedNodes, segmentStyle, decoupled,
+    paintingTracker, extraPaintings, moonTracking, segmentedNodes, segmentStyle, decoupled,
     colorPalette, fillColorsOn, frameColorsOn,
     notesPanelOn, notesPosition, notesSize, comboSplit
   }));
@@ -3808,6 +3968,262 @@ function cycleNodeColor(id, region) {
   applyNodeColorStyles(id);
 }
 
+/**
+ * Deletes a node: since every Kingdom/Area node is always present (derived
+ * from the templates, not individually created), "deleting" it means
+ * removing every arrow touching it - incoming and outgoing - the same as if
+ * it had never been connected to anything. Also drops any custom color on
+ * it, since a color with nothing connected has nothing left to color.
+ */
+function deleteNode(id) {
+  if (!nodes[id]) return;
+  const hasEdges = edgeList.some(e => e.src === id || e.tgt === id);
+  const hasColor = nodeColors[id] !== undefined || segColors[id] !== undefined;
+  if (!hasEdges && !hasColor) return;
+  pushUndoSnapshot();
+  disconnectOutgoing(id);
+  disconnectIncoming(id);
+  delete nodeColors[id];
+  delete segColors[id];
+  saveNodeColors();
+  saveState();
+  saveEdgeChains();
+  renderConnections();
+  renderDisplayPanel();
+  applyNodeColorStyles(id);
+}
+
+// ── Node right-click context menu (Cycle Color / Delete) ───────────
+let activeNodeContextMenuEl = null;
+let nodeContextMenuOutsideCloseHandler = null;
+
+function closeNodeContextMenu() {
+  if (activeNodeContextMenuEl && activeNodeContextMenuEl.parentNode) activeNodeContextMenuEl.remove();
+  activeNodeContextMenuEl = null;
+  if (nodeContextMenuOutsideCloseHandler) {
+    document.removeEventListener('click', nodeContextMenuOutsideCloseHandler);
+    document.removeEventListener('contextmenu', nodeContextMenuOutsideCloseHandler);
+    nodeContextMenuOutsideCloseHandler = null;
+  }
+}
+
+function openNodeContextMenu(clientX, clientY, id, region) {
+  closeNodeContextMenu();
+  closeConnectWizard();
+
+  const menu = document.createElement('div');
+  menu.className = 'node-context-menu';
+
+  const colorItem = document.createElement('button');
+  colorItem.type = 'button';
+  colorItem.className = 'node-context-menu-item';
+  colorItem.textContent = 'Cycle Color';
+  colorItem.addEventListener('click', (e) => {
+    e.stopPropagation();
+    cycleNodeColor(id, region);
+    closeNodeContextMenu();
+  });
+  menu.appendChild(colorItem);
+
+  const deleteItem = document.createElement('button');
+  deleteItem.type = 'button';
+  deleteItem.className = 'node-context-menu-item danger';
+  deleteItem.textContent = 'Delete';
+  deleteItem.addEventListener('click', (e) => {
+    e.stopPropagation();
+    deleteNode(id);
+    closeNodeContextMenu();
+  });
+  menu.appendChild(deleteItem);
+
+  document.body.appendChild(menu);
+  activeNodeContextMenuEl = menu;
+
+  const mw = 150, mh = 80;
+  let x = clientX, y = clientY;
+  if (x + mw > window.innerWidth)  x = window.innerWidth - mw - 8;
+  if (y + mh > window.innerHeight) y = window.innerHeight - mh - 8;
+  menu.style.left = `${Math.max(8, x)}px`;
+  menu.style.top  = `${Math.max(8, y)}px`;
+
+  setTimeout(() => {
+    nodeContextMenuOutsideCloseHandler = (e) => {
+      if (activeNodeContextMenuEl && !activeNodeContextMenuEl.contains(e.target)) closeNodeContextMenu();
+    };
+    document.addEventListener('click', nodeContextMenuOutsideCloseHandler);
+    document.addEventListener('contextmenu', nodeContextMenuOutsideCloseHandler);
+  }, 0);
+}
+
+// ── Kingdom isolate (right-click a Kingdom's Main Stage node) ──────
+// Shakes + highlights the clicked Kingdom's cluster, dims every other
+// Kingdom's nodes/edges, and stays that way until the user clicks off (or
+// right-clicks the same Kingdom again).
+function toggleKingdomIsolate(kingdomKey) {
+  isolatedKingdomKey = (isolatedKingdomKey === kingdomKey) ? null : kingdomKey;
+  applyKingdomIsolate();
+}
+
+function clearKingdomIsolate() {
+  if (isolatedKingdomKey === null) return;
+  isolatedKingdomKey = null;
+  applyKingdomIsolate();
+}
+
+function applyKingdomIsolate() {
+  canvasEl.querySelectorAll('.cluster-bg').forEach(bg => {
+    bg.classList.remove('kingdom-isolated', 'kingdom-dimmed');
+  });
+  canvasEl.querySelectorAll('.map-node').forEach(el => {
+    el.classList.remove('kingdom-dimmed');
+  });
+  linesLayer.querySelectorAll('.conn-line').forEach(el => {
+    el.classList.remove('kingdom-dimmed');
+  });
+
+  if (kingdomIsolateOutsideCloseHandler) {
+    document.removeEventListener('click', kingdomIsolateOutsideCloseHandler);
+    kingdomIsolateOutsideCloseHandler = null;
+  }
+
+  if (isolatedKingdomKey === null) return;
+
+  const activeBg = canvasEl.querySelector(`.cluster-bg[data-kingdom="${cssEscape(isolatedKingdomKey)}"]`);
+  if (activeBg) {
+    // Re-trigger the shake animation even if it's already been played once.
+    activeBg.classList.remove('kingdom-isolated');
+    void activeBg.offsetWidth;
+    activeBg.classList.add('kingdom-isolated');
+  }
+
+  canvasEl.querySelectorAll('.cluster-bg').forEach(bg => {
+    if (bg.dataset.kingdom !== isolatedKingdomKey) bg.classList.add('kingdom-dimmed');
+  });
+  canvasEl.querySelectorAll('.map-node').forEach(el => {
+    const n = nodes[el.dataset.id];
+    if (n && n.kingdomKey !== isolatedKingdomKey) el.classList.add('kingdom-dimmed');
+  });
+  linesLayer.querySelectorAll('.conn-line').forEach(line => {
+    const pk = parseEkey(line.dataset.ekey);
+    const touches = pk && ((nodes[pk.src] && nodes[pk.src].kingdomKey === isolatedKingdomKey) ||
+                            (nodes[pk.tgt] && nodes[pk.tgt].kingdomKey === isolatedKingdomKey));
+    if (!touches) line.classList.add('kingdom-dimmed');
+  });
+
+  // Click anywhere outside the isolated cluster clears it. Deferred so the
+  // right-click that just opened this doesn't immediately close it (the
+  // 'contextmenu' event doesn't fire 'click', but a stray bubbling click from
+  // the same gesture on some browsers/mice can - same guard pattern used by
+  // the connect wizard and node context menu above).
+  setTimeout(() => {
+    kingdomIsolateOutsideCloseHandler = (e) => {
+      if (isolatedKingdomKey === null) return;
+      const bg = canvasEl.querySelector(`.cluster-bg[data-kingdom="${cssEscape(isolatedKingdomKey)}"]`);
+      if (bg && bg.contains(e.target)) return;
+      const nodeEl = e.target.closest && e.target.closest('.map-node');
+      if (nodeEl && nodes[nodeEl.dataset.id] && nodes[nodeEl.dataset.id].kingdomKey === isolatedKingdomKey) return;
+      clearKingdomIsolate();
+    };
+    document.addEventListener('click', kingdomIsolateOutsideCloseHandler);
+  }, 0);
+}
+
+// ── Chain search / trace (search button, bottom-right above Zoom) ──
+// Click the button, then click a node: shows the full ancestor chain of
+// arrows that lead into that node, walking backwards through `incoming`.
+let chainSearchActive = false;
+
+function setChainSearchActive(on) {
+  chainSearchActive = on;
+  const btn = document.getElementById('chain-search-btn');
+  if (btn) btn.classList.toggle('active', on);
+  canvasEl.classList.toggle('chain-search-mode', on);
+}
+
+/** One readable line for the edge src@sPart -> tgt@tPart. */
+function traceEdgeLabel(e) {
+  const srcNode = nodes[e.src], tgtNode = nodes[e.tgt];
+  if (!srcNode || !tgtNode) return null;
+  const srcLabel = zoneDisplayLabel(srcNode);
+  const tgtLabel = zoneDisplayLabel(tgtNode);
+  const srcPart = canSegment(e.src) ? ` ${partLabel(e.sPart)}` : '';
+  const tgtPart = canSegment(e.tgt) ? ` ${partLabel(e.tPart)}` : '';
+  return `${srcLabel}${srcPart} → ${tgtLabel}${tgtPart}`;
+}
+
+/**
+ * Walks `incoming` backwards from id, depth-first, to build the list of
+ * chains that lead there. Each entry in the returned array is itself an
+ * array of edge-label strings root-first (e.g. ["Snow Cap Out → Luncheon In",
+ * "Luncheon Out → Outfit In"]) - multiple entries only happen when more than
+ * one arrow feeds the same node (a real fan-in), which is why this returns a
+ * list of chains rather than a single path.
+ */
+function traceChainsInto(id, visited) {
+  visited = visited || new Set();
+  if (visited.has(id)) return [[]]; // cycle guard: stop, contribute an empty tail
+  visited = new Set(visited);
+  visited.add(id);
+
+  const preds = incoming[id] || [];
+  const edgesIn = edgeList.filter(e => e.tgt === id);
+  if (!edgesIn.length) return [[]];
+
+  const chains = [];
+  edgesIn.forEach(e => {
+    const label = traceEdgeLabel(e);
+    if (!label) return;
+    const upstream = traceChainsInto(e.src, visited);
+    upstream.forEach(chain => chains.push([...chain, label]));
+  });
+  return chains.length ? chains : [[]];
+}
+
+function showChainTrace(id) {
+  const n = nodes[id];
+  if (!n) return;
+  const popup = document.getElementById('chain-trace-popup');
+  const title = document.getElementById('chain-trace-title');
+  const body  = document.getElementById('chain-trace-body');
+  if (!popup || !title || !body) return;
+
+  title.textContent = `What leads to ${zoneDisplayLabel(n)}?`;
+  body.innerHTML = '';
+
+  const chains = traceChainsInto(id).filter(c => c.length);
+  if (!chains.length) {
+    const empty = document.createElement('div');
+    empty.className = 'chain-trace-empty';
+    empty.textContent = 'Nothing connects into this node yet.';
+    body.appendChild(empty);
+  } else {
+    chains.forEach((chain, i) => {
+      if (i > 0) {
+        const sep = document.createElement('div');
+        sep.className = 'chain-trace-arrow';
+        sep.textContent = '— or —';
+        body.appendChild(sep);
+      }
+      chain.forEach(label => {
+        const row = document.createElement('div');
+        row.className = 'chain-trace-step';
+        const text = document.createElement('span');
+        text.className = 'chain-trace-step-label';
+        text.textContent = label;
+        row.appendChild(text);
+        body.appendChild(row);
+      });
+    });
+  }
+
+  popup.classList.remove('hidden');
+}
+
+function closeChainTrace() {
+  const popup = document.getElementById('chain-trace-popup');
+  if (popup) popup.classList.add('hidden');
+}
+
 // ─────────────────────────────────────────────────────────────────
 // DOM refs
 // ─────────────────────────────────────────────────────────────────
@@ -3832,6 +4248,11 @@ function fullRender() {
   renderNodes();
   renderConnections();
   renderDisplayPanel();
+  // Kingdom isolate reads .cluster-bg/.map-node/.conn-line, all rebuilt above.
+  if (isolatedKingdomKey !== null) {
+    if (nodes[`kingdom:${isolatedKingdomKey}`]) applyKingdomIsolate();
+    else clearKingdomIsolate(); // isolated Kingdom no longer on the map
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -4797,13 +5218,13 @@ function openConnectKingdomPicker(kingdomKeys, headerText, onPick, onCancel) {
  * (Painting kingdoms excluded) alongside every placed Area/zone node.
  * Calls onPick(areaLabel, tgtId) once, then closes.
  */
-function openConnectAreaPickerFullscreen(kingdomKey, headerText, onPick, onCancel) {
+function openConnectAreaPickerFullscreen(kingdomKey, headerText, excludeTgtId, onPick, onCancel) {
   document.querySelectorAll('.req-picker-overlay').forEach(p => p.remove());
 
   const tmpl = sectionTemplate(kingdomKey);
   const zoneNames = tmpl ? Object.keys(tmpl.zones || {}).filter(zoneName => {
     const tgtId = `zone:${kingdomKey}:${zoneName}`;
-    return !!nodes[tgtId];
+    return !!nodes[tgtId] && tgtId !== excludeTgtId;
   }) : [];
 
   const items = [];
@@ -5002,10 +5423,11 @@ function singleValidPart(tgtId) {
   return null;
 }
 
-function openConnectAreaPicker(x, y, srcId, srcPart, kingdomKey) {
+function openConnectAreaPicker(x, y, srcId, srcPart, kingdomKey, excludeTgtId) {
   openConnectAreaPickerFullscreen(
     kingdomKey,
     `Which ${kingdomKey} area?`,
+    excludeTgtId,
     (areaLabel, tgtId) => {
       const tgtLabel = areaLabel === `${kingdomKey} (Main Stage)` ? `${kingdomKey} Main Stage` : areaLabel;
       const onlyPart = singleValidPart(tgtId);
@@ -5031,7 +5453,15 @@ function openConnectAreaPicker(x, y, srcId, srcPart, kingdomKey) {
  */
 function openConnectWizard(event, srcId, srcPart) {
   const x = event.clientX, y = event.clientY;
-  const kingdomKeys = Object.keys(LOADING_ZONES_TEMPLATE).concat([PAINTINGS_KEY]);
+  // Paintings only ever connect to other Paintings (see canConnect), so a
+  // Painting's wizard skips the Kingdom-picker step entirely - there's only
+  // ever one valid Kingdom to land in - and goes straight to the Paintings
+  // area picker, which excludes this Painting's own entry (excludeZone).
+  if (isPaintingNode(srcId)) {
+    openConnectAreaPicker(x, y, srcId, srcPart, PAINTINGS_KEY, srcId);
+    return;
+  }
+  const kingdomKeys = Object.keys(LOADING_ZONES_TEMPLATE);
   openConnectKingdomPicker(
     kingdomKeys,
     'Connect to which Kingdom?',
@@ -5159,6 +5589,14 @@ function renderConnections() {
 
   if (previewLine) linesLayer.appendChild(previewLine);
   applyHighlightClasses();
+  if (isolatedKingdomKey !== null) {
+    linesLayer.querySelectorAll('.conn-line').forEach(line => {
+      const pk = parseEkey(line.dataset.ekey);
+      const touches = pk && ((nodes[pk.src] && nodes[pk.src].kingdomKey === isolatedKingdomKey) ||
+                              (nodes[pk.tgt] && nodes[pk.tgt].kingdomKey === isolatedKingdomKey));
+      line.classList.toggle('kingdom-dimmed', !touches);
+    });
+  }
 }
 
 function drawLine(p1, p2, stroke, markerBoolOrId) {
@@ -5802,6 +6240,15 @@ function updateDropHighlight(clientX, clientY, srcId) {
 function wireNodeEvents(el, id) {
   el.addEventListener('mousedown', (e) => {
     if (e.button === 0) {
+      // Chain-search (trace) mode: this click picks the node to trace instead
+      // of starting a connection drag or opening the wizard. See
+      // toggleChainSearchMode()/showChainTrace().
+      if (chainSearchActive) {
+        e.preventDefault(); e.stopPropagation();
+        showChainTrace(id);
+        setChainSearchActive(false);
+        return;
+      }
       // Ctrl-click (or Cmd-click) opens the stage-preview / moon popup on desktop.
       // It never starts a connection drag. Available when Stage Previews is on,
       // or when Moon Tracking is on and this node has moons (moon-only mode).
@@ -5823,12 +6270,18 @@ function wireNodeEvents(el, id) {
     }
   });
 
-  // Right-click cycles the node's color (or the color of the segment region
-  // under the cursor when Segmented Nodes is on).
+  // Right-click a Kingdom's Main Stage node toggles isolating that whole
+  // Kingdom (shake + highlight it, dim/hide everything else) instead of
+  // opening the node menu - see toggleKingdomIsolate(). Right-click on any
+  // other node opens a small menu (Cycle Color / Delete).
   el.addEventListener('contextmenu', (e) => {
     e.preventDefault(); e.stopPropagation();
+    if (isKingdomNode(id)) {
+      toggleKingdomIsolate(nodes[id].kingdomKey);
+      return;
+    }
     const region = nodeIsSegmented(id) ? partAtPoint(el, e.clientX) : null;
-    cycleNodeColor(id, region);
+    openNodeContextMenu(e.clientX, e.clientY, id, region);
   });
 
   el.addEventListener('dblclick', (e) => {
@@ -5872,6 +6325,22 @@ function wireNodeEvents(el, id) {
 
   // Touch
   el.addEventListener('touchstart', (e) => handleNodeTouchStart(e, id), { passive: false });
+
+  // Hover highlight: shows which part (in / out / main) a click or drag
+  // would connect from/to, so it's clear what you're about to link.
+  el.addEventListener('mousemove', (e) => {
+    const part = normalizePart(id, partAtPoint(el, e.clientX));
+    const segEl = part === PART_IN  ? el.querySelector('.node-seg-in')
+                : part === PART_OUT ? el.querySelector('.node-seg-out')
+                :                     el.querySelector('.node-label');
+    if (el._hoveredPartEl && el._hoveredPartEl !== segEl) el._hoveredPartEl.classList.remove('part-hover');
+    if (segEl) segEl.classList.add('part-hover');
+    el._hoveredPartEl = segEl;
+  });
+  el.addEventListener('mouseleave', () => {
+    if (el._hoveredPartEl) el._hoveredPartEl.classList.remove('part-hover');
+    el._hoveredPartEl = null;
+  });
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -6722,9 +7191,32 @@ toggleHighlight.addEventListener('change', () => {
 // Settings: painting tracker toggle
 const togglePainting = document.getElementById('toggle-painting');
 const togglePaintingLabel = document.getElementById('toggle-painting-label');
+// Chain search (trace) button + popup
+const chainSearchBtn = document.getElementById('chain-search-btn');
+chainSearchBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  closeChainTrace();
+  setChainSearchActive(!chainSearchActive);
+});
+document.getElementById('chain-trace-close').addEventListener('click', closeChainTrace);
+// Clicking empty canvas (not a node) while in trace mode just cancels it.
+canvasEl.addEventListener('mousedown', (e) => {
+  if (chainSearchActive && e.target === canvasEl) setChainSearchActive(false);
+});
+
 togglePainting.addEventListener('change', () => {
   paintingTracker = togglePainting.checked;
   togglePaintingLabel.textContent = paintingTracker ? 'On' : 'Off';
+  saveSettings();
+  fullRender();
+});
+
+// Settings: extra paintings toggle (which Kingdoms appear inside Paintings)
+const toggleExtraPaintings = document.getElementById('toggle-extra-paintings');
+const toggleExtraPaintingsLabel = document.getElementById('toggle-extra-paintings-label');
+toggleExtraPaintings.addEventListener('change', () => {
+  extraPaintings = toggleExtraPaintings.checked;
+  toggleExtraPaintingsLabel.textContent = extraPaintings ? 'On' : 'Off';
   saveSettings();
   fullRender();
 });
@@ -7634,6 +8126,8 @@ function init() {
   toggleHighlightLabel.textContent = highlightEnabled ? 'On' : 'Off';
   togglePainting.checked = paintingTracker;
   togglePaintingLabel.textContent = paintingTracker ? 'On' : 'Off';
+  toggleExtraPaintings.checked = extraPaintings;
+  toggleExtraPaintingsLabel.textContent = extraPaintings ? 'On' : 'Off';
   toggleMoons.checked = moonTracking;
   toggleMoonsLabel.textContent = moonTracking ? 'On' : 'Off';
   toggleSegmented.checked = segmentedNodes;
