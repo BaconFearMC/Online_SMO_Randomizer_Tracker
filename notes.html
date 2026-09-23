@@ -1116,10 +1116,9 @@
     }
     /* Extra Paintings > IRL Info: stacks a Painting row's Kingdom name over
        its real in-game subarea (main text + smaller dim subtext underneath,
-       Discord "-#" style), and flags the label as clickable - see
-       insertPaintingIrlNote(). Only ever applied to the 16 Extra Painting
-       rows, and only while the setting is on; a plain .zone-name (no
-       modifier) is untouched by these rules. */
+       Discord "-#" style). Only ever applied to the 16 Extra Painting rows,
+       and only while the setting is on; a plain .zone-name (no modifier) is
+       untouched by these rules. */
     .zone-name.zone-name--stacked {
       display: inline-flex;
       flex-direction: column;
@@ -1138,22 +1137,24 @@
       color: var(--text-dim, #9aa0ac);
       white-space: nowrap;
     }
-    .zone-name.zone-name--clickable {
-      cursor: pointer;
-    }
-    .zone-name.zone-name--clickable:hover .zone-name-main {
-      text-decoration: underline;
-    }
     /* Extra Paintings > IRL Info: the connection-type icon (Checkpoint /
        Moon Rock / Pylon / Movement, or Ruined's own icon) that rides
-       immediately after that row's Kingdom icon - sized to match the other
-       small requirement icons in this column. */
+       immediately after the destination Kingdom icon once one's picked -
+       sized to match the other small requirement icons in this column -
+       plus its small grey caption text sitting next to it. */
     .zone-irl-connection-icon {
       width: 20px;
       height: 20px;
       object-fit: contain;
       border-radius: 4px;
       flex: none;
+    }
+    .zone-irl-connection-label {
+      flex: 0 0 auto;
+      font-size: .68em;
+      font-weight: 600;
+      color: var(--text-dim, #9aa0ac);
+      white-space: nowrap;
     }
     /* Darkerside "Odyssey" zone's Extra + (Multimoon picker) - same shape as
        the normal + but a subtly different color so it reads as a second,
@@ -1418,7 +1419,7 @@
       notes_compact: true,         // tighter spacing + shorter note boxes
       show_painting_notes: true,   // Paintings notes column (before Cascade); default on
       extra_paintings: false,      // Extra Paintings: adds every Kingdom (except Deep Woods & Darker Side) to the Painting Tracker; default off
-      painting_irl_info: false,    // Extra Paintings > IRL Info: swaps the 16 Extra Painting rows' Kingdom labels for their real in-game subarea, and clicking one inserts its real painting location + connection type into that row's note; only relevant (and only shown in the UI) while extra_paintings is also on; default off
+      painting_irl_info: false,    // Extra Paintings > IRL Info: swaps the 16 Extra Painting rows' Kingdom labels for their real in-game subarea, and picking a destination for one (the + button) inserts its real painting location + connection type into that row's note; only relevant while extra_paintings is also on; set from the Settings modal (index.html), not this page; default off
       show_kingdomsubicons: true,  // Small kingdom+subarea icon next to each zone's name; default on
       hide_useless_captures: true, // Hide the "Useless Captures for Sale" column in the Items For Sale picker; default on
       useless_capture_keys: null,  // null = use APC.USELESS_CAPTURE_DEFAULT_KEYS; else the user's saved list (Notes Settings > Edit List)
@@ -1585,10 +1586,11 @@
     // Extra Paintings > "IRL Info" setting (settings.painting_irl_info; only
     // meaningful/shown while extra_paintings is also on): real in-game
     // subarea for each of the 16 EXTRA_PAINTING_KINGDOMS rows, plus what
-    // clicking that row inserts into its own note - the real room the
-    // Painting is found in, and (all but Ruined) the 2-Way connection type
-    // that room's icon represents. `icon` is the file in assets/notes/ shown
-    // beside that row's Kingdom icon; Ruined has no `conn` text (its list
+    // picking a destination for that row's Painting (the + button) inserts
+    // into its own note - the real room the Painting is found in, and (all
+    // but Ruined) the 2-Way connection type that room's icon represents.
+    // `icon` is the file in assets/notes/ shown beside the destination
+    // Kingdom icon once one's picked; Ruined has no `conn` text (its list
     // entry has no second parenthetical) but still gets its own dedicated
     // icon.
     const PAINTING_IRL_INFO = {
@@ -1615,29 +1617,26 @@
       return !!(fullState.settings.extra_paintings && fullState.settings.painting_irl_info);
     }
 
-    // Builds the literal text a Painting row's click inserts into its own
-    // note box: the real room the painting is found in on one line, then
-    // (when it has one) its connection type on a line underneath - a plain
-    // <textarea> can't render true "subtext" styling, so a second line is
-    // the closest equivalent to the Kingdom label's stacked look.
+    // The literal text a Painting row's note gets when a destination is
+    // picked for it (IRL Info on): the real room the Painting is found in,
+    // plus (all but Ruined) its connection type, both in one line - e.g.
+    // "Cap (from Top-Hat Tower) (2-Way w/ Checkpoint)".
     function paintingIrlNoteText(kingdom, info) {
       const main = kingdom + ' (from ' + info.from + ')';
-      return info.conn ? main + '\n(' + info.conn + ')' : main;
+      return info.conn ? main + ' (' + info.conn + ')' : main;
     }
 
     // Drops that text into `noteArea`, reusing the same input-event dispatch
     // appendRequirementText uses so the existing save/autosize listener on
     // the textarea does the rest. Appends on its own line rather than
     // replacing, and is a no-op if that exact text is already present, so
-    // clicking a row twice doesn't pile up duplicates.
+    // picking/re-picking a destination doesn't pile up duplicates.
     function insertPaintingIrlNote(noteArea, kingdom, info) {
       const text = paintingIrlNoteText(kingdom, info);
       if (noteArea.value.includes(text)) return;
       const trimmedEnd = noteArea.value.replace(/\s+$/, '');
       noteArea.value = trimmedEnd ? trimmedEnd + '\n' + text : text;
       noteArea.dispatchEvent(new Event('input', { bubbles: true }));
-      noteArea.focus();
-      noteArea.setSelectionRange(noteArea.value.length, noteArea.value.length);
     }
 
     // Extra Shops that only live in the Paintings column (not real
@@ -2424,12 +2423,8 @@
         nameLabel.style.color = kd.color;
         if (irlInfo) {
           // IRL Info on: stack the Kingdom name over its real in-game
-          // subarea (Discord "-#" style subtext), and make the label
-          // clickable - see the click listener added below, once noteArea
-          // exists - to drop that Painting's real location + connection
-          // type into its own note.
-          nameLabel.classList.add('zone-name--stacked', 'zone-name--clickable');
-          nameLabel.title = 'Click to add this Painting\'s real location to the note below';
+          // subarea (Discord "-#" style subtext).
+          nameLabel.classList.add('zone-name--stacked');
           const mainSpan = document.createElement('span');
           mainSpan.className = 'zone-name-main';
           mainSpan.textContent = kingdom;
@@ -2454,21 +2449,31 @@
             bounce(addBtn);
             const current = APC.getPaintingDestination(fullState, kingdom);
             openKingdomOnlyPicker(current, (kingdomKey) => {
-              // Swap the note text: drop whatever the old destination's
-              // name was written in (if any), then write the new one -
-              // same pattern buildReqIconEl/toggleRequirement use for a
-              // regular zone requirement, so this row's Note area is the
-              // one place the destination name shows up (no duplicate
-              // label rendered next to the icon itself).
               const prevKey = APC.getPaintingDestination(fullState, kingdom);
-              if (prevKey) {
-                const prevItem = APC.findItem('kingdoms', prevKey);
-                if (prevItem) removeRequirementText(noteArea, prevItem.name);
-              }
-              APC.setPaintingDestination(fullState, kingdom, kingdomKey);
-              if (kingdomKey) {
-                const item = APC.findItem('kingdoms', kingdomKey);
-                if (item) appendRequirementText(noteArea, item.name);
+              if (irlInfo) {
+                // IRL Info on: the note gets this Painting's own real
+                // location + connection type instead of the destination's
+                // name - fixed per row (see PAINTING_IRL_INFO), so picking
+                // or re-picking a destination just makes sure it's present
+                // rather than swapping in the destination's name.
+                APC.setPaintingDestination(fullState, kingdom, kingdomKey);
+                if (kingdomKey) insertPaintingIrlNote(noteArea, kingdom, irlInfo);
+              } else {
+                // Swap the note text: drop whatever the old destination's
+                // name was written in (if any), then write the new one -
+                // same pattern buildReqIconEl/toggleRequirement use for a
+                // regular zone requirement, so this row's Note area is the
+                // one place the destination name shows up (no duplicate
+                // label rendered next to the icon itself).
+                if (prevKey) {
+                  const prevItem = APC.findItem('kingdoms', prevKey);
+                  if (prevItem) removeRequirementText(noteArea, prevItem.name);
+                }
+                APC.setPaintingDestination(fullState, kingdom, kingdomKey);
+                if (kingdomKey) {
+                  const item = APC.findItem('kingdoms', kingdomKey);
+                  if (item) appendRequirementText(noteArea, item.name);
+                }
               }
               saveFullState();
               renderDestChip();
@@ -2476,31 +2481,8 @@
           });
           reqsWrap.appendChild(addBtn);
 
-          // IRL Info on: this Painting's own Kingdom icon, then its
-          // connection-type icon (Checkpoint / Moon Rock / Pylon /
-          // Movement, or Ruined's dedicated icon), ahead of the name label.
-          // Purely visual - doesn't touch the destination picker/chip below.
-          if (irlInfo) {
-            const kIcon = document.createElement('img');
-            kIcon.className = 'zone-req-icon zone-req-icon--kingdom';
-            kIcon.src = 'assets/' + kd.icon;
-            kIcon.alt = kingdom;
-            if (kd.color) kIcon.style.setProperty('--kingdom-color', kd.color);
-            reqsWrap.appendChild(kIcon);
-
-            if (irlInfo.icon) {
-              const cIcon = document.createElement('img');
-              cIcon.className = 'zone-req-icon zone-irl-connection-icon';
-              cIcon.src = 'assets/notes/' + irlInfo.icon;
-              cIcon.alt = irlInfo.conn || 'Ruined';
-              cIcon.title = irlInfo.conn || 'Ruined';
-              reqsWrap.appendChild(cIcon);
-            }
-          }
-
-          // Area name always sits immediately to the right of the + button
-          // (and, with IRL Info on, its two icons above), ahead of the
-          // destination icon, so its position never shifts.
+          // Area name always sits immediately to the right of the + button,
+          // ahead of the destination icon, so its position never shifts.
           reqsWrap.appendChild(nameLabel);
 
           const destKey = APC.getPaintingDestination(fullState, kingdom);
@@ -2517,11 +2499,32 @@
                 e.stopPropagation();
                 bounce(img);
                 APC.setPaintingDestination(fullState, kingdom, null);
-                removeRequirementText(noteArea, item.name);
+                if (!irlInfo) removeRequirementText(noteArea, item.name);
                 saveFullState();
                 renderDestChip();
               });
               reqsWrap.appendChild(img);
+
+              // IRL Info on: the connection-type icon (Checkpoint / Moon
+              // Rock / Pylon / Movement, or Ruined's own icon) rides
+              // immediately after the destination Kingdom icon once one's
+              // picked, with its "(2-Way w/ X)" text next to it in small
+              // grey type.
+              if (irlInfo && irlInfo.icon) {
+                const cIcon = document.createElement('img');
+                cIcon.className = 'zone-req-icon zone-irl-connection-icon';
+                cIcon.src = 'assets/notes/' + irlInfo.icon;
+                cIcon.alt = irlInfo.conn || 'Ruined';
+                cIcon.title = irlInfo.conn || 'Ruined';
+                reqsWrap.appendChild(cIcon);
+
+                if (irlInfo.conn) {
+                  const connLabel = document.createElement('span');
+                  connLabel.className = 'zone-irl-connection-label';
+                  connLabel.textContent = irlInfo.conn;
+                  reqsWrap.appendChild(connLabel);
+                }
+              }
             }
           }
         }
@@ -2542,14 +2545,6 @@
             noteArea.style.height = noteArea.scrollHeight + 'px';
           });
         });
-
-        if (irlInfo) {
-          nameLabel.addEventListener('click', (e) => {
-            e.stopPropagation();
-            bounce(nameLabel);
-            insertPaintingIrlNote(noteArea, kingdom, irlInfo);
-          });
-        }
 
         row.appendChild(noteArea);
         zonesRoot.appendChild(row);
