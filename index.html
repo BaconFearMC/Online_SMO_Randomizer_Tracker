@@ -431,6 +431,14 @@
             </label>
           </div>
 
+          <div class="settings-row settings-subrow" id="row-painting-irl-info" hidden>
+            <span>IRL Info</span>
+            <label class="toggle-switch">
+              <input type="checkbox" id="toggle-painting-irl-info">
+              <span class="toggle-track"></span>
+            </label>
+          </div>
+
           <div class="settings-row">
             <span>Show Kingdom Subarea Icons</span>
             <label class="toggle-switch">
@@ -746,6 +754,71 @@
   <script src="apc-data.js?v=8"></script>
   <script src="app.js?v=3"></script>
   <script src="spoiler-log.js?v=1"></script>
+  <script>
+    // Extra Paintings > "IRL Info" row: app.js doesn't know about this
+    // setting, so it's wired up here instead, self-contained, reading and
+    // writing the same 'tracker_state' localStorage key (under .settings)
+    // that app.js/notes.html already share - never overwriting the rest of
+    // that object, only settings.painting_irl_info. notes.html picks up the
+    // change itself via the same 'storage' event it already listens for on
+    // every other setting.
+    (function () {
+      const STATE_KEY = 'tracker_state';
+
+      function readSettings() {
+        try {
+          const parsed = JSON.parse(localStorage.getItem(STATE_KEY) || '{}');
+          return (parsed && parsed.settings) || {};
+        } catch (e) {
+          return {};
+        }
+      }
+
+      function writePaintingIrlInfo(value) {
+        try {
+          const raw = localStorage.getItem(STATE_KEY);
+          const parsed = raw ? JSON.parse(raw) : {};
+          if (!parsed.settings) parsed.settings = {};
+          parsed.settings.painting_irl_info = value;
+          localStorage.setItem(STATE_KEY, JSON.stringify(parsed));
+        } catch (e) {
+          // Storage unavailable/corrupt - nothing to do here; app.js's own
+          // save paths have the same failure mode.
+        }
+      }
+
+      const row = document.getElementById('row-painting-irl-info');
+      const extraToggle = document.getElementById('toggle-extra-paintings');
+      const irlToggle = document.getElementById('toggle-painting-irl-info');
+      if (!row || !extraToggle || !irlToggle) return;
+
+      function sync() {
+        const s = readSettings();
+        row.hidden = !s.extra_paintings;
+        irlToggle.checked = !!s.painting_irl_info;
+      }
+
+      sync();
+
+      // Catches changes made from another window/tab (e.g. the popped-out
+      // Notes window itself, or a synced tab) so this row stays correct
+      // even if this Settings modal is already open when that happens.
+      window.addEventListener('storage', (e) => {
+        if (e.key === STATE_KEY) sync();
+      });
+
+      // Extra Paintings' own checkbox is saved by app.js; this just mirrors
+      // its new value into this row's visibility immediately, rather than
+      // waiting on a 'storage' event that only fires in *other* windows.
+      extraToggle.addEventListener('change', () => {
+        row.hidden = !extraToggle.checked;
+      });
+
+      irlToggle.addEventListener('change', () => {
+        writePaintingIrlInfo(irlToggle.checked);
+      });
+    })();
+  </script>
 </body>
 
 </html>
