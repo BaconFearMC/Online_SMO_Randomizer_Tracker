@@ -1156,6 +1156,19 @@
       color: var(--text-dim, #9aa0ac);
       white-space: nowrap;
     }
+    /* Painting rows: "[Source icon] Source --> [Dest icon] Dest" once a
+       destination's been picked - applies regardless of IRL Info/Extra
+       Paintings. The arrow is a plain dim glyph; the destination name
+       reuses .zone-name's sizing but never wraps oddly in the flex row. */
+    .zone-dest-arrow {
+      flex: 0 0 auto;
+      color: var(--text-dim, #9aa0ac);
+      font-weight: 700;
+    }
+    .zone-reqs .zone-name.zone-dest-name {
+      flex: 0 0 auto;
+      white-space: nowrap;
+    }
     /* Darkerside "Odyssey" zone's Extra + (Multimoon picker) - same shape as
        the normal + but a subtly different color so it reads as a second,
        distinct add-action rather than a duplicate of the main +. */
@@ -1769,8 +1782,32 @@
       delete fullState.kingdom_reach;
     }
 
+    // Settings toggled only from the Settings modal in index.html (never
+    // from this page) - notes.html must treat these as read-only inputs and
+    // never write a value for them other than whatever's actually on disk.
+    const EXTERNALLY_OWNED_SETTINGS = ['extra_paintings', 'painting_irl_info'];
+
     function saveFullState() {
       try {
+        // Guard against clobbering an externally-owned setting with a stale
+        // in-memory copy - e.g. if the 'storage' event for a Settings-modal
+        // toggle hasn't finished being processed yet by the time this page
+        // writes something else. Pull the current on-disk value for just
+        // these keys right before writing, so a save from here can never
+        // accidentally revert one.
+        try {
+          const raw = localStorage.getItem(STATE_KEY);
+          const onDisk = raw ? JSON.parse(raw) : null;
+          if (onDisk && onDisk.settings) {
+            EXTERNALLY_OWNED_SETTINGS.forEach((key) => {
+              if (key in onDisk.settings) fullState.settings[key] = onDisk.settings[key];
+            });
+          }
+        } catch (e) {
+          // Corrupt/unavailable - fall through and save with whatever's in
+          // memory rather than blocking the rest of the save.
+        }
+
         localStorage.setItem(STATE_KEY, JSON.stringify(fullState));
       } catch (e) {
         console.error('Failed to save state:', e);
@@ -2481,14 +2518,29 @@
           });
           reqsWrap.appendChild(addBtn);
 
-          // Area name always sits immediately to the right of the + button,
-          // ahead of the destination icon, so its position never shifts.
+          // This Painting's own Kingdom icon + name always render, with or
+          // without a destination picked and regardless of IRL Info/Extra
+          // Paintings - the row never loses its own identity.
+          const srcIcon = document.createElement('img');
+          srcIcon.className = 'zone-req-icon zone-req-icon--kingdom';
+          srcIcon.src = 'assets/' + kd.icon;
+          srcIcon.alt = kingdom;
+          if (kd.color) srcIcon.style.setProperty('--kingdom-color', kd.color);
+          reqsWrap.appendChild(srcIcon);
           reqsWrap.appendChild(nameLabel);
 
           const destKey = APC.getPaintingDestination(fullState, kingdom);
           if (destKey) {
             const item = APC.findItem('kingdoms', destKey);
             if (item) {
+              // "-->" arrow, then the destination's own icon + name, so the
+              // row reads as "[Source icon] Source --> [Dest icon] Dest"
+              // rather than just an icon with no visible destination name.
+              const arrow = document.createElement('span');
+              arrow.className = 'zone-dest-arrow';
+              arrow.textContent = '→';
+              reqsWrap.appendChild(arrow);
+
               const img = document.createElement('img');
               img.className = 'zone-req-icon zone-req-icon--kingdom';
               img.src = item.src;
@@ -2499,15 +2551,28 @@
                 e.stopPropagation();
                 bounce(img);
                 APC.setPaintingDestination(fullState, kingdom, null);
-                if (!irlInfo) removeRequirementText(noteArea, item.name);
+                // Removes whatever this + actually wrote into the note -
+                // the fixed IRL line when IRL Info is on, otherwise just
+                // the destination's plain name.
+                if (irlInfo) {
+                  removeRequirementText(noteArea, paintingIrlNoteText(kingdom, irlInfo));
+                } else {
+                  removeRequirementText(noteArea, item.name);
+                }
                 saveFullState();
                 renderDestChip();
               });
               reqsWrap.appendChild(img);
 
+              const destLabel = document.createElement('span');
+              destLabel.className = 'zone-name zone-dest-name';
+              destLabel.textContent = item.name;
+              if (item.color) destLabel.style.color = item.color;
+              reqsWrap.appendChild(destLabel);
+
               // IRL Info on: the connection-type icon (Checkpoint / Moon
               // Rock / Pylon / Movement, or Ruined's own icon) rides
-              // immediately after the destination Kingdom icon once one's
+              // immediately after the destination Kingdom name once one's
               // picked, with its "(2-Way w/ X)" text next to it in small
               // grey type.
               if (irlInfo && irlInfo.icon) {
