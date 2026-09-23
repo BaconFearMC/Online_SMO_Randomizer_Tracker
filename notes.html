@@ -1114,6 +1114,52 @@
       flex: 0 0 auto;
       white-space: nowrap;
     }
+    /* Extra Paintings > IRL Info: stacks a Painting row's Kingdom name over
+       its real in-game subarea (main text + smaller dim subtext underneath,
+       Discord "-#" style), and flags the label as clickable - see
+       insertPaintingIrlNote(). Only ever applied to the 16 Extra Painting
+       rows, and only while the setting is on; a plain .zone-name (no
+       modifier) is untouched by these rules. */
+    .zone-name.zone-name--stacked {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: flex-start;
+      line-height: 1.2;
+      gap: 1px;
+    }
+    .zone-name-main {
+      font-size: 1em;
+      font-weight: inherit;
+      color: inherit;
+    }
+    .zone-name-sub {
+      font-size: .68em;
+      font-weight: 600;
+      color: var(--text-dim, #9aa0ac);
+      white-space: nowrap;
+    }
+    .zone-name.zone-name--clickable {
+      cursor: pointer;
+    }
+    .zone-name.zone-name--clickable:hover .zone-name-main {
+      text-decoration: underline;
+    }
+    /* Extra Paintings > IRL Info: the connection-type icon (Checkpoint /
+       Moon Rock / Pylon / Movement, or Ruined's own icon) that rides
+       immediately after that row's Kingdom icon - sized to match the other
+       small requirement icons in this column. */
+    .zone-irl-connection-icon {
+      width: 20px;
+      height: 20px;
+      object-fit: contain;
+      border-radius: 4px;
+      flex: none;
+    }
+    /* Notes toolbar's "IRL Info" toggle group - hidden by default (see
+       syncNotesToolbar) and only shown while Extra Paintings is on. */
+    .lz-toolbar-group[data-irl-group][hidden] {
+      display: none;
+    }
     /* Darkerside "Odyssey" zone's Extra + (Multimoon picker) - same shape as
        the normal + but a subtly different color so it reads as a second,
        distinct add-action rather than a duplicate of the main +. */
@@ -1377,6 +1423,7 @@
       notes_compact: true,         // tighter spacing + shorter note boxes
       show_painting_notes: true,   // Paintings notes column (before Cascade); default on
       extra_paintings: false,      // Extra Paintings: adds every Kingdom (except Deep Woods & Darker Side) to the Painting Tracker; default off
+      painting_irl_info: false,    // Extra Paintings > IRL Info: swaps the 16 Extra Painting rows' Kingdom labels for their real in-game subarea, and clicking one inserts its real painting location + connection type into that row's note; only relevant (and only shown in the UI) while extra_paintings is also on; default off
       show_kingdomsubicons: true,  // Small kingdom+subarea icon next to each zone's name; default on
       hide_useless_captures: true, // Hide the "Useless Captures for Sale" column in the Items For Sale picker; default on
       useless_capture_keys: null,  // null = use APC.USELESS_CAPTURE_DEFAULT_KEYS; else the user's saved list (Notes Settings > Edit List)
@@ -1538,6 +1585,64 @@
     /** Active list of painting rows: base set, or the full Extra Paintings set when on. */
     function activePaintingKingdoms() {
       return fullState.settings.extra_paintings ? EXTRA_PAINTING_KINGDOMS : PAINTING_NOTE_KINGDOMS;
+    }
+
+    // Extra Paintings > "IRL Info" setting (settings.painting_irl_info; only
+    // meaningful/shown while extra_paintings is also on): real in-game
+    // subarea for each of the 16 EXTRA_PAINTING_KINGDOMS rows, plus what
+    // clicking that row inserts into its own note - the real room the
+    // Painting is found in, and (all but Ruined) the 2-Way connection type
+    // that room's icon represents. `icon` is the file in assets/notes/ shown
+    // beside that row's Kingdom icon; Ruined has no `conn` text (its list
+    // entry has no second parenthetical) but still gets its own dedicated
+    // icon.
+    const PAINTING_IRL_INFO = {
+      'Cap':        { subtext: 'Alcove',                  from: 'Top-Hat Tower',               conn: '2-Way w/ Checkpoint', icon: 'paintingcheckpoint.png' },
+      'Cascade':    { subtext: 'Waterfall Basin',          from: 'Island in the Sky',            conn: '2-Way w/ Checkpoint', icon: 'paintingcheckpoint.png' },
+      'Sand':       { subtext: 'Lone Pillar',              from: 'Southwestern Floating Island', conn: '2-Way w/ Checkpoint', icon: 'paintingcheckpoint.png' },
+      'Lake':       { subtext: 'Pond',                     from: 'Viewing Balcony',              conn: '2-Way w/ Checkpoint', icon: 'paintingcheckpoint.png' },
+      'Wooded':     { subtext: 'Charging Station',         from: 'Iron Cage',                    conn: '2-Way w/ Checkpoint', icon: 'paintingcheckpoint.png' },
+      'Cloud':      { subtext: 'Odyssey',                  from: 'Moon Rock',                    conn: '2-Way w/ Moon Rock',  icon: 'paintingmoonrock.png' },
+      'Lost':       { subtext: 'Swamp Hill',               from: 'Rocky Mountain Summit',        conn: '2-Way w/ Checkpoint', icon: 'paintingcheckpoint.png' },
+      'Metro':      { subtext: 'Odyssey',                  from: 'Isolated Rooftop',             conn: '2-Way w/ Checkpoint', icon: 'paintingcheckpoint.png' },
+      'Snow':       { subtext: 'Cliffside',                from: 'Snow Dram',                    conn: '2-Way w/ Checkpoint', icon: 'paintingcheckpoint.png' },
+      'Seaside':    { subtext: 'Glass Palace',             from: 'Diving Platform',              conn: '2-Way w/ Checkpoint', icon: 'paintingcheckpoint.png' },
+      'Luncheon':   { subtext: '2D Island',                from: 'Floating Island',              conn: '2-Way w/ Checkpoint', icon: 'paintingcheckpoint.png' },
+      'Ruined':     { subtext: 'Chest',                    from: 'Arena',                        conn: null,                  icon: 'paintingruined.png' },
+      "Bowser's":   { subtext: 'Main Courtyard',           from: 'Island in the Sky',            conn: '2-Way w/ Checkpoint', icon: 'paintingcheckpoint.png' },
+      'Moon':       { subtext: 'KFR',                      from: 'Chapel',                       conn: '2-Way w/ Movement',   icon: 'paintingmovement.png' },
+      'Mushroom':   { subtext: 'Sheep',                    from: "Yoshi's Island",               conn: '2-Way w/ Checkpoint', icon: 'paintingcheckpoint.png' },
+      'Darkside':   { subtext: 'Mainland',                 from: 'Captain Toad',                 conn: '2-Way w/ Pylon',      icon: 'paintingpylon.png' },
+    };
+
+    /** True only when both Extra Paintings and its IRL Info sub-setting are on. */
+    function paintingIrlInfoActive() {
+      return !!(fullState.settings.extra_paintings && fullState.settings.painting_irl_info);
+    }
+
+    // Builds the literal text a Painting row's click inserts into its own
+    // note box: the real room the painting is found in on one line, then
+    // (when it has one) its connection type on a line underneath - a plain
+    // <textarea> can't render true "subtext" styling, so a second line is
+    // the closest equivalent to the Kingdom label's stacked look.
+    function paintingIrlNoteText(kingdom, info) {
+      const main = kingdom + ' (from ' + info.from + ')';
+      return info.conn ? main + '\n(' + info.conn + ')' : main;
+    }
+
+    // Drops that text into `noteArea`, reusing the same input-event dispatch
+    // appendRequirementText uses so the existing save/autosize listener on
+    // the textarea does the rest. Appends on its own line rather than
+    // replacing, and is a no-op if that exact text is already present, so
+    // clicking a row twice doesn't pile up duplicates.
+    function insertPaintingIrlNote(noteArea, kingdom, info) {
+      const text = paintingIrlNoteText(kingdom, info);
+      if (noteArea.value.includes(text)) return;
+      const trimmedEnd = noteArea.value.replace(/\s+$/, '');
+      noteArea.value = trimmedEnd ? trimmedEnd + '\n' + text : text;
+      noteArea.dispatchEvent(new Event('input', { bubbles: true }));
+      noteArea.focus();
+      noteArea.setSelectionRange(noteArea.value.length, noteArea.value.length);
     }
 
     // Extra Shops that only live in the Paintings column (not real
@@ -2170,6 +2275,15 @@
         b.classList.toggle('active', Number(b.dataset.cols) === cols));
       const compactBtn = bar.querySelector('[data-compact]');
       if (compactBtn) compactBtn.classList.toggle('active', !!s.notes_compact);
+
+      // Extra Paintings > IRL Info toggle: only ever shown while Extra
+      // Paintings itself is on (its own effect is meaningless otherwise -
+      // see paintingIrlInfoActive()), so it's hidden/shown here rather than
+      // being a permanent fixture like the other toolbar controls.
+      const irlGroup = bar.querySelector('[data-irl-group]');
+      if (irlGroup) irlGroup.hidden = !s.extra_paintings;
+      const irlBtn = bar.querySelector('[data-irl]');
+      if (irlBtn) irlBtn.classList.toggle('active', !!s.painting_irl_info);
     }
 
     function autosizeNotes(root) {
@@ -2210,6 +2324,9 @@
         '</div>' +
         '<div class="lz-toolbar-group">' +
           '<button class="lz-compact-btn" data-compact>Compact</button>' +
+        '</div>' +
+        '<div class="lz-toolbar-group" data-irl-group hidden>' +
+          '<button class="lz-compact-btn" data-irl title="Show each Extra Painting\'s real in-game location + connection type, and use it to fill in its note">IRL Info</button>' +
         '</div>';
 
       bar.querySelectorAll('[data-orient]').forEach(b =>
@@ -2230,6 +2347,16 @@
         fullState.settings.notes_compact = !fullState.settings.notes_compact;
         saveFullState();
         applyNotesLayout();
+      });
+      const irlBtn = bar.querySelector('[data-irl]');
+      irlBtn.addEventListener('click', () => {
+        // Unlike the other toolbar toggles, this changes the actual rendered
+        // content of the Extra Paintings rows (labels, icons, click
+        // behavior) rather than just a CSS class, so it needs a real rebuild
+        // rather than applyNotesLayout()'s lightweight class toggles.
+        fullState.settings.painting_irl_info = !fullState.settings.painting_irl_info;
+        saveFullState();
+        buildLoadingZonesContent();
       });
 
       scrollWrap.parentElement.insertBefore(bar, scrollWrap);
@@ -2300,9 +2427,12 @@
       const zonesRoot = document.createElement('div');
       zonesRoot.className = 'zones-container';
 
+      const irlActive = paintingIrlInfoActive();
+
       activePaintingKingdoms().forEach(kingdom => {
         if (!(kingdom in fullState.painting_notes)) fullState.painting_notes[kingdom] = '';
         const kd = LOADING_ZONES_TEMPLATE[kingdom] || { color: '#e6e6ee' };
+        const irlInfo = irlActive ? PAINTING_IRL_INFO[kingdom] : null;
         const row = document.createElement('div');
         row.className = 'zone-row';
 
@@ -2318,8 +2448,26 @@
 
         const nameLabel = document.createElement('span');
         nameLabel.className = 'zone-name';
-        nameLabel.textContent = kingdom;
         nameLabel.style.color = kd.color;
+        if (irlInfo) {
+          // IRL Info on: stack the Kingdom name over its real in-game
+          // subarea (Discord "-#" style subtext), and make the label
+          // clickable - see the click listener added below, once noteArea
+          // exists - to drop that Painting's real location + connection
+          // type into its own note.
+          nameLabel.classList.add('zone-name--stacked', 'zone-name--clickable');
+          nameLabel.title = 'Click to add this Painting\'s real location to the note below';
+          const mainSpan = document.createElement('span');
+          mainSpan.className = 'zone-name-main';
+          mainSpan.textContent = kingdom;
+          const subSpan = document.createElement('span');
+          subSpan.className = 'zone-name-sub';
+          subSpan.textContent = irlInfo.subtext;
+          nameLabel.appendChild(mainSpan);
+          nameLabel.appendChild(subSpan);
+        } else {
+          nameLabel.textContent = kingdom;
+        }
 
         function renderDestChip() {
           reqsWrap.innerHTML = '';
@@ -2354,8 +2502,32 @@
             }, kingdom); // excludeKey: this Painting can't lead to itself
           });
           reqsWrap.appendChild(addBtn);
-          // Area name always sits immediately to the right of the + button,
-          // ahead of the destination icon, so its position never shifts.
+
+          // IRL Info on: this Painting's own Kingdom icon, then its
+          // connection-type icon (Checkpoint / Moon Rock / Pylon /
+          // Movement, or Ruined's dedicated icon), ahead of the name label.
+          // Purely visual - doesn't touch the destination picker/chip below.
+          if (irlInfo) {
+            const kIcon = document.createElement('img');
+            kIcon.className = 'zone-req-icon zone-req-icon--kingdom';
+            kIcon.src = 'assets/' + kd.icon;
+            kIcon.alt = kingdom;
+            if (kd.color) kIcon.style.setProperty('--kingdom-color', kd.color);
+            reqsWrap.appendChild(kIcon);
+
+            if (irlInfo.icon) {
+              const cIcon = document.createElement('img');
+              cIcon.className = 'zone-req-icon zone-irl-connection-icon';
+              cIcon.src = 'assets/notes/' + irlInfo.icon;
+              cIcon.alt = irlInfo.conn || 'Ruined';
+              cIcon.title = irlInfo.conn || 'Ruined';
+              reqsWrap.appendChild(cIcon);
+            }
+          }
+
+          // Area name always sits immediately to the right of the + button
+          // (and, with IRL Info on, its two icons above), ahead of the
+          // destination icon, so its position never shifts.
           reqsWrap.appendChild(nameLabel);
 
           const destKey = APC.getPaintingDestination(fullState, kingdom);
@@ -2397,6 +2569,15 @@
             noteArea.style.height = noteArea.scrollHeight + 'px';
           });
         });
+
+        if (irlInfo) {
+          nameLabel.addEventListener('click', (e) => {
+            e.stopPropagation();
+            bounce(nameLabel);
+            insertPaintingIrlNote(noteArea, kingdom, irlInfo);
+          });
+        }
+
         row.appendChild(noteArea);
         zonesRoot.appendChild(row);
       });
@@ -2856,20 +3037,27 @@
 
       function renderReqIcons() {
         reqsWrap.innerHTML = '';
-        const addBtn = document.createElement('button');
-        addBtn.type = 'button';
-        addBtn.className = 'zone-req-add';
-        addBtn.title = 'Add a Capture, Ability, Refight, Shop, or Kingdom requirement';
-        addBtn.textContent = '+';
-        addBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          bounce(addBtn);
-          openRequirementPicker(e, zs, noteArea, () => {
-            renderReqIcons();
-            saveFullState();
-          }, kingdom, zone);
-        });
-        reqsWrap.appendChild(addBtn);
+        // Darker Side ("Odyssey" zone of the Darkerside kingdom) gets no
+        // normal +: the room only ever hosts Multimoon paintings in-game,
+        // so its only add-action is the Multimoon + below (moved to the
+        // far left), never this generic Capture/Ability/Refight/Shop/
+        // Kingdom requirement picker.
+        if (kingdom !== 'Darkerside') {
+          const addBtn = document.createElement('button');
+          addBtn.type = 'button';
+          addBtn.className = 'zone-req-add';
+          addBtn.title = 'Add a Capture, Ability, Refight, Shop, or Kingdom requirement';
+          addBtn.textContent = '+';
+          addBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            bounce(addBtn);
+            openRequirementPicker(e, zs, noteArea, () => {
+              renderReqIcons();
+              saveFullState();
+            }, kingdom, zone);
+          });
+          reqsWrap.appendChild(addBtn);
+        }
 
         // Darker Side gets its own distinct treatment: its Kingdom icon
         // rides to the LEFT of the name (every other row's icons, if any,
@@ -3087,8 +3275,12 @@
 
         // Darkerside's "Odyssey" zone gets an Extra + for the row of Multimoon
         // paintings found there - separate from the normal Capture/Ability/
-        // Refight/Shop/Kingdom + above, since a Multimoon can point back to
+        // Refight/Shop/Kingdom + above (which Darker Side never gets at all -
+        // see renderReqIcons above), since a Multimoon can point back to
         // more than one Kingdom at once (multi-select, not radio-select).
+        // It's the only add-action Darker Side has, so it's moved all the
+        // way to the far left (ahead of the Kingdom icon/name) instead of
+        // sitting wherever a normal + would otherwise land.
         if (kingdom === 'Darkerside' && zone === 'Odyssey') {
           const extraBtn = document.createElement('button');
           extraBtn.type = 'button';
@@ -3100,8 +3292,9 @@
             bounce(extraBtn);
             openMultimoonPicker(zs, () => renderReqIcons());
           });
-          reqsWrap.appendChild(extraBtn);
+          reqsWrap.insertBefore(extraBtn, reqsWrap.firstChild);
 
+          let insertAfter = extraBtn;
           zs.multimoons.forEach((kKey) => {
             const kItem = APC.findItem('kingdoms', kKey);
             if (!kItem) return;
@@ -3118,7 +3311,8 @@
               saveFullState();
               renderReqIcons();
             });
-            reqsWrap.appendChild(img);
+            reqsWrap.insertBefore(img, insertAfter.nextSibling);
+            insertAfter = img;
           });
         }
 
@@ -5228,7 +5422,7 @@
     // notes LAYOUT changed, and never yank focus out of a note mid-edit.
     const NOTES_LAYOUT_KEYS = [
       'notes_layout', 'notes_columns', 'notes_compact',
-      'show_painting_notes', 'extra_paintings', 'show_kingdom_moon', 'zone_names',
+      'show_painting_notes', 'extra_paintings', 'painting_irl_info', 'show_kingdom_moon', 'zone_names',
       'show_kingdomsubicons',
     ];
 
