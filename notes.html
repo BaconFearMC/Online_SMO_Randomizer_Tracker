@@ -2488,13 +2488,14 @@
             openKingdomOnlyPicker(current, (kingdomKey) => {
               const prevKey = APC.getPaintingDestination(fullState, kingdom);
               if (irlInfo) {
-                // IRL Info on: the note gets this Painting's own real
-                // location + connection type instead of the destination's
-                // name - fixed per row (see PAINTING_IRL_INFO), so picking
-                // or re-picking a destination just makes sure it's present
-                // rather than swapping in the destination's name.
+                // IRL Info on: the note gets the *picked destination's* own
+                // real location + connection type (see PAINTING_IRL_INFO),
+                // not this row's - e.g. +'ing Metro from the Cap row should
+                // write Metro's own "(from Isolated Rooftop)" line, since
+                // that's where you actually end up.
                 APC.setPaintingDestination(fullState, kingdom, kingdomKey);
-                if (kingdomKey) insertPaintingIrlNote(noteArea, kingdom, irlInfo);
+                const destInfo = kingdomKey ? PAINTING_IRL_INFO[kingdomKey] : null;
+                if (kingdomKey && destInfo) insertPaintingIrlNote(noteArea, kingdomKey, destInfo);
               } else {
                 // Swap the note text: drop whatever the old destination's
                 // name was written in (if any), then write the new one -
@@ -2552,10 +2553,12 @@
                 bounce(img);
                 APC.setPaintingDestination(fullState, kingdom, null);
                 // Removes whatever this + actually wrote into the note -
-                // the fixed IRL line when IRL Info is on, otherwise just
+                // the picked destination's own IRL line when IRL Info is
+                // on (matching what got inserted above), otherwise just
                 // the destination's plain name.
                 if (irlInfo) {
-                  removeRequirementText(noteArea, paintingIrlNoteText(kingdom, irlInfo));
+                  const destInfo = PAINTING_IRL_INFO[destKey];
+                  if (destInfo) removeRequirementText(noteArea, paintingIrlNoteText(destKey, destInfo));
                 } else {
                   removeRequirementText(noteArea, item.name);
                 }
@@ -2574,19 +2577,21 @@
               // Rock / Pylon / Movement, or Ruined's own icon) rides
               // immediately after the destination Kingdom name once one's
               // picked, with its "(2-Way w/ X)" text next to it in small
-              // grey type.
-              if (irlInfo && irlInfo.icon) {
+              // grey type. Uses the *destination's* own IRL info, matching
+              // the note text above - not this row's.
+              const destIrlInfo = irlInfo ? PAINTING_IRL_INFO[destKey] : null;
+              if (destIrlInfo && destIrlInfo.icon) {
                 const cIcon = document.createElement('img');
                 cIcon.className = 'zone-req-icon zone-irl-connection-icon';
-                cIcon.src = 'assets/notes/' + irlInfo.icon;
-                cIcon.alt = irlInfo.conn || 'Ruined';
-                cIcon.title = irlInfo.conn || 'Ruined';
+                cIcon.src = 'assets/notes/' + destIrlInfo.icon;
+                cIcon.alt = destIrlInfo.conn || 'Ruined';
+                cIcon.title = destIrlInfo.conn || 'Ruined';
                 reqsWrap.appendChild(cIcon);
 
-                if (irlInfo.conn) {
+                if (destIrlInfo.conn) {
                   const connLabel = document.createElement('span');
                   connLabel.className = 'zone-irl-connection-label';
-                  connLabel.textContent = irlInfo.conn;
+                  connLabel.textContent = destIrlInfo.conn;
                   reqsWrap.appendChild(connLabel);
                 }
               }
