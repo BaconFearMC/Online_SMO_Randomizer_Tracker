@@ -1155,11 +1155,6 @@
       border-radius: 4px;
       flex: none;
     }
-    /* Notes toolbar's "IRL Info" toggle group - hidden by default (see
-       syncNotesToolbar) and only shown while Extra Paintings is on. */
-    .lz-toolbar-group[data-irl-group][hidden] {
-      display: none;
-    }
     /* Darkerside "Odyssey" zone's Extra + (Multimoon picker) - same shape as
        the normal + but a subtly different color so it reads as a second,
        distinct add-action rather than a duplicate of the main +. */
@@ -2275,15 +2270,6 @@
         b.classList.toggle('active', Number(b.dataset.cols) === cols));
       const compactBtn = bar.querySelector('[data-compact]');
       if (compactBtn) compactBtn.classList.toggle('active', !!s.notes_compact);
-
-      // Extra Paintings > IRL Info toggle: only ever shown while Extra
-      // Paintings itself is on (its own effect is meaningless otherwise -
-      // see paintingIrlInfoActive()), so it's hidden/shown here rather than
-      // being a permanent fixture like the other toolbar controls.
-      const irlGroup = bar.querySelector('[data-irl-group]');
-      if (irlGroup) irlGroup.hidden = !s.extra_paintings;
-      const irlBtn = bar.querySelector('[data-irl]');
-      if (irlBtn) irlBtn.classList.toggle('active', !!s.painting_irl_info);
     }
 
     function autosizeNotes(root) {
@@ -2324,9 +2310,6 @@
         '</div>' +
         '<div class="lz-toolbar-group">' +
           '<button class="lz-compact-btn" data-compact>Compact</button>' +
-        '</div>' +
-        '<div class="lz-toolbar-group" data-irl-group hidden>' +
-          '<button class="lz-compact-btn" data-irl title="Show each Extra Painting\'s real in-game location + connection type, and use it to fill in its note">IRL Info</button>' +
         '</div>';
 
       bar.querySelectorAll('[data-orient]').forEach(b =>
@@ -2347,16 +2330,6 @@
         fullState.settings.notes_compact = !fullState.settings.notes_compact;
         saveFullState();
         applyNotesLayout();
-      });
-      const irlBtn = bar.querySelector('[data-irl]');
-      irlBtn.addEventListener('click', () => {
-        // Unlike the other toolbar toggles, this changes the actual rendered
-        // content of the Extra Paintings rows (labels, icons, click
-        // behavior) rather than just a CSS class, so it needs a real rebuild
-        // rather than applyNotesLayout()'s lightweight class toggles.
-        fullState.settings.painting_irl_info = !fullState.settings.painting_irl_info;
-        saveFullState();
-        buildLoadingZonesContent();
       });
 
       scrollWrap.parentElement.insertBefore(bar, scrollWrap);
