@@ -432,7 +432,7 @@
           </div>
 
           <div class="settings-row settings-subrow" id="row-painting-irl-info" hidden>
-            <span>IRL Info</span>
+            <span>In-World Info</span>
             <label class="toggle-switch">
               <input type="checkbox" id="toggle-painting-irl-info">
               <span class="toggle-track"></span>
@@ -755,7 +755,7 @@
   <script src="app.js?v=3"></script>
   <script src="spoiler-log.js?v=1"></script>
   <script>
-    // Extra Paintings > "IRL Info" row: app.js doesn't know about this
+    // Extra Paintings > "In-World Info" row: app.js doesn't know about this
     // setting, so it's wired up here instead, self-contained, reading and
     // writing the same 'tracker_state' localStorage key (under .settings)
     // that app.js/notes.html already share - never overwriting the rest of
@@ -774,7 +774,34 @@
         }
       }
 
+      // The only source of truth for what this setting *should* be, updated
+      // solely by (a) an explicit click on this checkbox, or (b) a legit
+      // change written from another window (picked up via 'storage', which
+      // only fires cross-window - never for this document's own writes).
+      // Every write to STATE_KEY, no matter who makes it, gets forced to
+      // match this - see the localStorage.setItem guard below - so nothing
+      // else (e.g. app.js re-saving settings on some unrelated toggle,
+      // without ever knowing this key exists) can silently drop or flip it.
+      let desired = !!readSettings().painting_irl_info;
+
+      const nativeSetItem = localStorage.setItem.bind(localStorage);
+      localStorage.setItem = function (key, value) {
+        if (key === STATE_KEY) {
+          try {
+            const parsed = JSON.parse(value);
+            if (!parsed.settings) parsed.settings = {};
+            parsed.settings.painting_irl_info = desired;
+            value = JSON.stringify(parsed);
+          } catch (e) {
+            // Not valid JSON - pass it through untouched rather than risk
+            // corrupting whatever's actually being written.
+          }
+        }
+        return nativeSetItem(key, value);
+      };
+
       function writePaintingIrlInfo(value) {
+        desired = value;
         try {
           const raw = localStorage.getItem(STATE_KEY);
           const parsed = raw ? JSON.parse(raw) : {};
@@ -803,8 +830,13 @@
       // Catches changes made from another window/tab (e.g. the popped-out
       // Notes window itself, or a synced tab) so this row stays correct
       // even if this Settings modal is already open when that happens.
+      // Also updates `desired`, since a value that legitimately landed on
+      // disk from elsewhere is exactly what future writes should preserve.
       window.addEventListener('storage', (e) => {
-        if (e.key === STATE_KEY) sync();
+        if (e.key === STATE_KEY) {
+          desired = !!readSettings().painting_irl_info;
+          sync();
+        }
       });
 
       // Extra Paintings' own checkbox is saved by app.js; this just mirrors
