@@ -513,13 +513,39 @@
       gap: 8px;
       padding: 16px 20px 20px;
     }
+    /* "Every Shop" popup (showAllShopsPopup) only: wider popup, two columns
+       side by side instead of one long list - the 4 Painting-menu-only
+       Shops (Cap/Cascade/Wooded/Seaside) on the left, the 9 real
+       Kingdom-tab Shops on the right - so all 13 rows are visible at once
+       with no scrolling instead of one 13-row column. */
+    .req-find-popup--shops { max-width: 920px; }
+    .req-find-popup-body--shops {
+      flex-direction: row;
+      align-items: flex-start;
+      gap: 20px;
+    }
+    .req-find-popup-shops-col {
+      flex: 1 1 0;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .req-find-popup-shops-col + .req-find-popup-shops-col {
+      padding-left: 20px;
+      border-left: 1px solid var(--border, #444);
+    }
 
     /* ── Shop "Items For Sale" picker, Ability tab: regular 21-ability grid
-       on the left, 9 extra sale-only abilities in their own column on the
+       on the left, 8 extra sale-only abilities in their own column on the
        right, past a divider line - same pattern as the Notes-picker
        Captures tab's "One-Time Captures" column above. 2 columns (not 1) so
-       all 9 fit without scrolling by default; overflow-y stays auto as a
-       fallback only. ─────────────────────────────────────────────────── */
+       all 8 fit without scrolling, as a clean 4-tall grid with no leftover
+       single-item row; overflow-y stays auto as a fallback only. Trimmed
+       from the full 9-entry SHOP_ABILITY_EXTRAS list (NPC Talking left out
+       - see render() in openShopSalePicker); the "Add a Requirement"
+       picker's own Extra Abilities column keeps all 9 in a 3x3 grid.
+       ─────────────────────────────────────────────────── */
     .req-picker-sale-wrap {
       display: flex;
       align-items: stretch;
@@ -4473,10 +4499,16 @@
         }
 
         // Ability tab only: the sale-only extras (Moon Gravity, Grab, Swim,
-        // Rocket Flower, NPC Talking, Timer Challenges, 2D Pipes),
-        // past the divider, in that fixed top-to-bottom order.
+        // Rocket Flower, Timer Challenges, 2D Pipes) past the divider, in
+        // that fixed top-to-bottom order. NPC Talking is left out here on
+        // purpose - unlike the "Add a Requirement" picker's own Extra
+        // Abilities column (abilityExtrasGrid below, which keeps all 9 in a
+        // 3x3 grid), a Shop can't actually sell NPC Talking, so this list
+        // is trimmed to 8 entries - a clean 4-tall, 2-wide grid with no
+        // dangling single-item row.
         if (activeKind === 'abilities') {
-          const extraList = q ? APC.SHOP_ABILITY_EXTRAS.filter(i => i.name.toLowerCase().includes(q)) : APC.SHOP_ABILITY_EXTRAS;
+          const extraSource = APC.SHOP_ABILITY_EXTRAS.filter(i => i.key !== 'AbilityNPCTalking');
+          const extraList = q ? extraSource.filter(i => i.name.toLowerCase().includes(q)) : extraSource;
           extraList.forEach(item => extrasGrid.appendChild(buildSaleCell(item)));
         }
 
@@ -4987,20 +5019,22 @@
       }
 
       // Lists every Shop in the game - the 9 real Kingdom-tab shops (Sand,
-      // Lake, Lost, Metro, Snow, Luncheon, Bowser's, Mushroom, Moon) plus the
-      // 4 Painting-menu-only ones (Cap, Cascade, Wooded, Seaside) - regardless
-      // of whether either is picked as a zone requirement anywhere. "Found"
-      // here just means its Capture/Ability sale has been recorded at least
-      // once (via the 🏷 button or the Paintings column's own shop row);
-      // anything without a recorded sale reads "<Name> Shop has not been
-      // found yet...".
+      // Lake, Lost, Metro, Snow, Luncheon, Bowser's, Mushroom, Moon) on the
+      // right, plus the 4 Painting-menu-only ones (Cap, Cascade, Wooded,
+      // Seaside) on the left - regardless of whether either is picked as a
+      // zone requirement anywhere. Two columns (not one 13-row list) so
+      // every Shop is visible at once with no scrolling. "Found" here just
+      // means its Capture/Ability sale has been recorded at least once (via
+      // the 🏷 button or the Paintings column's own shop row); anything
+      // without a recorded sale reads "<Name> Shop has not been found
+      // yet...".
       function showAllShopsPopup() {
         document.querySelectorAll('.req-find-popup-overlay').forEach(p => p.remove());
 
         const popOverlay = document.createElement('div');
         popOverlay.className = 'req-find-popup-overlay';
         const pop = document.createElement('div');
-        pop.className = 'req-find-popup';
+        pop.className = 'req-find-popup req-find-popup--shops';
         pop.style.setProperty('--popup-color', '#ffd700');
         pop.addEventListener('click', (e) => e.stopPropagation());
         popOverlay.appendChild(pop);
@@ -5026,9 +5060,9 @@
         pop.appendChild(head);
 
         const body = document.createElement('div');
-        body.className = 'req-find-popup-body';
+        body.className = 'req-find-popup-body req-find-popup-body--shops';
 
-        APC.SHOPS.forEach(item => {
+        function buildShopRow(item) {
           const sale = APC.getShopSale(fullState, item.key);
           const capItem = sale.capture ? APC.findItem('captures', sale.capture) : null;
           const ablItem = sale.ability ? APC.findItem('abilities', sale.ability) : null;
@@ -5073,8 +5107,22 @@
             row.appendChild(toGroup);
           }
 
-          body.appendChild(row);
-        });
+          return row;
+        }
+
+        // Left column: the 4 Painting-menu-only Shops, in Cap/Cascade/
+        // Wooded/Seaside order (APC.SHOPS' own order already matches).
+        const paintingCol = document.createElement('div');
+        paintingCol.className = 'req-find-popup-shops-col';
+        APC.SHOPS.filter(item => item.paintingOnly).forEach(item => paintingCol.appendChild(buildShopRow(item)));
+
+        // Right column: the 9 real Kingdom-tab Shops.
+        const realCol = document.createElement('div');
+        realCol.className = 'req-find-popup-shops-col';
+        APC.SHOPS.filter(item => !item.paintingOnly).forEach(item => realCol.appendChild(buildShopRow(item)));
+
+        body.appendChild(paintingCol);
+        body.appendChild(realCol);
 
         pop.appendChild(body);
         document.body.appendChild(popOverlay);
