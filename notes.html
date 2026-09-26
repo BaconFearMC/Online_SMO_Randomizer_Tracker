@@ -4783,6 +4783,12 @@
         findModeActive = active;
         findBtn.classList.toggle('active', active);
         findBtn.title = active ? 'Tap a button below…' : 'Find';
+        // Kingdom tab's Shop grid swaps between the normal 9-shop grid and
+        // the single "All Shops" overview icon depending on findModeActive
+        // (see renderKingdomSections) - re-render it now instead of waiting
+        // for the next incidental rebuild (search/tab switch), so toggling
+        // Find swaps it immediately.
+        if (activeKind === 'kingdom') renderKingdomSections();
         applyFindTargetStyling();
       }
 
@@ -4952,9 +4958,11 @@
         requestAnimationFrame(() => popOverlay.classList.add('active'));
       }
 
-      // Single generic icon shown in the Shop grid while shopOverviewActive
-      // is on (see the "Shops" title button above) - stands in for all 13
-      // Shops at once instead of picking one for the currently open zone.
+      // Single generic icon shown in the Shop grid in place of the normal
+      // 9-shop grid whenever shopOverviewActive is on (see the "Shops" title
+      // button above) or Find mode is active (see setFindMode) - stands in
+      // for all 13 Shops at once instead of picking one for the currently
+      // open zone.
       function buildShopOverviewCell() {
         const cell = document.createElement('button');
         cell.type = 'button';
@@ -4967,7 +4975,14 @@
         cell.appendChild(img);
         cell.appendChild(label);
         cell.title = 'Show every Shop and what it sells';
-        cell.addEventListener('click', () => showAllShopsPopup());
+        cell.addEventListener('click', () => {
+          // Find mode has no per-shop "which zone needs this Shop" result
+          // the way Refights/Kingdoms do, so clicking this while finding
+          // just exits Find mode (same as any other picker cell would) and
+          // opens the same everything-about-every-shop popup either way.
+          if (findModeActive) setFindMode(false);
+          showAllShopsPopup();
+        });
         return cell;
       }
 
@@ -5342,17 +5357,9 @@
         // Painting-menu-only shops (Cap/Cascade/Wooded/Seaside) are left out
         // here - they're not real zone gates, so they only ever show up in
         // the Paintings column itself (see PAINTING_SHOP_KINGDOMS above).
-        const allRealShops = APC.SHOPS.filter(i => !i.paintingOnly);
-        const shops = (q ? allRealShops.filter(i => i.name.toLowerCase().includes(q)) : allRealShops);
+        const shops = (q ? APC.SHOPS.filter(i => i.name.toLowerCase().includes(q)) : APC.SHOPS)
+          .filter(i => !i.paintingOnly);
         const kingdoms = q ? APC.KINGDOMS.filter(i => i.name.toLowerCase().includes(q)) : APC.KINGDOMS;
-
-        // A search that still matches every real shop (e.g. "shop"/"shops" -
-        // every shop's name ends in "Shop") is treated the same as clicking
-        // the "Shops" title: swap the 3x3 grid of individual shops for the
-        // single "All Shops" overview icon instead of listing all 9 anyway.
-        // An empty search does NOT trigger this - only an actual typed term
-        // that happens to match all of them.
-        const searchMatchesAllShops = !!q && shops.length === allRealShops.length;
 
         if (!refights.length) {
           const empty = document.createElement('div');
@@ -5363,7 +5370,13 @@
           refights.forEach(item => refightGrid.appendChild(buildPickerCell(item, 'refights', 'req-picker-item--refight')));
         }
 
-        if (shopOverviewActive || searchMatchesAllShops) {
+        // Shown instead of the normal 9-shop grid whenever the "Shops" title
+        // has been clicked to toggle it (shopOverviewActive) OR Find mode is
+        // active - Find has no per-shop "which zone needs this Shop" result
+        // the way Refights/Kingdoms do (see showFindResultsPopup), so it
+        // repurposes this same single icon: clicking it while finding opens
+        // showAllShopsPopup (every Shop + what it sells) instead.
+        if (shopOverviewActive || findModeActive) {
           shopGrid.appendChild(buildShopOverviewCell());
         } else if (!shops.length) {
           const empty = document.createElement('div');
