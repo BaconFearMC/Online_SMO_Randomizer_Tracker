@@ -168,6 +168,33 @@
       margin-left: 4px;
     }
 
+    /* "Shops" title is a real button (see shopOverviewActive) - keep it
+       looking like the plain text label it replaced, just with a pointer
+       cursor and a hover cue that it's clickable. */
+    .req-picker-kingdom-col-title--btn {
+      background: none;
+      border: none;
+      color: inherit;
+      font: inherit;
+      text-align: left;
+      padding: 0;
+      cursor: pointer;
+      display: block;
+      width: 100%;
+    }
+    .req-picker-kingdom-col-title--btn:hover { text-decoration: underline; }
+
+    /* Single "All Shops" cell shown in place of the normal 9-shop grid while
+       shopOverviewActive is on - sized to fill the same 3x3 box instead of
+       sitting small in one corner of it. */
+    .req-picker-item--shop-overview {
+      grid-column: 1 / -1;
+      grid-row: 1 / -1;
+      width: 100%;
+      height: 100%;
+    }
+    .req-picker-item--shop-overview img { width: 42%; }
+
     /* ── Shops (Kingdom tab, "Shops" column) ─────────────────────────
        Reuses the refight-style gradient ring via --refight-c1/--refight-c2
        (set per-item in JS: [kingdom color, gold]) so a Shop reads as its
@@ -1443,7 +1470,7 @@
       show_captures:     true,
       show_save_buttons: true,
       show_multi_moon:   true,
-      show_kingdom_moon: false,
+      show_kingdom_moon: true,   // Moon Kingdom row (mirrors app.js); on by default
       overlay_scale:     1,
       notes_scroll_px:   100,
       scroll_left_binding:  { type: 'mouse', code: 3 },
@@ -1479,7 +1506,54 @@
     // it leads to there, and it shows up here as e.g.
     // "Klepto in Lost goes to Cap".
     function buildReachLines(kingdomKey) {
-      return buildRequirementLines('kingdoms', kingdomKey, ' goes to ');
+      return buildRequirementLines('kingdoms', kingdomKey, ' goes to ')
+        .concat(buildPaintingReachLines(kingdomKey));
+    }
+
+    // Five Kingdoms' paintings are known two-way tunnels rather than a fixed
+    // one-way trip: Cap, Lost, Cloud, Darkside and Moon. Marking a Painting
+    // destination that touches one of these (either end) means the trip
+    // works in reverse too, so the reverse edge becomes searchable as well.
+    // Every other Painting stays a strict one-way edge - e.g. marking "Snow's
+    // Painting leads to Cascade" only ever surfaces under a search for
+    // Cascade, never under Snow.
+    const PAINTING_TWO_WAY_KINGDOMS = ['Cap', 'Lost', 'Cloud', 'Darkside', 'Moon'];
+
+    // Every Painting-destination edge currently marked (state.painting_destinations),
+    // expanded with the two-way reciprocal edges described above.
+    function paintingReachEdges() {
+      const dests = fullState.painting_destinations || {};
+      const edges = [];
+      for (const [from, to] of Object.entries(dests)) {
+        if (!to) continue;
+        edges.push({ from, to });
+        if (PAINTING_TWO_WAY_KINGDOMS.includes(from) || PAINTING_TWO_WAY_KINGDOMS.includes(to)) {
+          edges.push({ from: to, to: from });
+        }
+      }
+      return edges;
+    }
+
+    // Folds Painting destinations into the same "how do I reach <Kingdom>?"
+    // Find results as the loading-zone "leads to" tags (buildRequirementLines
+    // above), so a search surfaces both ways of getting somewhere.
+    function buildPaintingReachLines(targetKingdomKey) {
+      const targetItem = APC.findItem('kingdoms', targetKingdomKey);
+      return paintingReachEdges()
+        .filter(e => e.to === targetKingdomKey)
+        .map(e => {
+          const fromItem = APC.findItem('kingdoms', e.from);
+          const tpl = LOADING_ZONES_TEMPLATE[e.from] || {};
+          return {
+            fromIcon: fromItem ? fromItem.src : (tpl.icon ? 'assets/' + tpl.icon : null),
+            fromColor: (fromItem && fromItem.color) || tpl.color || null,
+            fromLabel: 'Painting',
+            kingdomLabel: fromItem ? fromItem.name : e.from,
+            verb: ' goes to ',
+            toIcon: targetItem ? targetItem.src : null,
+            toLabel: targetItem ? targetItem.name : targetKingdomKey,
+          };
+        });
     }
 
     // Generic reverse lookup: every zone that has {kind, key} picked as a
@@ -4650,9 +4724,22 @@
       // Reaching Kingdoms column (they're separate items, separate grids).
       const shopCol = document.createElement('div');
       shopCol.className = 'req-picker-kingdom-col';
-      const shopTitle = document.createElement('div');
-      shopTitle.className = 'req-picker-kingdom-col-title';
-      shopTitle.innerHTML = 'Shop <span class="req-picker-kingdom-col-hint">(only one applies)</span>';
+      // "Shops" is clickable: it swaps the 9-shop picker grid below for a
+      // single generic shop icon (see shopOverviewActive/buildShopOverviewCell)
+      // that opens a popup listing every Shop in the game - including the 4
+      // Painting-menu-only ones (Cap/Cascade/Wooded/Seaside) that never
+      // appear in the normal 9-shop grid - and what each sells. Clicking it
+      // again swaps back to the normal picker grid.
+      const shopTitle = document.createElement('button');
+      shopTitle.type = 'button';
+      shopTitle.className = 'req-picker-kingdom-col-title req-picker-kingdom-col-title--btn';
+      shopTitle.innerHTML = 'Shops <span class="req-picker-kingdom-col-hint">(only one applies)</span>';
+      shopTitle.title = 'Show every Shop and what it sells';
+      let shopOverviewActive = false;
+      shopTitle.addEventListener('click', () => {
+        shopOverviewActive = !shopOverviewActive;
+        renderKingdomSections();
+      });
       const shopGrid = document.createElement('div');
       shopGrid.className = 'req-picker-grid req-picker-grid--sub';
       shopGrid.id = 'shop-grid-force-3x3';
@@ -4853,6 +4940,131 @@
           setTimeout(() => popOverlay.remove(), 300);
         }
         popOverlay.addEventListener('click', (e) => { if (e.target === popOverlay) closeFindPopup(); });
+        document.addEventListener('keydown', onPopKeyDown);
+
+        void popOverlay.offsetWidth;
+        requestAnimationFrame(() => popOverlay.classList.add('active'));
+      }
+
+      // Single generic icon shown in the Shop grid while shopOverviewActive
+      // is on (see the "Shops" title button above) - stands in for all 13
+      // Shops at once instead of picking one for the currently open zone.
+      function buildShopOverviewCell() {
+        const cell = document.createElement('button');
+        cell.type = 'button';
+        cell.className = 'req-picker-item req-picker-item--shop req-picker-item--shop-overview';
+        const img = document.createElement('img');
+        img.src = 'assets/shop.png';
+        img.alt = 'All Shops';
+        const label = document.createElement('span');
+        label.textContent = 'All Shops';
+        cell.appendChild(img);
+        cell.appendChild(label);
+        cell.title = 'Show every Shop and what it sells';
+        cell.addEventListener('click', () => showAllShopsPopup());
+        return cell;
+      }
+
+      // Lists every Shop in the game - the 9 real Kingdom-tab shops (Sand,
+      // Lake, Lost, Metro, Snow, Luncheon, Bowser's, Mushroom, Moon) plus the
+      // 4 Painting-menu-only ones (Cap, Cascade, Wooded, Seaside) - regardless
+      // of whether either is picked as a zone requirement anywhere. "Found"
+      // here just means its Capture/Ability sale has been recorded at least
+      // once (via the 🏷 button or the Paintings column's own shop row);
+      // anything without a recorded sale reads "<Name> Shop has not been
+      // found yet...".
+      function showAllShopsPopup() {
+        document.querySelectorAll('.req-find-popup-overlay').forEach(p => p.remove());
+
+        const popOverlay = document.createElement('div');
+        popOverlay.className = 'req-find-popup-overlay';
+        const pop = document.createElement('div');
+        pop.className = 'req-find-popup';
+        pop.style.setProperty('--popup-color', '#ffd700');
+        pop.addEventListener('click', (e) => e.stopPropagation());
+        popOverlay.appendChild(pop);
+
+        const head = document.createElement('div');
+        head.className = 'req-find-popup-head';
+        const headIcon = document.createElement('img');
+        headIcon.className = 'req-find-popup-head-icon';
+        headIcon.src = 'assets/shop.png';
+        headIcon.alt = 'Shops';
+        const label = document.createElement('div');
+        label.className = 'req-find-popup-head-text';
+        label.textContent = 'Every Shop';
+        const closeBtn = document.createElement('button');
+        closeBtn.type = 'button';
+        closeBtn.className = 'req-find-popup-close';
+        closeBtn.textContent = '✕';
+        closeBtn.title = 'Close';
+        closeBtn.addEventListener('click', () => closeShopsPopup());
+        head.appendChild(headIcon);
+        head.appendChild(label);
+        head.appendChild(closeBtn);
+        pop.appendChild(head);
+
+        const body = document.createElement('div');
+        body.className = 'req-find-popup-body';
+
+        APC.SHOPS.forEach(item => {
+          const sale = APC.getShopSale(fullState, item.key);
+          const capItem = sale.capture ? APC.findItem('captures', sale.capture) : null;
+          const ablItem = sale.ability ? APC.findItem('abilities', sale.ability) : null;
+          const found = !!(capItem || ablItem);
+          const pairItem = item.pair ? APC.findItem(item.pair.kind, item.pair.key) : null;
+
+          const row = document.createElement('div');
+          row.className = 'req-picker-reach-line';
+          row.style.setProperty('--line-color', (pairItem && pairItem.color) || (item.colors && item.colors[0]) || '#ffd700');
+
+          const icon = document.createElement('img');
+          icon.className = 'req-picker-reach-line-icon req-picker-reach-line-icon--from';
+          icon.src = pairItem ? pairItem.src : item.src;
+          icon.alt = item.name;
+          row.appendChild(icon);
+
+          const text = document.createElement('span');
+          text.className = 'req-picker-reach-line-text';
+          if (found) {
+            const bits = [];
+            if (ablItem) bits.push(ablItem.name);
+            if (capItem) bits.push(capItem.name);
+            text.textContent = item.name + ' sells ' + bits.join(' & ');
+          } else {
+            text.textContent = item.name + ' has not been found yet...';
+            text.style.fontStyle = 'italic';
+            text.style.opacity = '.75';
+          }
+          row.appendChild(text);
+
+          if (found) {
+            const toGroup = document.createElement('div');
+            toGroup.className = 'req-picker-reach-line-toitems';
+            [ablItem, capItem].filter(Boolean).forEach(toItem => {
+              const toImg = document.createElement('img');
+              toImg.className = 'req-picker-reach-line-icon';
+              toImg.src = toItem.src;
+              toImg.alt = toItem.name;
+              toImg.title = toItem.name;
+              toGroup.appendChild(toImg);
+            });
+            row.appendChild(toGroup);
+          }
+
+          body.appendChild(row);
+        });
+
+        pop.appendChild(body);
+        document.body.appendChild(popOverlay);
+
+        function onPopKeyDown(e) { if (e.key === 'Escape') closeShopsPopup(); }
+        function closeShopsPopup() {
+          popOverlay.classList.remove('active');
+          document.removeEventListener('keydown', onPopKeyDown);
+          setTimeout(() => popOverlay.remove(), 300);
+        }
+        popOverlay.addEventListener('click', (e) => { if (e.target === popOverlay) closeShopsPopup(); });
         document.addEventListener('keydown', onPopKeyDown);
 
         void popOverlay.offsetWidth;
@@ -5137,7 +5349,9 @@
           refights.forEach(item => refightGrid.appendChild(buildPickerCell(item, 'refights', 'req-picker-item--refight')));
         }
 
-        if (!shops.length) {
+        if (shopOverviewActive) {
+          shopGrid.appendChild(buildShopOverviewCell());
+        } else if (!shops.length) {
           const empty = document.createElement('div');
           empty.className = 'req-picker-empty';
           empty.textContent = 'No matches';

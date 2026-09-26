@@ -77,7 +77,7 @@ const DEFAULT_SETTINGS = {
   show_multi_moon: true,
   show_moon_range: true,
   show_complete_color: false,
-  show_kingdom_moon: false,
+  show_kingdom_moon: true,     // Moon Kingdom row (tracker + overlay); on by default
   show_kingdom_cap: false,     // Optional Cap Kingdom row (tracker + overlay)
   show_lock: true,             // Lock sign column visible (tracker + overlay)
   show_peace: true,            // Peace sign column visible (tracker + overlay)
