@@ -1814,9 +1814,19 @@ h1 {
   transition: color 0.2s ease;
 }
 .req-picker-tab:hover { color: var(--text); }
-.req-picker-tab--capture.active { color: var(--capture-color-ink); }
-.req-picker-tab--ability.active { color: var(--ability-color-ink); }
-.req-picker-tab--kingdom.active { color: var(--kingdomtab-color-ink); }
+/* Gated on the indicator itself being visible (.is-visible, added by
+   positionTabIndicator only on a real tab click - see notes.html) so an
+   ".active" tab's text can't read as "selected" (colored) while the pill
+   indicator underneath it is still invisible. Without this, whichever tab
+   starts pre-marked "active" in the markup (e.g. Kingdom, in the Add a
+   Requirement popup) shows colored text from the very first frame even
+   though nothing has been clicked yet - looking selected when it isn't
+   truly, visibly selected. Once any tab is clicked for the first time the
+   indicator reveals itself and stays visible from then on, so this then
+   behaves exactly like the plain ".active" rule would have. */
+.req-picker-tabs:has(.req-picker-tab-indicator.is-visible) .req-picker-tab--capture.active { color: var(--capture-color-ink); }
+.req-picker-tabs:has(.req-picker-tab-indicator.is-visible) .req-picker-tab--ability.active { color: var(--ability-color-ink); }
+.req-picker-tabs:has(.req-picker-tab-indicator.is-visible) .req-picker-tab--kingdom.active { color: var(--kingdomtab-color-ink); }
 
 /* ── Search bar: magnifying-glass icon + focus glow tinted to the
    currently active tab's color (--picker-active-color, set by JS) ──── */

@@ -247,7 +247,7 @@
   // (except Jaxi/Scooter, which do - see below), they only exist so this
   // "Extra Abilities" column has somewhere to live. Rendered as their own
   // column past a divider, to the right of the normal 21-ability grid, in
-  // that same order (top to bottom). 10 entries total:
+  // that same order (top to bottom). 9 entries total:
   //  - AbilityMoonGravity / AbilityGrab / AbilitySwim: shop-sale-only, never
   //    a real zone requirement (click just finds a shop that sells them).
   //  - Jaxi_Capture / Scooter_Capture: real Captures, still tracked/sold as
@@ -258,8 +258,12 @@
   //    instead of 'abilities', and so ALL_ITEMS below doesn't double them up
   //    against their real CAPTURES entry.
   //  - AbilityRocketFlower / AbilityNPCTalking / AbilityTimerChallenges /
-  //    Ability2DPipes / AbilityWarping: new extra abilities, shop-sale-only
-  //    like the first 3.
+  //    Ability2DPipes: new extra abilities, shop-sale-only like the first 3.
+  // 9 entries total (3 base + 2 moved captures + 4 new) - keep it at 9 if
+  // this list is ever edited, so the "Extra Abilities" 3x3 grid (see
+  // .req-picker-grid--ability-extras in notes.html) always fills cleanly
+  // in line with the 21-entry main Abilities grid, with no empty or
+  // overflowing cell.
   const SHOP_ABILITY_EXTRA_KEYS = [
     'AbilityMoonGravity',
     'AbilityGrab',
@@ -279,13 +283,12 @@
     };
   });
 
-  const SHOP_ABILITY_EXTRA_KEYS_NEW = ['AbilityRocketFlower', 'AbilityNPCTalking', 'AbilityTimerChallenges', 'Ability2DPipes', 'AbilityWarping'];
+  const SHOP_ABILITY_EXTRA_KEYS_NEW = ['AbilityRocketFlower', 'AbilityNPCTalking', 'AbilityTimerChallenges', 'Ability2DPipes'];
   const SHOP_ABILITY_EXTRA_NAMES_NEW = {
     AbilityRocketFlower: 'Rocket Flower',
     AbilityNPCTalking: 'NPC Talking',
     AbilityTimerChallenges: 'Timer Challenges',
     Ability2DPipes: '2D Pipes',
-    AbilityWarping: 'Warping',
   };
   const SHOP_ABILITY_EXTRAS_NEW = SHOP_ABILITY_EXTRA_KEYS_NEW.map((key, i) => ({
     key,

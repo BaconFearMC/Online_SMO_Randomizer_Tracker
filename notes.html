@@ -246,22 +246,26 @@
        row name exactly like requirement icons do on a normal zone. */
     .zone-req-icon--capture, .zone-req-icon--ability { border-radius: 6px; }
 
-    /* ── Find Entries (Kingdom tab) ──────────────────────────────────
-       One button + chooser that replaces the old per-cell info badges. */
+    /* ── Find Entries (all 3 tabs) ─────────────────────────────────────
+       One button living in the popup header, immediately to the left of
+       the X (see .req-picker-header-right) - sized/shaped to sit flush
+       next to .req-picker-close instead of floating as its own fixed
+       corner button. */
+    .req-picker-header-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
     .req-picker-find-btn {
-      position: fixed;
-      right: 22px;
-      bottom: 22px;
-      z-index: 50;
-      flex: none;
-      order: unset;
+      flex-shrink: 0;
       margin: 0;
-      width: 44px;
-      height: 44px;
+      width: 32px;
+      height: 32px;
       padding: 0;
-      font-size: 1.1rem;
+      font-size: 0.95rem;
       font-weight: 700;
-      border-radius: 10px;
+      border-radius: 8px;
       border: 1px solid rgba(140,180,255,.35);
       background: linear-gradient(135deg, rgba(110,160,255,.28), rgba(255,255,255,.05));
       color: inherit;
@@ -269,14 +273,14 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 4px 14px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.08);
+      box-shadow: 0 2px 8px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.08);
       transition: transform .15s ease, box-shadow .2s ease, background .2s ease, border-color .2s ease;
     }
     .req-picker-find-btn:hover {
       background: linear-gradient(135deg, rgba(110,160,255,.4), rgba(255,255,255,.1));
       border-color: rgba(140,180,255,.55);
       transform: translateY(-1px);
-      box-shadow: 0 6px 20px rgba(80,140,255,.35), inset 0 1px 0 rgba(255,255,255,.12);
+      box-shadow: 0 4px 14px rgba(80,140,255,.35), inset 0 1px 0 rgba(255,255,255,.12);
     }
     .req-picker-find-btn:active { transform: translateY(0); }
 
@@ -335,6 +339,23 @@
       box-shadow: 0 0 0 1px color-mix(in srgb, var(--line-color, #666) 55%, transparent);
     }
     .req-picker-reach-line-icon--to { margin-left: auto; }
+    /* Captures/Abilities find only (see showFindResultsPopup): a small
+       right-aligned cluster of every requirement icon the matched zone
+       has, instead of the single searched-for icon - "goes to"/Kingdom
+       finds are unaffected and keep the single --to icon above. */
+    .req-picker-reach-line-toitems {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 4px;
+      margin-left: auto;
+      max-width: 46%;
+    }
+    .req-picker-reach-line-toitems .req-picker-reach-line-icon {
+      width: 24px;
+      height: 24px;
+    }
     .req-picker-reach-line-text { flex: 1; line-height: 1.3; }
     .req-picker-reach-line-kingdom { opacity: .7; }
     .req-picker-reach-line-arrow {
@@ -1466,8 +1487,12 @@
     // data each (not a flat string) so the find pop-up can render it as a
     // from-icon/label/to-icon line, tinted with the zone's own kingdom
     // color. `verb` lets Kingdoms read "goes to" while everything else
-    // defaults to "needs".
-    function buildRequirementLines(kind, key, verb) {
+    // defaults to "needs". When `allReqs` is set (Captures/Abilities find -
+    // see showFindResultsPopup) each line's `toItems` is populated with
+    // EVERY requirement that matched zone has, not just the searched one -
+    // e.g. searching "Vault" against a zone that needs Vault AND Dive
+    // shows both, instead of only confirming Vault is there.
+    function buildRequirementLines(kind, key, verb, allReqs) {
       const item = APC.findItem(kind, key);
       const targetName = item ? item.name : key;
       const targetIcon = item ? item.src : null;
@@ -1477,7 +1502,7 @@
           if (!Array.isArray(zs.requirements)) continue;
           if (zs.requirements.some(r => r.kind === kind && r.key === key)) {
             const tpl = LOADING_ZONES_TEMPLATE[kingdom] || {};
-            lines.push({
+            const line = {
               fromIcon: tpl.icon ? 'assets/' + tpl.icon : null,
               fromColor: tpl.color || null,
               fromLabel: zoneDisplayName(kingdom, zone),
@@ -1485,7 +1510,13 @@
               verb: verb || ' needs ',
               toIcon: targetIcon,
               toLabel: targetName,
-            });
+            };
+            if (allReqs) {
+              line.toItems = zs.requirements
+                .map(r => APC.findItem(r.kind, r.key))
+                .filter(Boolean);
+            }
+            lines.push(line);
           }
         }
       }
@@ -4362,7 +4393,7 @@
         }
 
         // Ability tab only: the sale-only extras (Moon Gravity, Grab, Swim,
-        // Rocket Flower, NPC Talking, Timer Challenges, 2D Pipes, Warping),
+        // Rocket Flower, NPC Talking, Timer Challenges, 2D Pipes),
         // past the divider, in that fixed top-to-bottom order.
         if (activeKind === 'abilities') {
           const extraList = q ? APC.SHOP_ABILITY_EXTRAS.filter(i => i.name.toLowerCase().includes(q)) : APC.SHOP_ABILITY_EXTRAS;
@@ -4461,8 +4492,20 @@
       closeBtn.textContent = '✕';
       closeBtn.title = 'Close';
       closeBtn.addEventListener('click', () => closePicker());
+      // Holds the Find button (created further down, once its own state/
+      // handlers exist) immediately to the left of the X - see the "Find
+      // Entries" block below, which inserts it here via
+      // headerRight.insertBefore(findBtn, closeBtn) rather than appending
+      // it into kingdomWrap. Kept as its own flex group (not two direct
+      // header children) so header's own space-between still puts exactly
+      // one thing on the left (the title) and one group on the right
+      // (Find + Close), instead of Find drifting to the middle once it's
+      // added as a 3rd direct header child.
+      const headerRight = document.createElement('div');
+      headerRight.className = 'req-picker-header-right';
+      headerRight.appendChild(closeBtn);
       header.appendChild(titleWrap);
-      header.appendChild(closeBtn);
+      header.appendChild(headerRight);
       popup.appendChild(header);
 
       // Four subtle HUD-style corner brackets, purely decorative
@@ -4626,11 +4669,14 @@
       kingdomCol.appendChild(kingdomTitle);
       kingdomCol.appendChild(kingdomGrid);
 
-      // ── Find Entries (Kingdom tab) ───────────────────────────────────
-      // One button - no duplicate button list. Click "Find", the existing
-      // Refight/Shop/Kingdom buttons below shake and dim slightly, then
-      // clicking one of THOSE (instead of adding a second set of buttons
-      // above them) pops up every zone that has it picked as a requirement.
+      // ── Find Entries (all 3 tabs) ────────────────────────────────────
+      // One button, in the header just left of the X (see headerRight
+      // above) - not tab-specific, so it works the same way whichever of
+      // Capture/Ability/Kingdom is currently active. Click "Find", the
+      // existing picker buttons for whichever tab is showing shake and dim
+      // slightly, then clicking one of THOSE (instead of adding a second
+      // set of buttons above them) pops up every zone that has it picked
+      // as a requirement.
       let findModeActive = false;
 
       const findBtn = document.createElement('button');
@@ -4638,6 +4684,7 @@
       findBtn.className = 'req-picker-find-btn';
       findBtn.textContent = '🔍';
       findBtn.title = 'Find';
+      headerRight.insertBefore(findBtn, closeBtn);
 
       function setFindMode(active) {
         findModeActive = active;
@@ -4648,10 +4695,15 @@
 
       // Marks/unmarks the already-existing picker cells (not a new set of
       // buttons) so they shake + turn ~10% grey while find mode is on.
-      // Re-run after every renderKingdomSections() rebuild too, since that
-      // wipes and rebuilds the grids from scratch (e.g. on search).
+      // Covers every picker grid across all 3 tabs (Refights/Shops/
+      // Reaching Kingdoms on the Kingdom tab; the main grid plus One-Time
+      // Captures on the Captures tab; the main grid plus Extra Abilities on
+      // the Abilities tab) - only the ones actually visible for the
+      // current tab matter, the rest are hidden anyway. Re-run after every
+      // grid rebuild (search, tab switch, renderKingdomSections/renderGrid),
+      // since those wipe and rebuild the grids from scratch.
       function applyFindTargetStyling() {
-        [refightGrid, shopGrid, kingdomGrid].forEach(g => {
+        [refightGrid, shopGrid, kingdomGrid, grid, onetimeGrid, abilityExtrasGrid].forEach(g => {
           g.querySelectorAll('.req-picker-item').forEach(cell => {
             cell.classList.toggle('req-picker-item--find-target', findModeActive);
           });
@@ -4662,6 +4714,7 @@
         bounce(findBtn);
         setFindMode(!findModeActive);
       });
+
 
       // Pops up every zone that has this Refight/Shop/Kingdom picked as a
       // requirement (or, for a Kingdom, how to reach it). Tinted with the
@@ -4674,11 +4727,14 @@
         document.querySelectorAll('.req-find-popup-overlay').forEach(p => p.remove());
 
         // Kingdoms carry item.color directly; Refights/Shops carry a
-        // [c1, c2] pair (see .req-picker-item--shop above) - c1 reads as
-        // "this item's" color. Anything else falls back to a neutral grey.
+        // [c1, c2] pair (see .req-picker-item--shop above); Captures/
+        // Abilities tint with their tab's own accent color. Anything else
+        // falls back to a neutral grey.
         const popupColor =
           (kind === 'kingdoms' && item.color) ? item.color :
           ((kind === 'refights' || kind === 'shops') && item.colors) ? item.colors[0] :
+          kind === 'captures' ? 'var(--capture-color)' :
+          kind === 'abilities' ? 'var(--ability-color)' :
           '#8a8a96';
 
         const popOverlay = document.createElement('div');
@@ -4717,7 +4773,9 @@
         head.appendChild(closeBtn);
         pop.appendChild(head);
 
-        const lines = kind === 'kingdoms' ? buildReachLines(key) : buildRequirementLines(kind, key);
+        const lines = kind === 'kingdoms'
+          ? buildReachLines(key)
+          : buildRequirementLines(kind, key, undefined, kind === 'captures' || kind === 'abilities');
         const body = document.createElement('div');
         body.className = 'req-find-popup-body';
         if (lines.length) {
@@ -4749,8 +4807,26 @@
             arrow.textContent = '→';
             row.appendChild(arrow);
 
-            // To icon (right): the requirement/target itself.
-            if (line.toIcon) {
+            // To side (right): normally just the single searched item, but
+            // for a Captures/Abilities find (line.toItems set - see
+            // buildRequirementLines) show EVERY requirement this zone has,
+            // not only the one that was searched for - e.g. searching
+            // Vault against a zone that needs Vault AND Dive shows both
+            // icons, so the popup doubles as "what does this zone need?"
+            // instead of just confirming the single clicked ability.
+            if (Array.isArray(line.toItems) && line.toItems.length) {
+              const toGroup = document.createElement('div');
+              toGroup.className = 'req-picker-reach-line-toitems';
+              line.toItems.forEach(toItem => {
+                const toImg = document.createElement('img');
+                toImg.className = 'req-picker-reach-line-icon';
+                toImg.src = toItem.src;
+                toImg.alt = toItem.name;
+                toImg.title = toItem.name;
+                toGroup.appendChild(toImg);
+              });
+              row.appendChild(toGroup);
+            } else if (line.toIcon) {
               const toImg = document.createElement('img');
               toImg.className = 'req-picker-reach-line-icon req-picker-reach-line-icon--to';
               toImg.src = line.toIcon;
@@ -4783,7 +4859,6 @@
         requestAnimationFrame(() => popOverlay.classList.add('active'));
       }
 
-      kingdomWrap.appendChild(findBtn);
       kingdomWrap.appendChild(refightCol);
       kingdomWrap.appendChild(shopCol);
       kingdomWrap.appendChild(kingdomCol);
@@ -4901,7 +4976,7 @@
           // Find mode repurposes this same, already-on-screen button: a
           // click looks the item up instead of adding/removing it as a
           // requirement on the currently open zone.
-          if (findModeActive && (kind === 'refights' || kind === 'shops' || kind === 'kingdoms')) {
+          if (findModeActive && (kind === 'refights' || kind === 'shops' || kind === 'kingdoms' || kind === 'captures' || kind === 'abilities')) {
             setFindMode(false);
             showFindResultsPopup(kind, item.key);
             return;
@@ -5328,6 +5403,7 @@
 
         if (activeKind === 'captures') buildOnetimeGrid();
         if (activeKind === 'abilities') buildAbilityExtrasGrid();
+        applyFindTargetStyling();
       }
 
       const TAB_ORDER = ['captures', 'abilities', 'kingdom'];
@@ -5337,7 +5413,11 @@
         const toIdx = TAB_ORDER.indexOf(kind);
         const dir = toIdx > fromIdx ? 1 : -1;
         activeKind = kind;
-        if (kind !== 'kingdom' && findModeActive) setFindMode(false);
+        // Find mode is scoped to whichever tab's grids are on screen (see
+        // applyFindTargetStyling), so switching tabs always exits it rather
+        // than leaving stale shake/dim styling armed against a grid that's
+        // no longer visible.
+        if (findModeActive) setFindMode(false);
         tabCaptures.classList.toggle('active', kind === 'captures');
         tabAbilities.classList.toggle('active', kind === 'abilities');
         tabKingdom.classList.toggle('active', kind === 'kingdom');
