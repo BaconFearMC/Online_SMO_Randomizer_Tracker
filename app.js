@@ -133,6 +133,15 @@ const DEFAULT_SETTINGS = {
   hide_useless_captures: true, // Hide the "Useless Captures for Sale" column in the Items For Sale picker; default on
   useless_capture_keys: null,  // null = use APC.USELESS_CAPTURE_DEFAULT_KEYS; else the user's saved list (from Notes Settings > Edit List), including an explicitly-saved empty array
 
+  // ── Two-Way Painting Find (Notes Settings) ───────────────────────
+  // Cap, Lost, Cloud, Darkside and Moon's Paintings are known two-way
+  // tunnels rather than a fixed one-way trip. When on (default), marking a
+  // Painting destination that touches one of these (either end) also makes
+  // the reverse trip searchable via the Kingdom tab's "Find" reach search
+  // (see PAINTING_TWO_WAY_KINGDOMS in notes.html). Turning this off treats
+  // every Painting as a strict one-way edge.
+  painting_two_way_find: true,
+
   // Individually show/hide each top-left main tab (Notes itself can't be
   // hidden). Default false = only Notes visible until turned on.
   show_tab_tracker: false,
@@ -347,6 +356,7 @@ const TOGGLE_SETTINGS = [
   { id: 'toggle-extra-paintings', key: 'extra_paintings' },
   { id: 'toggle-kingdomsubicons', key: 'show_kingdomsubicons' },
   { id: 'toggle-hide-useless-captures', key: 'hide_useless_captures' },
+  { id: 'toggle-painting-two-way-find', key: 'painting_two_way_find' },
   { id: 'toggle-merge-vines', key: 'merge_deep_woods_vines' },
   { id: 'toggle-tab-tracker', key: 'show_tab_tracker' },
   { id: 'toggle-tab-map', key: 'show_tab_map' },

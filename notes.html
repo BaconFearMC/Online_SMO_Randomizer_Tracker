@@ -1481,6 +1481,7 @@
       show_painting_notes: true,   // Paintings notes column (before Cascade); default on
       extra_paintings: false,      // Extra Paintings: adds every Kingdom (except Deep Woods & Darker Side) to the Painting Tracker; default off
       painting_irl_info: false,    // Extra Paintings > IRL Info: swaps the 16 Extra Painting rows' Kingdom labels for their real in-game subarea, and picking a destination for one (the + button) inserts its real painting location + connection type into that row's note; only relevant while extra_paintings is also on; set from the Settings modal (index.html), not this page; default off
+      painting_two_way_find: true, // Whether Cap/Lost/Cloud/Darkside/Moon's Paintings count as two-way tunnels for the Kingdom-tab "Find" reach search (see PAINTING_TWO_WAY_KINGDOMS); default on, set from the Settings modal (index.html), not this page
       show_kingdomsubicons: true,  // Small kingdom+subarea icon next to each zone's name; default on
       hide_useless_captures: true, // Hide the "Useless Captures for Sale" column in the Items For Sale picker; default on
       useless_capture_keys: null,  // null = use APC.USELESS_CAPTURE_DEFAULT_KEYS; else the user's saved list (Notes Settings > Edit List)
@@ -1517,17 +1518,22 @@
     // Every other Painting stays a strict one-way edge - e.g. marking "Snow's
     // Painting leads to Cascade" only ever surfaces under a search for
     // Cascade, never under Snow.
+    // Toggleable via Notes Settings > "Two-Way Painting Find"
+    // (settings.painting_two_way_find, default on) - see paintingReachEdges.
     const PAINTING_TWO_WAY_KINGDOMS = ['Cap', 'Lost', 'Cloud', 'Darkside', 'Moon'];
 
     // Every Painting-destination edge currently marked (state.painting_destinations),
-    // expanded with the two-way reciprocal edges described above.
+    // expanded with the two-way reciprocal edges described above - unless the
+    // user has turned that off via Notes Settings > "Two-Way Painting Find",
+    // in which case every edge stays a strict one-way trip.
     function paintingReachEdges() {
       const dests = fullState.painting_destinations || {};
+      const twoWayEnabled = fullState.settings.painting_two_way_find !== false;
       const edges = [];
       for (const [from, to] of Object.entries(dests)) {
         if (!to) continue;
         edges.push({ from, to });
-        if (PAINTING_TWO_WAY_KINGDOMS.includes(from) || PAINTING_TWO_WAY_KINGDOMS.includes(to)) {
+        if (twoWayEnabled && (PAINTING_TWO_WAY_KINGDOMS.includes(from) || PAINTING_TWO_WAY_KINGDOMS.includes(to))) {
           edges.push({ from: to, to: from });
         }
       }
@@ -5336,9 +5342,17 @@
         // Painting-menu-only shops (Cap/Cascade/Wooded/Seaside) are left out
         // here - they're not real zone gates, so they only ever show up in
         // the Paintings column itself (see PAINTING_SHOP_KINGDOMS above).
-        const shops = (q ? APC.SHOPS.filter(i => i.name.toLowerCase().includes(q)) : APC.SHOPS)
-          .filter(i => !i.paintingOnly);
+        const allRealShops = APC.SHOPS.filter(i => !i.paintingOnly);
+        const shops = (q ? allRealShops.filter(i => i.name.toLowerCase().includes(q)) : allRealShops);
         const kingdoms = q ? APC.KINGDOMS.filter(i => i.name.toLowerCase().includes(q)) : APC.KINGDOMS;
+
+        // A search that still matches every real shop (e.g. "shop"/"shops" -
+        // every shop's name ends in "Shop") is treated the same as clicking
+        // the "Shops" title: swap the 3x3 grid of individual shops for the
+        // single "All Shops" overview icon instead of listing all 9 anyway.
+        // An empty search does NOT trigger this - only an actual typed term
+        // that happens to match all of them.
+        const searchMatchesAllShops = !!q && shops.length === allRealShops.length;
 
         if (!refights.length) {
           const empty = document.createElement('div');
@@ -5349,7 +5363,7 @@
           refights.forEach(item => refightGrid.appendChild(buildPickerCell(item, 'refights', 'req-picker-item--refight')));
         }
 
-        if (shopOverviewActive) {
+        if (shopOverviewActive || searchMatchesAllShops) {
           shopGrid.appendChild(buildShopOverviewCell());
         } else if (!shops.length) {
           const empty = document.createElement('div');
