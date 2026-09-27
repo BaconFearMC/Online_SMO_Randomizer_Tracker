@@ -546,22 +546,24 @@
       border-left: 1px solid var(--border, #444);
     }
     /* The 4 Painting-menu-only Shops (left column) vs the 9 real Kingdom-tab
-       Shops (right column): both columns stack rows with the same 8px gap,
-       so to make a 4-row column visually as tall as a 9-row column, each of
-       its rows needs to be 9/4 = 2.25x the normal row height. */
-    .req-picker-reach-line--shop-tall {
-      padding-top: 40px;
-      padding-bottom: 40px;
-    }
-    /* ── "Every Shop" popup row layout (Section 5: "sells..." + big icons,
-       Section 4: completion state + undo ✕) ─────────────────────────── */
+       Shops (right column): every row gets an explicit (not just minimum)
+       height so oversized "sells..." icons (see .req-find-popup-shop-icon-
+       big below) can overflow a row's box without ever growing it - and so
+       the two columns' total heights are pinned to *exactly* match: 9 real
+       rows @ 48px + 8 gaps @ 8px = 496px; 4 Painting rows must add up to
+       that same 496px with only 3 gaps between them, so each is
+       (496 - 3*8) / 4 = 118px tall. */
     .req-find-popup-shop-row {
       flex-wrap: nowrap;
-      /* Fixed height whether or not icons are present, and whether or not
-         this row is a normal shop or a 2.25x-tall Painting-menu one. */
-      min-height: 48px;
+      overflow: visible;
+      height: 48px;
+      box-sizing: border-box;
     }
-    .req-find-popup-shop-row.req-picker-reach-line--shop-tall { min-height: 108px; }
+    .req-find-popup-shop-row.req-picker-reach-line--shop-tall {
+      height: 118px;
+    }
+    /* ── "Every Shop" popup row layout (Section 5: "sells..." + big, tilted,
+       overflowing icons; Section 4: completion/sold-out state + undo ✕) ── */
     .req-find-popup-shop-textwrap { flex: 1 1 auto; min-width: 0; }
     .req-find-popup-shop-text {
       display: block;
@@ -571,11 +573,30 @@
     .req-find-popup-shop-icons {
       flex: 0 0 auto;
       max-width: none !important;
+      overflow: visible;
+      gap: 0 !important;
     }
+    /* Bigger than the row itself on purpose - the row's overflow:visible
+       (above) and this fixed row height (rather than one that grows to fit
+       content) mean the icons visibly poke out past the row's top/bottom
+       edge instead of stretching it or any other row. A slight opposite
+       tilt on each ("/ \") gives them a loose, fanned-out look rather than
+       sitting flat side by side. */
     .req-find-popup-shop-icon-big {
-      width: 40px !important;
-      height: 40px !important;
-      padding: 4px;
+      width: 72px !important;
+      height: 72px !important;
+      padding: 0;
+      position: relative;
+    }
+    .req-find-popup-shop-icons .req-find-popup-shop-icon-big:first-child {
+      transform: rotate(-16deg);
+      margin-right: -10px;
+      z-index: 1;
+    }
+    .req-find-popup-shop-icons .req-find-popup-shop-icon-big:last-child {
+      transform: rotate(16deg);
+      margin-left: -10px;
+      z-index: 2;
     }
     .req-find-popup-shop-undo {
       flex: 0 0 auto;
@@ -619,18 +640,24 @@
       flex: 1 1 auto;
       min-width: 0;
     }
-    /* "I already have this" buttons flanking the grid (Section 2 of the
-       Shop-sale spec) - fixed-width columns like the extras/useless
-       columns beside them, but stretched to the wrap's full height so they
-       fill whatever vertical space is otherwise empty on either side. Reuse
-       the plain (uncolored) Dead-End cell look - no --kingdom-color/
-       --refight-c1/2 set - so this reads as "nothing to pick here" the same
-       way Dead-End does elsewhere. */
+    /* "I already have this" buttons (Section 2 of the Shop-sale spec) live
+       OUTSIDE the "Items For Sale" box entirely - in the empty page space
+       to its left and right - rather than as part of that layout, so the
+       picker's actual grid/extras-columns area is untouched from how it
+       looked before these buttons existed. Positioned via JS
+       (positionAlreadyHaveButtons, in openShopSalePicker) using the sale
+       wrap's own on-screen rect, so their height always matches the "Items
+       For Sale" area exactly and they sit flush beside the popup - not
+       relative to the wrap/grid layout, so `position: fixed` + inline
+       top/left|right/height from JS, not flex placement. Reuses the plain
+       (uncolored) Dead-End cell look - no --kingdom-color/--refight-c1/2
+       set - so this reads as "nothing to pick here" the same way Dead-End
+       does elsewhere. */
     .req-picker-already-have-btn {
-      flex: 0 0 150px;
+      position: fixed;
+      z-index: 620;
       width: 150px;
       height: auto !important;
-      align-self: stretch;
       display: flex !important;
       flex-direction: column;
       align-items: center;
@@ -639,8 +666,6 @@
       text-align: center;
       white-space: normal !important;
     }
-    .req-picker-already-have-btn--left { margin-right: 12px; }
-    .req-picker-already-have-btn--right { margin-left: 12px; }
     .req-picker-already-have-btn img {
       width: 44px !important;
       height: 44px !important;
@@ -1434,7 +1459,7 @@
   </div>
 
   <script src="sync.js"></script>
-  <script src="apc-data.js?v=9"></script>
+  <script src="apc-data.js?v=10"></script>
   <script>
     'use strict';
 
@@ -4413,12 +4438,16 @@
       saleWrap.className = 'req-picker-sale-wrap';
       popup.appendChild(saleWrap);
 
-      // "I already have the Capture/Ability" - one button flanking each
-      // side of the grid (so there's always one within easy reach no matter
-      // which side of a wide popup the user's eye lands on), reusing the
-      // Dead-End cell's icon/color scheme since both mean roughly the same
-      // thing here: "nothing to pick, move on". Clicking either marks the
-      // *currently active tab's* half as owned - see toggleAlreadyHave.
+      // "I already have the Capture/Ability" - one button in the empty
+      // page space just outside the popup's left edge, one just outside
+      // its right edge (so there's always one within easy reach no matter
+      // which side the user's eye lands on) - positioned via JS
+      // (positionAlreadyHaveButtons below), NOT laid out as part of
+      // saleWrap, so the "Items For Sale" area itself is untouched from how
+      // it looked before these buttons existed. Reuses the Dead-End cell's
+      // icon/color scheme since both mean roughly the same thing here:
+      // "nothing to pick, move on". Clicking either marks the *currently
+      // active tab's* half as owned - see toggleAlreadyHave.
       function buildAlreadyHaveBtn(side) {
         const btn = document.createElement('button');
         btn.type = 'button';
@@ -4435,7 +4464,28 @@
       }
       const alreadyHaveLeft = buildAlreadyHaveBtn('left');
       const alreadyHaveRight = buildAlreadyHaveBtn('right');
-      saleWrap.appendChild(alreadyHaveLeft);
+      // Appended to the overlay (not the popup, which clips its own
+      // overflow) and after popup in the DOM so they paint on top of it.
+      overlay.appendChild(alreadyHaveLeft);
+      overlay.appendChild(alreadyHaveRight);
+
+      // Lines the buttons up beside the popup's actual on-screen edges and
+      // matches their height to the "Items For Sale" area's own rendered
+      // height - both fixed-positioned in viewport coordinates, so this is
+      // recomputed (see render()/onResize below) any time either could have
+      // changed size, rather than assumed once up front.
+      function positionAlreadyHaveButtons() {
+        const wrapRect = saleWrap.getBoundingClientRect();
+        const popupRect = popup.getBoundingClientRect();
+        [alreadyHaveLeft, alreadyHaveRight].forEach(btn => {
+          btn.style.top = wrapRect.top + 'px';
+          btn.style.height = wrapRect.height + 'px';
+        });
+        alreadyHaveLeft.style.right = (window.innerWidth - popupRect.left + 16) + 'px';
+        alreadyHaveLeft.style.left = 'auto';
+        alreadyHaveRight.style.left = (popupRect.right + 16) + 'px';
+        alreadyHaveRight.style.right = 'auto';
+      }
 
       const grid = document.createElement('div');
       grid.className = 'req-picker-grid';
@@ -4466,7 +4516,6 @@
       uselessGrid.className = 'req-picker-grid req-picker-sale-extras-grid';
       uselessCol.appendChild(uselessGrid);
       saleWrap.appendChild(uselessCol);
-      saleWrap.appendChild(alreadyHaveRight);
 
       let activeKind = 'captures';
 
@@ -4631,7 +4680,6 @@
                 }
               }
               render();
-              updateAlreadyHaveButtons();
               if (onChange) onChange();
               return;
             }
@@ -4654,7 +4702,6 @@
             }
 
             render();
-            updateAlreadyHaveButtons();
             if (onChange) onChange();
 
             // Both halves are now accounted for - the pairing is complete.
@@ -4720,24 +4767,57 @@
         }
 
         updateAlreadyHaveButtons();
+        positionAlreadyHaveButtons();
       }
 
       function toggleAlreadyHave() {
-        const sale = APC.getShopSale(fullState, shopKey);
         const half = ownedHalfFor(activeKind);
-        const wasOwned = activeKind === 'captures' ? sale.ownedCapture : sale.ownedAbility;
+        const prevSale = APC.getShopSale(fullState, shopKey);
+        const wasOwned = activeKind === 'captures' ? prevSale.ownedCapture : prevSale.ownedAbility;
         const newVal = !wasOwned;
         bounce(alreadyHaveLeft);
         bounce(alreadyHaveRight);
+
+        // Marking a half owned clears any real pick it had (see
+        // APC.setShopOwned) - so the note/icons need the exact same
+        // before/after text sync buildSaleCell's click handler does for a
+        // real pick change, or a previously-recorded item's name (and, in
+        // the "Every Shop" popup, its icon) would linger in the note after
+        // switching that half to "I already have this".
+        const prevText = noteArea ? saleText(prevSale) : null;
         APC.setShopOwned(fullState, shopKey, half, newVal);
         saveFullState();
+        const sale = APC.getShopSale(fullState, shopKey);
+
+        if (noteArea) {
+          const newText = saleText(sale);
+          if (newText !== prevText) {
+            if (prevText) {
+              removeRequirementText(noteArea, prevText);
+              if (newText) {
+                appendRequirementText(noteArea, newText);
+              } else if (shopItem && activeKind === 'captures' && sale.ability) {
+                const ablItem = APC.findItem('abilities', sale.ability);
+                if (ablItem) appendRequirementText(noteArea, shopItem.name + ' sells ' + ablItem.name);
+              } else if (shopItem && activeKind === 'abilities' && sale.capture) {
+                const capItem = APC.findItem('captures', sale.capture);
+                if (capItem) appendRequirementText(noteArea, shopItem.name + ' sells ' + capItem.name);
+              }
+            } else if (newText && zs && zs.requirements.some(r => r.kind === 'shops' && r.key === shopKey)) {
+              const bareShopText = requirementDisplayText('shops', shopKey);
+              if (bareShopText) removeRequirementText(noteArea, bareShopText);
+              appendRequirementText(noteArea, newText);
+            } else if (newText) {
+              appendRequirementText(noteArea, newText);
+            }
+          }
+        }
 
         if (!newVal) {
           // Un-marking it just clears the flag in place - same treatment as
           // deselecting a real pick: no auto-advance, no auto-close, and if
           // that leaves both halves empty, drop the Shop requirement too.
-          const freshSale = APC.getShopSale(fullState, shopKey);
-          if (!freshSale.capture && !freshSale.ability && !freshSale.ownedCapture && !freshSale.ownedAbility && zs && noteArea) {
+          if (!sale.capture && !sale.ability && !sale.ownedCapture && !sale.ownedAbility && zs) {
             const stillRequired = zs.requirements.some(r => r.kind === 'shops' && r.key === shopKey);
             if (stillRequired) {
               const prevReqText = requirementDisplayText('shops', shopKey);
@@ -4750,13 +4830,12 @@
           return;
         }
 
-        const freshSale = APC.getShopSale(fullState, shopKey);
-        if (activeKind === 'captures' && !freshSale.ability && !freshSale.ownedAbility) {
+        if (activeKind === 'captures' && !sale.ability && !sale.ownedAbility) {
           setTab('abilities');
           if (onChange) onChange();
           return;
         }
-        if (activeKind === 'abilities' && !freshSale.capture && !freshSale.ownedCapture) {
+        if (activeKind === 'abilities' && !sale.capture && !sale.ownedCapture) {
           setTab('captures');
           if (onChange) onChange();
           return;
@@ -5318,14 +5397,19 @@
         // this" for it (see APC.setShopOwned, wired up in
         // openShopSalePicker). Complete Shops show what's known ("sells...
         // " + big icons) or, if nothing concrete was ever recorded (both
-        // halves were "already have"), a plain completion message - either
-        // way with an undo (✕) button to reset it back to unconfigured.
+        // halves were "already have"), a plain completion message. A Shop
+        // that had something recorded at some point but was then cleared
+        // back to incomplete (rather than never having been touched) reads
+        // "sold out!" instead of reverting to the plain "not found/unlocked
+        // yet..." text - that's the one case that gets the undo (✕) button,
+        // to reset it back to a fully blank, never-touched Shop.
         function buildShopRow(item) {
           const sale = APC.getShopSale(fullState, item.key);
           const capItem = sale.capture ? APC.findItem('captures', sale.capture) : null;
           const ablItem = sale.ability ? APC.findItem('abilities', sale.ability) : null;
           const hasIcons = !!(capItem || ablItem);
           const complete = APC.isShopSaleComplete(fullState, item.key);
+          const soldOut = APC.isShopSaleSoldOut(fullState, item.key);
           const pairItem = item.pair ? APC.findItem(item.pair.kind, item.pair.key) : null;
 
           const row = document.createElement('div');
@@ -5346,13 +5430,15 @@
           textWrap.className = 'req-find-popup-shop-textwrap';
           const text = document.createElement('span');
           text.className = 'req-picker-reach-line-text req-find-popup-shop-text';
-          if (!complete) {
+          if (!sale.touched) {
             // The 4 Painting-menu-only Shops are reached by unlocking a
             // Painting, not by "finding" them in a Kingdom - different
             // wording for those vs the 9 real Kingdom-tab Shops.
             text.textContent = item.name + (item.paintingOnly ? ' has not been unlocked yet...' : ' has not been found yet...');
             text.style.fontStyle = 'italic';
             text.style.opacity = '.75';
+          } else if (soldOut) {
+            text.textContent = item.name + ' is sold out!';
           } else if (hasIcons) {
             text.textContent = item.name + ' sells...';
           } else {
@@ -5375,12 +5461,12 @@
             row.appendChild(toGroup);
           }
 
-          if (complete) {
+          if (soldOut) {
             const undoBtn = document.createElement('button');
             undoBtn.type = 'button';
             undoBtn.className = 'req-find-popup-shop-undo';
             undoBtn.textContent = '✕';
-            undoBtn.title = 'Undo - reset ' + item.name + "'s completed state";
+            undoBtn.title = 'Undo - reset ' + item.name + ' back to unconfigured';
             undoBtn.addEventListener('click', (e) => {
               e.stopPropagation();
               APC.resetShopSale(fullState, item.key);

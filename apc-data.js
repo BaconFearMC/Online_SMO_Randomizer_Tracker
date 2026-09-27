@@ -527,38 +527,41 @@
   }
 
   // Normalizes whatever's stored (which may pre-date the ownedCapture/
-  // ownedAbility fields below) into the full 4-field shape every caller can
+  // ownedAbility/touched fields below) into the full shape every caller can
   // rely on, without mutating storage just to read it.
   function getShopSale(state, shopKey) {
     const sales = ensureShopSales(state);
     const s = sales[shopKey];
-    if (!s) return { capture: null, ability: null, ownedCapture: false, ownedAbility: false };
+    if (!s) return { capture: null, ability: null, ownedCapture: false, ownedAbility: false, touched: false };
     return {
       capture: s.capture || null,
       ability: s.ability || null,
       ownedCapture: !!s.ownedCapture,
       ownedAbility: !!s.ownedAbility,
+      touched: !!s.touched,
     };
   }
 
   function ensureShopSaleEntry(state, shopKey) {
     const sales = ensureShopSales(state);
-    if (!sales[shopKey]) sales[shopKey] = { capture: null, ability: null, ownedCapture: false, ownedAbility: false };
+    if (!sales[shopKey]) sales[shopKey] = { capture: null, ability: null, ownedCapture: false, ownedAbility: false, touched: false };
     return sales[shopKey];
   }
 
   // `kind` is 'captures' or 'abilities'; `key` is the picked item's key, or
   // null to clear that half of the pairing. Picking a real item always wins
   // over "I already have this" (see setShopOwned) - the two are mutually
-  // exclusive per half.
+  // exclusive per half. Setting a real key also marks the Shop "touched"
+  // (see isShopSaleSoldOut) - that flag is never cleared by picks/clears,
+  // only by resetShopSale.
   function setShopSale(state, shopKey, kind, key) {
     const entry = ensureShopSaleEntry(state, shopKey);
     if (kind === 'captures') {
       entry.capture = key || null;
-      if (key) entry.ownedCapture = false;
+      if (key) { entry.ownedCapture = false; entry.touched = true; }
     } else if (kind === 'abilities') {
       entry.ability = key || null;
-      if (key) entry.ownedAbility = false;
+      if (key) { entry.ownedAbility = false; entry.touched = true; }
     }
     return entry;
   }
@@ -566,16 +569,17 @@
   // "I already have the Capture/Ability" - records that this half of a
   // Shop's sale is known to be satisfied without recording *which* item it
   // is. Marking a half owned clears any real pick for that half (they're
-  // mutually exclusive - see setShopSale above).
+  // mutually exclusive - see setShopSale above), and (like setShopSale)
+  // marks the Shop "touched".
   function setShopOwned(state, shopKey, half, value) {
     const entry = ensureShopSaleEntry(state, shopKey);
     value = !!value;
     if (half === 'capture') {
       entry.ownedCapture = value;
-      if (value) entry.capture = null;
+      if (value) { entry.capture = null; entry.touched = true; }
     } else if (half === 'ability') {
       entry.ownedAbility = value;
-      if (value) entry.ability = null;
+      if (value) { entry.ability = null; entry.touched = true; }
     }
     return entry;
   }
@@ -587,11 +591,20 @@
     return !!(s.capture || s.ownedCapture) && !!(s.ability || s.ownedAbility);
   }
 
-  // Fully resets a Shop's sale/ownership state back to unconfigured - used
-  // by the "Every Shop" popup's undo (✕) button on a completed Shop.
+  // "Sold out": the Shop had something recorded at some point (a real pick
+  // or an "already have" mark) but isn't currently complete - e.g. the user
+  // picked something and then cleared it, rather than never having touched
+  // this Shop at all. Distinct from simply "not found/unlocked yet".
+  function isShopSaleSoldOut(state, shopKey) {
+    const s = getShopSale(state, shopKey);
+    return s.touched && !isShopSaleComplete(state, shopKey);
+  }
+
+  // Fully resets a Shop's sale/ownership/touched state back to unconfigured
+  // - used by the "Every Shop" popup's undo (✕) button on a sold-out Shop.
   function resetShopSale(state, shopKey) {
     const sales = ensureShopSales(state);
-    sales[shopKey] = { capture: null, ability: null, ownedCapture: false, ownedAbility: false };
+    sales[shopKey] = { capture: null, ability: null, ownedCapture: false, ownedAbility: false, touched: false };
     return sales[shopKey];
   }
 
@@ -677,7 +690,7 @@
     'Chargin_Chuck_Capture',
   ];
 
-  console.log('SMO tracker apc-data.js v11');
+  console.log('SMO tracker apc-data.js v12');
 
   global.APC = {
     CAPTURES, ABILITIES, REFIGHTS, KINGDOMS, SHOPS,
@@ -689,7 +702,7 @@
     CAPTURE_LINKS, ABILITY_LINKS,
     linkedTrackerKey, findItem, detectItemsInText,
     ensure, isUnlocked, setUnlocked, countUnlocked,
-    getShopSale, setShopSale, setShopOwned, isShopSaleComplete, resetShopSale,
+    getShopSale, setShopSale, setShopOwned, isShopSaleComplete, isShopSaleSoldOut, resetShopSale,
     getPaintingDestination, setPaintingDestination,
     makeChannel,
   };
