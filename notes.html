@@ -585,8 +585,12 @@
     .req-find-popup-shop-icon-big {
       width: 72px !important;
       height: 72px !important;
-      padding: 0;
+      padding: 0 !important;
       position: relative;
+      background: none !important;
+      box-shadow: none !important;
+      border: none !important;
+      border-radius: 0 !important;
     }
     .req-find-popup-shop-icons .req-find-popup-shop-icon-big:first-child {
       transform: rotate(-16deg);
@@ -4454,12 +4458,9 @@
         btn.className = 'req-picker-item req-picker-item--kingdom req-picker-already-have-btn req-picker-already-have-btn--' + side;
         const img = document.createElement('img');
         img.src = 'assets/DeadEnd.png';
-        img.alt = 'I already have this';
+        img.alt = '';
         img.addEventListener('error', () => { btn.classList.add('req-picker-item--broken-icon'); }, { once: true });
-        const label = document.createElement('span');
         btn.appendChild(img);
-        btn.appendChild(label);
-        btn._label = label;
         return btn;
       }
       const alreadyHaveLeft = buildAlreadyHaveBtn('left');
@@ -4530,8 +4531,8 @@
         const owned = activeKind === 'captures' ? sale.ownedCapture : sale.ownedAbility;
         const label = 'I already have the ' + halfLabelFor(activeKind);
         [alreadyHaveLeft, alreadyHaveRight].forEach(btn => {
-          btn._label.textContent = label;
           btn.title = label;
+          btn.setAttribute('aria-label', label);
           btn.classList.toggle('selected', !!owned);
         });
       }
@@ -4893,7 +4894,23 @@
       document.addEventListener('keydown', onKeyDown);
 
       void overlay.offsetWidth;
-      requestAnimationFrame(() => overlay.classList.add('active'));
+      requestAnimationFrame(() => {
+        overlay.classList.add('active');
+        // The popup's enter transition (fade/scale in) may still be
+        // running its opening frame right here, so positionAlreadyHave
+        // Buttons()/updateAlreadyHaveButtons() (inside render()) can still
+        // measure a not-yet-final rect on this very call - re-run once more
+        // once that transition actually finishes, so the buttons land in
+        // the right place and are visible immediately, not only after the
+        // user does something else (like switching tabs) that happens to
+        // call render() again.
+        render();
+        popup.addEventListener('transitionend', function onEnterEnd(e) {
+          if (e.target !== popup) return;
+          popup.removeEventListener('transitionend', onEnterEnd);
+          render();
+        });
+      });
       search.focus();
     }
 
@@ -5625,7 +5642,7 @@
           saleBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             bounce(saleBtn);
-            openShopSalePicker(item.key, refreshSaleTitle, noteArea, zs);
+            openShopSalePicker(item.key, () => { refreshSaleTitle(); onChange(); }, noteArea, zs);
           });
           cell.appendChild(saleBtn);
         }
@@ -5717,7 +5734,7 @@
               const reopen = isMetroShop
                 ? () => { openRequirementPicker(event, zs, noteArea, onChange, originKingdom, originZone); }
                 : undefined;
-              openShopSalePicker(item.key, refreshSaleTitle, noteArea, zs, reopen);
+              openShopSalePicker(item.key, () => { refreshSaleTitle(); onChange(); }, noteArea, zs, reopen);
             }
             closePicker();
           } else if (kind === 'shops' && !nowSelected) {
