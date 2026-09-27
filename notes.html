@@ -5413,20 +5413,18 @@
         // either a real item is known, or the player marked "I already have
         // this" for it (see APC.setShopOwned, wired up in
         // openShopSalePicker). Complete Shops show what's known ("sells...
-        // " + big icons) or, if nothing concrete was ever recorded (both
-        // halves were "already have"), a plain completion message. A Shop
-        // that had something recorded at some point but was then cleared
-        // back to incomplete (rather than never having been touched) reads
-        // "sold out!" instead of reverting to the plain "not found/unlocked
-        // yet..." text - that's the one case that gets the undo (✕) button,
-        // to reset it back to a fully blank, never-touched Shop.
+        // " + big icons), or, if nothing concrete was ever recorded (both
+        // halves were "already have"), just the shop's plain name with no
+        // extra callout. A Shop that had something recorded at some point
+        // but was then cleared back to incomplete falls back to whichever of
+        // those two applies to what's left (there's no separate "sold out"
+        // state anymore).
         function buildShopRow(item) {
           const sale = APC.getShopSale(fullState, item.key);
           const capItem = sale.capture ? APC.findItem('captures', sale.capture) : null;
           const ablItem = sale.ability ? APC.findItem('abilities', sale.ability) : null;
           const hasIcons = !!(capItem || ablItem);
           const complete = APC.isShopSaleComplete(fullState, item.key);
-          const soldOut = APC.isShopSaleSoldOut(fullState, item.key);
           const pairItem = item.pair ? APC.findItem(item.pair.kind, item.pair.key) : null;
 
           const row = document.createElement('div');
@@ -5454,12 +5452,10 @@
             text.textContent = item.name + (item.paintingOnly ? ' has not been unlocked yet...' : ' has not been found yet...');
             text.style.fontStyle = 'italic';
             text.style.opacity = '.75';
-          } else if (soldOut) {
-            text.textContent = item.name + ' is sold out!';
           } else if (hasIcons) {
             text.textContent = item.name + ' sells...';
           } else {
-            text.textContent = item.name + ' has been marked as complete!';
+            text.textContent = item.name;
           }
           textWrap.appendChild(text);
           row.appendChild(textWrap);
@@ -5476,21 +5472,6 @@
               toGroup.appendChild(toImg);
             });
             row.appendChild(toGroup);
-          }
-
-          if (soldOut) {
-            const undoBtn = document.createElement('button');
-            undoBtn.type = 'button';
-            undoBtn.className = 'req-find-popup-shop-undo';
-            undoBtn.textContent = '✕';
-            undoBtn.title = 'Undo - reset ' + item.name + ' back to unconfigured';
-            undoBtn.addEventListener('click', (e) => {
-              e.stopPropagation();
-              APC.resetShopSale(fullState, item.key);
-              saveFullState();
-              refreshBody();
-            });
-            row.appendChild(undoBtn);
           }
 
           return row;
