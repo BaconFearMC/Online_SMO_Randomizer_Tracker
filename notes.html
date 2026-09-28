@@ -7,6 +7,19 @@
   <link rel="stylesheet" href="style.css">
   <link rel="icon" href="assets/SMO-ColoredGlobe.png">
   <style>
+    /* Comic Sans runs wider and taller than the default font: let text wrap
+       inside its box instead of spilling out of it. */
+    .zone-note { overflow-wrap: anywhere; word-break: break-word; max-width: 100%; box-sizing: border-box; }
+    .font-comicsans .zone-name, .font-comicsans .zone-name-main, .font-comicsans .zone-name-sub,
+    .font-comicsans .zone-dest-name, .font-comicsans .zone-irl-connection-label {
+      white-space: normal; overflow-wrap: anywhere; word-break: break-word; min-width: 0; line-height: 1.15;
+    }
+    .font-comicsans .zone-row-top, .font-comicsans .zone-reqs { min-width: 0; flex-wrap: wrap; }
+    .font-comicsans button, .font-comicsans .seg-btn, .font-comicsans label { max-width: 100%; overflow-wrap: anywhere; }
+    .font-comicsans .lz-toolbar, .font-comicsans .lz-toolbar-group { flex-wrap: wrap; }
+    .font-comicsans textarea, .font-comicsans input[type="text"] { line-height: 1.25; }
+  </style>
+  <style>
     /* Collapsed zone (e.g. Rolling On): greyed out and inert, but still
        visible/in-place, rather than display:none removing it entirely. */
     .zone-greyed-out {
@@ -2571,6 +2584,7 @@
     }
 
     function autosizeNotes(root) {
+      observeNoteWidths(root);
       // Only measure boxes that actually have text (an empty note is already a
       // correct single row), and batch reset/read/apply into three phases so we
       // don't force a full reflow of the notes masonry on every single box.
@@ -2583,6 +2597,49 @@
       nodes.forEach((t, i) => { t.style.height = heights[i] + 'px'; });
     }
 
+    // ── Note box auto-fit (keeps text inside its box when the font / width changes) ──
+    // Notes are sized once to their text; a wider font (Comic Sans), a different
+    // column count or a resize made the text spill out of the stale-height box.
+    // refitNotes() re-measures visible notes, and a ResizeObserver re-runs it
+    // whenever a note's width changes (layout/columns/compact/expand/resize).
+    var _noteWidthSeen = new WeakMap();
+    var _noteRefitRaf = 0;
+    var _noteRO = null;
+    function refitNotes() {
+      cancelAnimationFrame(_noteRefitRaf);
+      _noteRefitRaf = requestAnimationFrame(function () {
+        var nodes = Array.from(document.querySelectorAll('.zone-note'))
+          .filter(function (t) { return t.offsetParent !== null && t.value.trim() !== ''; });
+        nodes.forEach(function (t) { t.style.height = 'auto'; });
+        var hs = nodes.map(function (t) { return t.scrollHeight; });
+        nodes.forEach(function (t, i) { t.style.height = hs[i] + 'px'; });
+      });
+    }
+    function observeNoteWidths(root) {
+      if (typeof ResizeObserver === 'undefined') return;
+      if (!_noteRO) {
+        _noteRO = new ResizeObserver(function (entries) {
+          var changed = false;
+          entries.forEach(function (en) {
+            var w = Math.round(en.contentRect.width);
+            if (_noteWidthSeen.get(en.target) !== w) { _noteWidthSeen.set(en.target, w); if (w > 0) changed = true; }
+          });
+          if (changed) refitNotes();
+        });
+      }
+      (root || document).querySelectorAll('.zone-note').forEach(function (t) { _noteRO.observe(t); });
+    }
+    function refitNotesAfterFontChange() {
+      refitNotes();
+      if (document.fonts) {
+        if (document.fonts.ready) document.fonts.ready.then(refitNotes);
+        if (!window._noteFontListener && document.fonts.addEventListener) {
+          window._noteFontListener = true;
+          document.fonts.addEventListener('loadingdone', refitNotes);
+        }
+      }
+    }
+    
     function ensureNotesToolbar() {
       const scrollWrap = document.querySelector('.lz-scroll-wrap');
       if (!scrollWrap || !scrollWrap.parentElement) return;
@@ -6347,6 +6404,8 @@
       const boldOverride = fullState.settings && fullState.settings.bold_text_override; // true|false|null
       const shouldUnbold = (val !== 'default') && boldOverride !== true;
       document.documentElement.classList.toggle('force-unbold', shouldUnbold);
+      document.documentElement.classList.toggle('font-comicsans', val === 'comicsans');
+      refitNotesAfterFontChange();
     }
 
     document.addEventListener('DOMContentLoaded', () => {

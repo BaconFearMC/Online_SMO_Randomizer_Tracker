@@ -8,6 +8,19 @@
 
   <link rel="stylesheet" href="style.css">
   <link rel="icon" href="assets/SMO-ColoredGlobe.png">
+  <style>
+    /* Comic Sans runs wider and taller than the default font: let text wrap
+       inside its box instead of spilling out of it. */
+    .zone-note { overflow-wrap: anywhere; word-break: break-word; max-width: 100%; box-sizing: border-box; }
+    .font-comicsans .zone-name, .font-comicsans .zone-name-main, .font-comicsans .zone-name-sub,
+    .font-comicsans .zone-dest-name, .font-comicsans .zone-irl-connection-label {
+      white-space: normal; overflow-wrap: anywhere; word-break: break-word; min-width: 0; line-height: 1.15;
+    }
+    .font-comicsans .zone-row-top, .font-comicsans .zone-reqs { min-width: 0; flex-wrap: wrap; }
+    .font-comicsans button, .font-comicsans .seg-btn, .font-comicsans label { max-width: 100%; overflow-wrap: anywhere; }
+    .font-comicsans .lz-toolbar, .font-comicsans .lz-toolbar-group { flex-wrap: wrap; }
+    .font-comicsans textarea, .font-comicsans input[type="text"] { line-height: 1.25; }
+  </style>
 </head>
 
 <body>

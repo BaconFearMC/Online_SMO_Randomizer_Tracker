@@ -428,6 +428,69 @@
   }
   .connect-wizard-opt:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
 
+
+  /* ── Undo / redo buttons (top right, left of Info & Controls) ───── */
+  .map-btn.icon-btn { display: inline-flex; align-items: center; gap: 6px; }
+  .map-btn.icon-btn svg { width: 15px; height: 15px; flex-shrink: 0; stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+  .map-btn:disabled { opacity: 0.35; cursor: default; }
+  .map-btn:disabled:hover { background: var(--btn-bg); }
+
+  /* ── Connect wizard: chain trail (top of every step) ───────────── */
+  .connect-trail {
+    display: flex; align-items: center; gap: 6px;
+    flex-shrink: 0; overflow-x: auto; overflow-y: hidden;
+    padding: 6px 8px; border-radius: var(--radius-sm);
+    background: rgba(0,0,0,.28); border: 1px solid var(--border);
+  }
+  .connect-trail-label { font-size: .7rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: .06em; flex-shrink: 0; }
+  .connect-trail-chip {
+    display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;
+    padding: 3px 8px 3px 4px; border-radius: 999px;
+    border: 1.5px solid var(--chip-color, var(--accent));
+    background: color-mix(in srgb, var(--chip-color, var(--accent)) 16%, transparent);
+    font-size: .82rem; white-space: nowrap; max-width: 260px;
+  }
+  .connect-trail-chip.pending { border-style: dashed; }
+  .connect-trail-chip img { width: 20px; height: 20px; object-fit: contain; border-radius: 4px; }
+  .connect-trail-chip .chip-name { overflow: hidden; text-overflow: ellipsis; }
+  .connect-trail-part {
+    display: inline-flex; align-items: center; gap: 3px; font-size: .68rem;
+    padding: 1px 6px; border-radius: 999px; background: rgba(255,255,255,.1); color: var(--text-dim);
+  }
+  .connect-trail-part svg, .connect-trail-arrow svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+  .connect-trail-arrow { color: var(--text-dim); display: inline-flex; flex-shrink: 0; }
+
+  /* ── Connect wizard: In / Out / Main and End / Continue pickers ── */
+  .req-picker-popup--choice { width: min(92vw, 760px); height: min(84vh, 540px); }
+  .req-picker-grid--choice {
+    grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr;
+    overflow: visible; padding: 4px;
+  }
+  .req-picker-grid--choice.one-row { grid-template-rows: 1fr; }
+  .req-picker-item--action {
+    gap: 12px !important;
+    background: linear-gradient(160deg, color-mix(in srgb, var(--act-color, var(--accent)) 20%, transparent), transparent);
+    border-color: color-mix(in srgb, var(--act-color, var(--accent)) 50%, transparent);
+    color: var(--act-color, var(--accent));
+    font-family: var(--font);
+  }
+  .req-picker-item--action:hover {
+    border-color: var(--act-color, var(--accent));
+    box-shadow: 0 6px 18px color-mix(in srgb, var(--act-color, var(--accent)) 30%, transparent);
+  }
+  .req-picker-item--action .action-icon { width: min(42%, 110px); aspect-ratio: 1 / 1; display: flex; }
+  .req-picker-item--action .action-icon svg { width: 100%; height: 100%; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .req-picker-item--action .action-label {
+    display: block !important; font-size: clamp(1.1rem, 3.2vw, 1.7rem) !important; font-weight: 700;
+    color: var(--text) !important; letter-spacing: .04em;
+  }
+  .req-picker-item--action .action-sub { display: block !important; font-size: .78rem !important; color: var(--text-dim) !important; }
+  .connect-picker-back {
+    height: 32px; padding: 0 12px; border-radius: 16px; border: 1px solid var(--border);
+    background: var(--bg-card2); color: var(--text-dim); font-family: var(--font); font-size: .8rem; cursor: pointer;
+  }
+  .connect-picker-back:hover { color: var(--text); background: var(--bg-hover); }
+
   /* ── Node right-click context menu (Delete) ─────────────────────── */
   .node-context-menu {
     position: fixed;
@@ -1743,6 +1806,8 @@
 
   <div id="topbar">
     <h1>SMO Connection Map</h1>
+    <button class="map-btn icon-btn" id="btn-undo" title="Undo last link (Ctrl+Z)" disabled><svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>Undo</button>
+    <button class="map-btn icon-btn" id="btn-redo" title="Redo last undone link (Ctrl+Shift+Z)" disabled><svg viewBox="0 0 24 24"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg>Redo</button>
     <button class="map-btn" id="btn-controls">Info & Controls</button>
     <button class="map-btn" id="btn-settings">Settings</button>
     <button class="map-btn active" id="btn-display">Hide Display</button>
@@ -1756,7 +1821,7 @@
     <div class="controls-desktop">
       <div class="controls-section-title">Controls</div>
       <div class="controls-grid">
-        <div class="ctrl-card"><span class="ctrl-key">Click a node</span><div class="ctrl-desc">Opens the connect wizard: pick which Kingdom it goes to, then which Area, then that Area's In / Out / Main Node - no dragging needed. A node can carry any number of arrows, except dead-end nodes.</div></div>
+        <div class="ctrl-card"><span class="ctrl-key">Click a node</span><div class="ctrl-desc">Opens the connect wizard: pick which Kingdom it goes to, then which Area, then that Area's In / Out / Main Node, then END (finish) or CONTINUE (keep chaining from the spot you just linked) - no dragging needed. A node can carry any number of arrows, except dead-end nodes.</div></div>
         <div class="ctrl-card"><span class="ctrl-key">Drag a node</span><div class="ctrl-desc">Still works too - hold left mouse and drag from one node to another to <strong>draw a connection arrow</strong> directly.</div></div>
         <div class="ctrl-card"><span class="ctrl-key">Shift + click a node</span><div class="ctrl-desc">Highlights every chain running through it, and opens the connection navigator below the header. Shift-click again (or empty canvas) to clear.</div></div>
         <div class="ctrl-card"><span class="ctrl-key">Right-click a node</span><div class="ctrl-desc">Cycles its color through the palette, then back to none. With Segmented Nodes on, colors the entrance, name, or exit separately.</div></div>
@@ -1767,7 +1832,7 @@
         <div class="ctrl-card"><span class="ctrl-key">Hover an arrow</span><div class="ctrl-desc">Shows which letter chain it belongs to.</div></div>
         <div class="ctrl-card"><span class="ctrl-key">Connection navigator</span><div class="ctrl-desc">With a node selected, the bar under the header steps through each chain through it. Use its arrows or the Left / Right arrow keys.</div></div>
         <div class="ctrl-card"><span class="ctrl-key">Notes</span><div class="ctrl-desc">Double-click empty canvas to add a sticky note; shift-click a note to delete it. The Notes panel (Settings) keeps a numbered list. {icon} tokens render as images in both.</div></div>
-        <div class="ctrl-card"><span class="ctrl-key">Undo / redo</span><div class="ctrl-desc">Ctrl + Z undo and Ctrl + Shift + Z redo connections, chain changes, colors, notes, and node moves.</div></div>
+        <div class="ctrl-card"><span class="ctrl-key">Undo / redo</span><div class="ctrl-desc">The Undo / Redo buttons (top right) or Ctrl + Z / Ctrl + Shift + Z step through your links one at a time, plus chain changes, colors, notes, and node moves.</div></div>
         <div class="ctrl-card"><span class="ctrl-key">Panels</span><div class="ctrl-desc">Drag a kingdom's background or header to move it; drag its bottom-right triangle to resize. Drag a panel's bar to resize the Display and Notes panels.</div></div>
         <div class="ctrl-card"><span class="ctrl-key">Decouple</span><div class="ctrl-desc">Drag a node's bottom-right triangle to move it on its own. Dragging anywhere else still draws an arrow.</div></div>
         <div class="ctrl-card"><span class="ctrl-key">Navigate</span><div class="ctrl-desc">Scroll to zoom, drag empty space to pan.</div></div>
@@ -3621,18 +3686,29 @@ function commitUndoSnapshot(snap) {
   undoStack.push(snap);
   if (undoStack.length > UNDO_LIMIT) undoStack.shift();
   redoStack = [];
+  updateUndoRedoButtons();
+}
+
+// Enable/disable the top-bar Undo / Redo buttons to match the history stacks.
+function updateUndoRedoButtons() {
+  const u = document.getElementById('btn-undo');
+  const r = document.getElementById('btn-redo');
+  if (u) u.disabled = !undoStack.length;
+  if (r) r.disabled = !redoStack.length;
 }
 
 function undo() {
   if (!undoStack.length) return;
   redoStack.push(captureSnapshot());
   restoreSnapshot(undoStack.pop());
+  updateUndoRedoButtons();
 }
 
 function redo() {
   if (!redoStack.length) return;
   undoStack.push(captureSnapshot());
   restoreSnapshot(redoStack.pop());
+  updateUndoRedoButtons();
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -5113,7 +5189,7 @@ function connectZoneIconSrc(kingdomKey, zoneName) {
  * animation, Escape/outside-click to cancel). Search box filters by name.
  * Calls onPick(kingdomKey) once, then closes.
  */
-function openConnectKingdomPicker(kingdomKeys, headerText, onPick, onCancel) {
+function openConnectKingdomPicker(kingdomKeys, headerText, onPick, onCancel, trail) {
   document.querySelectorAll('.req-picker-overlay').forEach(p => p.remove());
 
   const overlay = document.createElement('div');
@@ -5137,6 +5213,7 @@ function openConnectKingdomPicker(kingdomKeys, headerText, onPick, onCancel) {
   header.appendChild(title);
   header.appendChild(closeBtn);
   popup.appendChild(header);
+  { const tr = buildConnectTrailEl(trail); if (tr) popup.appendChild(tr); }
 
   const search = document.createElement('input');
   search.type = 'text';
@@ -5218,7 +5295,7 @@ function openConnectKingdomPicker(kingdomKeys, headerText, onPick, onCancel) {
  * (Painting kingdoms excluded) alongside every placed Area/zone node.
  * Calls onPick(areaLabel, tgtId) once, then closes.
  */
-function openConnectAreaPickerFullscreen(kingdomKey, headerText, excludeTgtId, onPick, onCancel) {
+function openConnectAreaPickerFullscreen(kingdomKey, headerText, excludeTgtId, onPick, onCancel, trail) {
   document.querySelectorAll('.req-picker-overlay').forEach(p => p.remove());
 
   const tmpl = sectionTemplate(kingdomKey);
@@ -5256,6 +5333,7 @@ function openConnectAreaPickerFullscreen(kingdomKey, headerText, excludeTgtId, o
   header.appendChild(title);
   header.appendChild(closeBtn);
   popup.appendChild(header);
+  { const tr = buildConnectTrailEl(trail); if (tr) popup.appendChild(tr); }
 
   const search = document.createElement('input');
   search.type = 'text';
@@ -5384,31 +5462,244 @@ function buildConnectWizardPopup(anchorX, anchorY, headerText, onBack, optionDef
   return popup;
 }
 
-/** Step 3: pick the target's In / Out / Main Node, then finish the connection. */
-function openConnectPartPicker(x, y, srcId, srcPart, tgtId, tgtLabel, backTo) {
-  const parts = availableConnectParts(tgtId);
-  buildConnectWizardPopup(
-    x, y,
-    `Connect to ${tgtLabel} at:`,
-    backTo,
-    parts.map(part => ({
-      label: partLabel(part),
-      onClick: () => {
-        connect(srcId, srcPart, tgtId, part);
-        closeConnectWizard();
-      }
-    }))
-  );
+/** Inline SVG icons for the wizard (currentColor strokes). */
+const WIZ_ICONS = {
+  in:       '<svg viewBox="0 0 24 24"><path d="M3 12h11"/><path d="m10 8 4 4-4 4"/><path d="M18 4v16"/></svg>',
+  out:      '<svg viewBox="0 0 24 24"><path d="M8 12h13"/><path d="m17 8 4 4-4 4"/><path d="M4 4v16"/></svg>',
+  mid:      '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3.2" style="fill:currentColor"/></svg>',
+  end:      '<svg viewBox="0 0 24 24"><path d="M5 21V3"/><path d="M5 4h13l-3 4.5L18 13H5"/></svg>',
+  cont:     '<svg viewBox="0 0 24 24"><path d="m4 6 6 6-6 6"/><path d="m12 6 6 6-6 6"/></svg>',
+  arrow:    '<svg viewBox="0 0 24 24"><path d="M4 12h15"/><path d="m13 6 6 6-6 6"/></svg>',
+};
+function partIconSvg(part) { return part === PART_IN ? WIZ_ICONS.in : part === PART_OUT ? WIZ_ICONS.out : WIZ_ICONS.mid; }
+
+/** Display name for a node inside the chain trail. */
+function trailNodeLabel(id) {
+  const n = nodes[id];
+  if (!n) return id;
+  return n.type === 'kingdom' ? `${n.label} Main Stage` : n.label;
+}
+function trailNodeIconSrc(id) {
+  const n = nodes[id];
+  if (!n) return '';
+  if (isPaintingNode(id)) return 'assets/Painting.png';
+  const t = sectionTemplate(n.kingdomKey);
+  return t && t.icon ? `assets/${t.icon}` : '';
 }
 
 /**
- * Step 2: pick which Area within the chosen Kingdom, using the same
- * full-screen picker UI as the Notes tab's openKingdomSubareaPicker (see
- * openConnectAreaPickerFullscreen above) instead of the small anchored
- * option-list popup. Landing on an Area still continues into the existing
- * Step 3 (In/Out/Main Node) small popup, anchored back at the original
- * click position.
+ * Chain trail shown at the top of every wizard step: each node already in
+ * this connection (with the part it attaches to), joined by arrows. A dashed
+ * chip is a pending target that isn't linked until END / CONTINUE is chosen.
+ * trail = [{ id, part, pending? }, ...]
  */
+function buildConnectTrailEl(trail) {
+  if (!trail || !trail.length) return null;
+  const wrap = document.createElement('div');
+  wrap.className = 'connect-trail';
+  const lbl = document.createElement('span');
+  lbl.className = 'connect-trail-label';
+  lbl.textContent = 'Chain';
+  wrap.appendChild(lbl);
+  trail.forEach((t, i) => {
+    if (i > 0) {
+      const ar = document.createElement('span');
+      ar.className = 'connect-trail-arrow';
+      ar.innerHTML = WIZ_ICONS.arrow;
+      wrap.appendChild(ar);
+    }
+    const chip = document.createElement('span');
+    chip.className = 'connect-trail-chip' + (t.pending ? ' pending' : '');
+    const n = nodes[t.id];
+    chip.style.setProperty('--chip-color', (n && n.color) || '#888');
+    const src = trailNodeIconSrc(t.id);
+    if (src) {
+      const img = document.createElement('img');
+      img.src = src; img.alt = '';
+      img.addEventListener('error', () => img.remove(), { once: true });
+      chip.appendChild(img);
+    }
+    const name = document.createElement('span');
+    name.className = 'chip-name';
+    name.textContent = trailNodeLabel(t.id);
+    chip.appendChild(name);
+    if (!t.noPart) {
+      const part = document.createElement('span');
+      part.className = 'connect-trail-part';
+      part.innerHTML = partIconSvg(t.part) + '<span>' + partLabel(t.part) + '</span>';
+      chip.appendChild(part);
+    }
+    wrap.appendChild(chip);
+  });
+  requestAnimationFrame(() => { wrap.scrollLeft = wrap.scrollWidth; });
+  return wrap;
+}
+
+/**
+ * Full-screen choice picker (same overlay / popup / animation as the Kingdom
+ * and Area pickers) with a fixed layout of big icon buttons. Used for the
+ * In / Out / Main Node step and the END / CONTINUE step.
+ * items: [{ label, sub, icon(svg), color, col, row, onPick }]
+ */
+function openConnectChoicePicker({ title, trail, items, onBack, oneRow }) {
+  document.querySelectorAll('.req-picker-overlay').forEach(p => p.remove());
+
+  const overlay = document.createElement('div');
+  overlay.className = 'req-picker-overlay';
+  const popup = document.createElement('div');
+  popup.className = 'req-picker-popup req-picker-popup--choice';
+  popup.addEventListener('click', (e) => e.stopPropagation());
+  overlay.appendChild(popup);
+
+  const header = document.createElement('div');
+  header.className = 'req-picker-header';
+  const ttl = document.createElement('div');
+  ttl.className = 'req-picker-title';
+  ttl.textContent = title;
+  header.appendChild(ttl);
+  const right = document.createElement('div');
+  right.style.cssText = 'display:flex;align-items:center;gap:8px;';
+  if (onBack) {
+    const back = document.createElement('button');
+    back.type = 'button';
+    back.className = 'connect-picker-back';
+    back.textContent = '← Back';
+    back.addEventListener('click', () => { closePicker(); onBack(); });
+    right.appendChild(back);
+  }
+  const closeBtn = document.createElement('button');
+  closeBtn.type = 'button';
+  closeBtn.className = 'req-picker-close';
+  closeBtn.textContent = '✕';
+  closeBtn.title = 'Close';
+  closeBtn.addEventListener('click', () => closePicker());
+  right.appendChild(closeBtn);
+  header.appendChild(right);
+  popup.appendChild(header);
+
+  const tr = buildConnectTrailEl(trail);
+  if (tr) popup.appendChild(tr);
+
+  const grid = document.createElement('div');
+  grid.className = 'req-picker-grid req-picker-grid--choice' + (oneRow ? ' one-row' : '');
+  items.forEach(it => {
+    const cell = document.createElement('button');
+    cell.type = 'button';
+    cell.className = 'req-picker-item req-picker-item--action';
+    cell.style.setProperty('--act-color', it.color);
+    if (it.col) cell.style.gridColumn = it.col;
+    if (it.row) cell.style.gridRow = it.row;
+    const ic = document.createElement('div');
+    ic.className = 'action-icon';
+    ic.innerHTML = it.icon;
+    const lb = document.createElement('span');
+    lb.className = 'action-label';
+    lb.textContent = it.label;
+    cell.appendChild(ic);
+    cell.appendChild(lb);
+    if (it.sub) {
+      const sb = document.createElement('span');
+      sb.className = 'action-sub';
+      sb.textContent = it.sub;
+      cell.appendChild(sb);
+    }
+    cell.addEventListener('click', () => {
+      bounce(cell);
+      closePicker();
+      it.onPick();
+    });
+    grid.appendChild(cell);
+  });
+  popup.appendChild(grid);
+
+  document.body.appendChild(overlay);
+  function onKeyDown(e) { if (e.key === 'Escape') closePicker(); }
+  function closePicker() {
+    overlay.classList.remove('active');
+    document.removeEventListener('keydown', onKeyDown);
+    setTimeout(() => overlay.remove(), 230);
+  }
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) closePicker(); });
+  document.addEventListener('keydown', onKeyDown);
+  void overlay.offsetWidth;
+  requestAnimationFrame(() => overlay.classList.add('active'));
+}
+
+/** Where a CONTINUE picks the chain back up on the node it just landed on. */
+function continuePartFor(id, arrivedPart) {
+  // Came in through "In" -> leave through "Out" (if this node has one).
+  if (arrivedPart === PART_IN && availableConnectParts(id).includes(PART_OUT)) return PART_OUT;
+  return normalizePart(id, arrivedPart);
+}
+
+/**
+ * Step 4 (final): END or CONTINUE. Nothing is linked until one is chosen.
+ *   END      - make this link and stop.
+ *   CONTINUE - make this link, then start the next link from the node it
+ *              just landed on (same chain, so arrows extend the same route).
+ */
+function openConnectFinalPrompt(x, y, srcId, srcPart, tgtId, tPart, trail, backTo) {
+  const sP = normalizePart(srcId, srcPart);
+  const tP = normalizePart(tgtId, tPart);
+  const pendingTrail = trail.concat([{ id: tgtId, part: tP, pending: true }]);
+
+  // Links src -> tgt (or accepts it if that exact arrow already exists).
+  const commit = () => {
+    if (!findEdge(srcId, sP, tgtId, tP)) connect(srcId, sP, tgtId, tP);
+    return !!findEdge(srcId, sP, tgtId, tP);
+  };
+
+  openConnectChoicePicker({
+    title: `Linking to ${trailNodeLabel(tgtId)} - what next?`,
+    trail: pendingTrail,
+    onBack: backTo,
+    oneRow: true,
+    items: [
+      { label: 'END', sub: 'Finish this connection', icon: WIZ_ICONS.end, color: '#f87171',
+        onPick: () => { commit(); } },
+      { label: 'CONTINUE', sub: 'Keep going from this link', icon: WIZ_ICONS.cont, color: '#4ade80',
+        onPick: () => {
+          if (!commit()) return;                       // rejected: stop here
+          const nextPart = continuePartFor(tgtId, tP);
+          const nextTrail = trail.concat([{ id: tgtId, part: tP }]);
+          startConnectStep(x, y, tgtId, nextPart, nextTrail);
+        } },
+    ],
+  });
+}
+
+/**
+ * Step 3: pick the target's In / Out / Main Node in a full-screen menu:
+ * IN top-left, OUT bottom-left, MAIN Node on the right. Areas with only one
+ * valid node skip straight to the END / CONTINUE prompt.
+ */
+function openConnectPartPicker(x, y, srcId, srcPart, tgtId, tgtLabel, trail, backTo) {
+  const parts = availableConnectParts(tgtId);
+  const goFinal = (part) => openConnectFinalPrompt(x, y, srcId, srcPart, tgtId, part, trail,
+    parts.length > 1 ? () => openConnectPartPicker(x, y, srcId, srcPart, tgtId, tgtLabel, trail, backTo) : backTo);
+
+  const onlyPart = singleValidPart(tgtId);
+  if (onlyPart !== null) { goFinal(onlyPart); return; }
+
+  const hasOut = parts.includes(PART_OUT);
+  const layout = {
+    [PART_IN]:  { col: '1', row: hasOut ? '1' : '1 / span 2', color: '#4ade80', label: 'IN',        sub: 'Entrance' },
+    [PART_OUT]: { col: '1', row: '2',                          color: '#fb923c', label: 'OUT',       sub: 'Exit' },
+    [PART_MID]: { col: '2', row: '1 / span 2',                 color: '#7c86ff', label: 'MAIN NODE', sub: 'The area itself' },
+  };
+  openConnectChoicePicker({
+    title: `Connect to ${tgtLabel} at:`,
+    trail: trail.concat([{ id: tgtId, part: PART_MID, pending: true }]).map((t, i, arr) =>
+      i === arr.length - 1 ? { id: t.id, part: t.part, pending: true, noPart: true } : t),
+    onBack: backTo,
+    items: parts.map(part => ({
+      label: layout[part].label, sub: layout[part].sub, icon: partIconSvg(part),
+      color: layout[part].color, col: layout[part].col, row: layout[part].row,
+      onPick: () => goFinal(part),
+    })),
+  });
+}
+
 /**
  * True if `tgtId` has only one node worth offering as a connection target:
  * a dead-end area (In only - Main Node isn't a second meaningful option
@@ -5423,50 +5714,51 @@ function singleValidPart(tgtId) {
   return null;
 }
 
-function openConnectAreaPicker(x, y, srcId, srcPart, kingdomKey, excludeTgtId) {
+/** Step 2: pick which Area within the chosen Kingdom. */
+function openConnectAreaPicker(x, y, srcId, srcPart, kingdomKey, excludeTgtId, trail, backTo) {
   openConnectAreaPickerFullscreen(
     kingdomKey,
     `Which ${kingdomKey} area?`,
     excludeTgtId,
     (areaLabel, tgtId) => {
       const tgtLabel = areaLabel === `${kingdomKey} (Main Stage)` ? `${kingdomKey} Main Stage` : areaLabel;
-      const onlyPart = singleValidPart(tgtId);
-      if (onlyPart !== null) {
-        // Only one possible node for this area: connect directly, no
-        // In/Out/Main Node step. Skip if that exact connection already exists.
-        if (!findEdge(srcId, srcPart, tgtId, onlyPart)) {
-          connect(srcId, srcPart, tgtId, onlyPart);
-        }
-        closeConnectWizard();
-        return;
-      }
-      openConnectPartPicker(x, y, srcId, srcPart, tgtId, tgtLabel, null);
-    }
+      openConnectPartPicker(x, y, srcId, srcPart, tgtId, tgtLabel, trail,
+        () => openConnectAreaPicker(x, y, srcId, srcPart, kingdomKey, excludeTgtId, trail, backTo));
+    },
+    null,
+    trail
   );
 }
 
 /**
- * Step 1: pick which Kingdom the connection goes to, using the same
- * full-screen picker UI as the Notes tab's Kingdom picker (see
- * openConnectKingdomPicker above) instead of the small anchored
- * option-list popup.
+ * One hop of the wizard: Kingdom -> Area -> In/Out/Main -> END / CONTINUE.
+ * `trail` is every node already in this connection (ends with the source).
+ * CONTINUE calls this again with the node it just landed on as the source.
  */
-function openConnectWizard(event, srcId, srcPart) {
-  const x = event.clientX, y = event.clientY;
-  // Paintings only ever connect to other Paintings (see canConnect), so a
-  // Painting's wizard skips the Kingdom-picker step entirely - there's only
-  // ever one valid Kingdom to land in - and goes straight to the Paintings
-  // area picker, which excludes this Painting's own entry (excludeZone).
+function startConnectStep(x, y, srcId, srcPart, trail) {
+  const sP = normalizePart(srcId, srcPart);
+  const cont = trail.length > 1;
+  // Paintings only ever connect to other Paintings (see canConnect), so the
+  // Kingdom step is skipped; the Area picker excludes the source itself.
   if (isPaintingNode(srcId)) {
-    openConnectAreaPicker(x, y, srcId, srcPart, PAINTINGS_KEY, srcId);
+    openConnectAreaPicker(x, y, srcId, sP, PAINTINGS_KEY, srcId, trail, null);
     return;
   }
   const kingdomKeys = Object.keys(LOADING_ZONES_TEMPLATE);
   openConnectKingdomPicker(
     kingdomKeys,
-    'Connect to which Kingdom?',
-    (kingdomKey) => openConnectAreaPicker(x, y, srcId, srcPart, kingdomKey)
+    cont ? `Continue from ${trailNodeLabel(srcId)} (${partLabel(sP)}): which Kingdom?` : 'Connect to which Kingdom?',
+    (kingdomKey) => openConnectAreaPicker(x, y, srcId, sP, kingdomKey, undefined, trail,
+      () => startConnectStep(x, y, srcId, sP, trail)),
+    null,
+    trail
   );
+}
+
+/** Entry point: a plain click on a node (or one of its In / Out / Main segments). */
+function openConnectWizard(event, srcId, srcPart) {
+  startConnectStep(event.clientX, event.clientY, srcId, srcPart,
+    [{ id: srcId, part: normalizePart(srcId, srcPart) }]);
 }
 
 function renderConnections() {
@@ -7090,6 +7382,10 @@ viewport.addEventListener('touchcancel',()=>{ touchPanState=null; pinchState=nul
 // ─────────────────────────────────────────────────────────────────
 // Top bar buttons
 // ─────────────────────────────────────────────────────────────────
+document.getElementById('btn-undo').addEventListener('click', () => { closeConnectWizard(); undo(); });
+document.getElementById('btn-redo').addEventListener('click', () => { closeConnectWizard(); redo(); });
+updateUndoRedoButtons();
+
 document.getElementById('btn-controls').addEventListener('click', (e) => {
   const panel = document.getElementById('controls-panel');
   const hidden = panel.classList.toggle('hidden');

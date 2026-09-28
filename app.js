@@ -123,10 +123,10 @@ const DEFAULT_SETTINGS = {
   hotkeys: null,               // null = use HOTKEY_DEFAULTS
 
   // Loading Zone Notes layout (shared by the modal and the popped-out notes.html)
-  notes_layout: 'horizontal',  // 'horizontal' = column-wrap masonry (horizontal scroll)
+  notes_layout: 'vertical',    // 'horizontal' = column-wrap masonry (horizontal scroll)
                                // 'vertical'   = multi-column pack (vertical scroll)
-  notes_columns: 2,            // kingdoms side-by-side in vertical mode (1 | 2 | 3)
-  notes_compact: false,        // tighter spacing + shorter note boxes
+  notes_columns: 1,            // kingdoms side-by-side in vertical mode (1 | 2 | 3)
+  notes_compact: true,         // tighter spacing + shorter note boxes
   show_painting_notes: true,   // Paintings notes column (before Cascade); default on
   extra_paintings: false,      // Extra Paintings: adds every Kingdom (except Deep Woods & Darker Side) to the Painting Tracker; default off
   show_kingdomsubicons: true,  // Small kingdom+subarea icon next to each zone's name in Notes; default on
@@ -2267,12 +2267,56 @@ function syncNotesToolbar() {
 // reflow of the whole notes masonry on every box, which is what made opening
 // the notes view (modal, side panel, and notes.html) feel slow.
 function autosizeNotes(root) {
+  observeNoteWidths(root);
   const nodes = Array.from((root || document).querySelectorAll('.zone-note'))
     .filter(t => t.style.display !== 'none' && t.value.trim() !== '');
   if (!nodes.length) return;
   nodes.forEach(t => { t.style.height = 'auto'; });
   const heights = nodes.map(t => t.scrollHeight);
   nodes.forEach((t, i) => { t.style.height = heights[i] + 'px'; });
+}
+
+// ── Note box auto-fit (keeps text inside its box when the font / width changes) ──
+// Notes are sized once to their text; a wider font (Comic Sans), a different
+// column count or a resize made the text spill out of the stale-height box.
+// refitNotes() re-measures visible notes, and a ResizeObserver re-runs it
+// whenever a note's width changes (layout/columns/compact/expand/resize).
+var _noteWidthSeen = new WeakMap();
+var _noteRefitRaf = 0;
+var _noteRO = null;
+function refitNotes() {
+  cancelAnimationFrame(_noteRefitRaf);
+  _noteRefitRaf = requestAnimationFrame(function () {
+    var nodes = Array.from(document.querySelectorAll('.zone-note'))
+      .filter(function (t) { return t.offsetParent !== null && t.value.trim() !== ''; });
+    nodes.forEach(function (t) { t.style.height = 'auto'; });
+    var hs = nodes.map(function (t) { return t.scrollHeight; });
+    nodes.forEach(function (t, i) { t.style.height = hs[i] + 'px'; });
+  });
+}
+function observeNoteWidths(root) {
+  if (typeof ResizeObserver === 'undefined') return;
+  if (!_noteRO) {
+    _noteRO = new ResizeObserver(function (entries) {
+      var changed = false;
+      entries.forEach(function (en) {
+        var w = Math.round(en.contentRect.width);
+        if (_noteWidthSeen.get(en.target) !== w) { _noteWidthSeen.set(en.target, w); if (w > 0) changed = true; }
+      });
+      if (changed) refitNotes();
+    });
+  }
+  (root || document).querySelectorAll('.zone-note').forEach(function (t) { _noteRO.observe(t); });
+}
+function refitNotesAfterFontChange() {
+  refitNotes();
+  if (document.fonts) {
+    if (document.fonts.ready) document.fonts.ready.then(refitNotes);
+    if (!window._noteFontListener && document.fonts.addEventListener) {
+      window._noteFontListener = true;
+      document.fonts.addEventListener('loadingdone', refitNotes);
+    }
+  }
 }
 
 // Build the toolbar once and insert it above the scroll area in the modal.
@@ -3792,6 +3836,8 @@ function applyCustomFont() {
   const boldOverride = state.settings.bold_text_override; // true|false|null
   const shouldUnbold = (val !== 'default') && boldOverride !== true;
   document.documentElement.classList.toggle('force-unbold', shouldUnbold);
+  document.documentElement.classList.toggle('font-comicsans', val === 'comicsans');
+  refitNotesAfterFontChange();
 }
 
 function setCustomFont(value) {
