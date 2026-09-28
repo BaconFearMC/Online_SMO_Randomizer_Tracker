@@ -5796,8 +5796,18 @@ const ONE_WAY_ICONS = {   // same glyphs / image as the Notes tab's One-Way ques
   unknown: '<span class="ow-badge"><img src="assets/DeadEnd.png" alt="I don\'t remember"></span>',
 };
 function openConnectOneWayPicker(x, y, srcId, srcPart, tgtId, tPart, trail, backTo, isReturn) {
+  // Main Node -> another Kingdom's Main Stage: skip this question. Make the link, then ask
+  // once, in the "How did you reach ...?" flow, whether there was a One-Way.
+  if (!isReturn) {
+    const sP0 = normalizePart(srcId, srcPart);
+    const srcKid = nodes[srcId] && nodes[srcId].kingdomKey ? `kingdom:${nodes[srcId].kingdomKey}` : null;
+    if (sP0 === PART_MID && !isKingdomNode(srcId) && !isPaintingNode(srcId) && isKingdomNode(tgtId)
+        && srcKid && nodes[srcKid] && srcKid !== tgtId) {
+      if (connectWithOneWay(srcId, sP0, tgtId, tPart, null)) openConnectReturnPrompt(x, y, srcId, tgtId, trail, false);
+      return;
+    }
+  }
   // A Main Stage always ends the connection: answering finishes the link, no END / CONTINUE step.
-  // On No / I don't remember (forward links only) we then ask how you got back.
   const goFinal = (answer) => connectWithOneWay(srcId, srcPart, tgtId, tPart, answer,
     isReturn ? null : () => openConnectReturnPrompt(x, y, srcId, tgtId, trail, answer === 'unknown'),
     isReturn ? (isReturn === 'unsure' ? 'return-unsure' : 'return') : undefined);
