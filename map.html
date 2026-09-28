@@ -3839,6 +3839,15 @@ function connect(src, sPart, tgt, tPart) {
  *   null      - plain link (target isn't a Main Stage).
  * Returns true if the forward link exists afterwards.
  */
+/** Any area (any part: In / Out / Main, e.g. the Shop you CONTINUE'd through) linking to a
+ *  DIFFERENT Kingdom's Main Stage asks "How did you reach <starting Kingdom>?". */
+function isReturnPromptLink(src, tgt) {
+  if (!nodes[src] || !nodes[tgt] || isPaintingNode(src) || isPaintingNode(tgt) || !isKingdomNode(tgt)) return false;
+  const k = nodes[src].kingdomKey;
+  const srcKid = k ? `kingdom:${k}` : null;
+  return !!(srcKid && nodes[srcKid] && srcKid !== tgt);
+}
+
 function connectWithOneWay(src, sPart, tgt, tPart, answer, onReturnPrompt, forwardMode) {
   sPart = normalizePart(src, sPart);
   tPart = normalizePart(tgt, tPart);
@@ -3868,9 +3877,7 @@ function connectWithOneWay(src, sPart, tgt, tPart, answer, onReturnPrompt, forwa
     // Every answer on a Main Node -> Kingdom link goes on to ask "How did you reach
     // <starting Kingdom>?" (sub-area, part, One-Way) - see openConnectReturnPrompt().
     // Any other link: No / I don't remember add a plain return arrow (target -> source).
-    const srcKingdomId = nodes[src] && nodes[src].kingdomKey ? `kingdom:${nodes[src].kingdomKey}` : null;
-    const askReturn = !!onReturnPrompt && sPart === PART_MID && !isKingdomNode(src) && !isPaintingNode(src)
-      && isKingdomNode(tgt) && srcKingdomId && nodes[srcKingdomId] && srcKingdomId !== tgt;
+    const askReturn = !!onReturnPrompt && isReturnPromptLink(src, tgt);
     if (askReturn) {
       returnPromptPending = { unsure: answer === 'unknown' };
     } else if (answer !== 'yes' && !findEdge(tgt, tPart, src, sPart) && canConnect(tgt, tPart, src, sPart)) {
@@ -5800,9 +5807,7 @@ function openConnectOneWayPicker(x, y, srcId, srcPart, tgtId, tPart, trail, back
   // once, in the "How did you reach ...?" flow, whether there was a One-Way.
   if (!isReturn) {
     const sP0 = normalizePart(srcId, srcPart);
-    const srcKid = nodes[srcId] && nodes[srcId].kingdomKey ? `kingdom:${nodes[srcId].kingdomKey}` : null;
-    if (sP0 === PART_MID && !isKingdomNode(srcId) && !isPaintingNode(srcId) && isKingdomNode(tgtId)
-        && srcKid && nodes[srcKid] && srcKid !== tgtId) {
+    if (isReturnPromptLink(srcId, tgtId)) {
       if (connectWithOneWay(srcId, sP0, tgtId, tPart, null)) openConnectReturnPrompt(x, y, srcId, tgtId, trail, false);
       return;
     }
