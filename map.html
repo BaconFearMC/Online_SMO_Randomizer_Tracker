@@ -473,14 +473,14 @@
   .req-picker-item--action.is-wide { flex-direction: row !important; gap: 16px !important; padding: 2% 4% !important; }
   .req-picker-item--action.is-wide .action-icon { width: auto; height: 62%; }
   .req-picker-item--action.is-wide .action-text { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
-  .req-picker-item--action {
+  .req-picker-item.req-picker-item--action {
     gap: 12px !important;
     background: linear-gradient(160deg, color-mix(in srgb, var(--act-color, var(--accent)) 20%, transparent), transparent);
     border-color: color-mix(in srgb, var(--act-color, var(--accent)) 50%, transparent);
     color: var(--act-color, var(--accent));
     font-family: var(--font);
   }
-  .req-picker-item--action:hover {
+  .req-picker-item.req-picker-item--action:hover {
     border-color: var(--act-color, var(--accent));
     box-shadow: 0 6px 18px color-mix(in srgb, var(--act-color, var(--accent)) 30%, transparent);
   }
@@ -509,6 +509,21 @@
   .ow-badge svg { width: 62%; height: 62%; fill: none; stroke: currentColor; stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; }
   .ow-yes { color: #4ee06a; }
   .ow-no  { color: #ff5a5a; }
+  .ow-unk { color: #fbbf24; }
+  .req-picker-item--action .action-icon .ow-badge {
+    display: flex; align-items: center; justify-content: center; overflow: visible;
+    font-size: clamp(2.4rem, 6vw, 3.6rem); line-height: 1; flex-shrink: 0;
+    border: 3px solid currentColor;
+    background: color-mix(in srgb, currentColor 16%, rgba(0,0,0,.3));
+  }
+  .req-picker-item--action .action-icon .ow-yes { color: #4ee06a; }
+  .req-picker-item--action .action-icon .ow-no  { color: #ff5a5a; }
+  .req-picker-item--action .action-icon .ow-unk { color: #fbbf24; }
+  .req-picker-item--action .action-icon .ow-badge svg { stroke: currentColor; stroke-width: 3.2; }
+  .req-picker-item--action .action-icon .ow-badge img {
+    width: 66%; height: 66%; max-width: none; flex: none; padding: 0; margin: 0;
+    object-fit: contain; position: static; transform: none;
+  }
   .req-picker-grid.req-picker-grid--choice.three-col { grid-template-columns: 1fr 1fr 1fr; grid-template-rows: 1fr; }
   .req-picker-popup--wide3 { width: min(94vw, 960px); }
 
@@ -757,6 +772,15 @@
   }
   /* Kingdom-arrival subarea picker (Area step): name chip above icon,
      same treatment as notes.html's .req-picker-overlay--subarea. */
+  /* Area menus get the Kingdom's color too (matches the Kingdom picker + In/Out/Main cards). */
+  .req-picker-overlay--subarea .req-picker-item.req-picker-item--capture {
+    background: linear-gradient(160deg, color-mix(in srgb, var(--kingdom-color, var(--accent)) 18%, transparent), transparent);
+    border-color: color-mix(in srgb, var(--kingdom-color, var(--accent)) 45%, transparent);
+  }
+  .req-picker-overlay--subarea .req-picker-item.req-picker-item--capture:hover {
+    border-color: var(--kingdom-color, var(--accent));
+    box-shadow: 0 6px 18px color-mix(in srgb, var(--kingdom-color, var(--accent)) 30%, transparent);
+  }
   .req-picker-overlay--subarea .req-picker-item {
     display: flex !important;
     flex-direction: column-reverse !important;
@@ -5447,7 +5471,7 @@ function openConnectAreaPickerFullscreen(kingdomKey, headerText, excludeTgtId, o
   }) : [];
 
   const items = [];
-  if (kingdomKey !== PAINTINGS_KEY) {
+  if (kingdomKey !== PAINTINGS_KEY && excludeTgtId !== `kingdom:${kingdomKey}`) {
     items.push({ label: `${kingdomKey} (Main Stage)`, tgtId: `kingdom:${kingdomKey}`, isMain: true });
   }
   zoneNames.forEach(zoneName => {
@@ -5792,7 +5816,7 @@ function continuePartFor(id, arrivedPart) {
 const ONE_WAY_ICONS = {   // same glyphs / image as the Notes tab's One-Way question
   yes: '<span class="ow-badge ow-yes"><svg viewBox="0 0 24 24"><polyline points="5 12.5 10 17.5 19 7"/></svg></span>',
   no:  '<span class="ow-badge ow-no"><svg viewBox="0 0 24 24"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></span>',
-  unknown: '<span class="ow-badge"><img src="assets/DeadEnd.png" alt="I don\'t remember" onerror="this.replaceWith(document.createTextNode(\'?\'))"></span>',
+  unknown: '<span class="ow-badge ow-unk"><img src="assets/DeadEnd.png" alt="I don\'t remember" onerror="this.replaceWith(document.createTextNode(\'?\'))"></span>',
 };
 function openConnectOneWayPicker(x, y, srcId, srcPart, tgtId, tPart, trail, backTo, isReturn) {
   // Main Node -> another Kingdom's Main Stage: skip this question. Make the link, then ask
@@ -5833,7 +5857,7 @@ function openConnectReturnPrompt(x, y, srcId, landedKingdomId, trail, unsure) {
   const kLabel = trailNodeLabel(srcKingdomId);
   const baseTrail = trail.concat([{ id: landedKingdomId, part: PART_MID }]);
   const pickArea = () => openConnectAreaPickerFullscreen(
-    landedKey, `How did you reach ${kLabel}?`, undefined,
+    landedKey, `How did you reach ${kLabel}?`, landedKingdomId,
     (areaLabel, areaId) => pickPart(areaLabel, areaId), null, baseTrail);
 
   const pickPart = (areaLabel, areaId) => {
