@@ -3839,7 +3839,7 @@ function connect(src, sPart, tgt, tPart) {
  *   null      - plain link (target isn't a Main Stage).
  * Returns true if the forward link exists afterwards.
  */
-function connectWithOneWay(src, sPart, tgt, tPart, answer) {
+function connectWithOneWay(src, sPart, tgt, tPart, answer, onReturnPrompt, forwardMode) {
   sPart = normalizePart(src, sPart);
   tPart = normalizePart(tgt, tPart);
   const exists = !!findEdge(src, sPart, tgt, tPart);
@@ -3848,29 +3848,27 @@ function connectWithOneWay(src, sPart, tgt, tPart, answer) {
   pushUndoSnapshot();
   if (!exists) {
     const ed = { src, sPart, tgt, tPart };
+    if (forwardMode === 'return-unsure') ed.unsure = true;   // dashed "?" link ("I don't remember" earlier)
     edgeList.push(ed);
     rebuildAdjacency();
-    autoAssignChain(ed);
+    if (forwardMode) assignNewChain(ed); else autoAssignChain(ed);   // return links get their own chain
   }
 
   if (answer === 'yes') {
     oneWayNodes[tgt] = true;
   } else if (answer === 'no' || answer === 'unknown') {
     delete oneWayNodes[tgt];
-    // Return trip: same two parts, opposite direction. Skipped quietly if the
-    // rules reject it (e.g. the source is a dead end that already has an arrow in).
-    // If the link starts from an area's Main Node (e.g. the Cap Shop), the
-    // return arrow goes from the target to the source's own Kingdom Main Stage
-    // node (e.g. Lost Shop -> Cap Kingdom) instead of back to the source area.
+    // Return trip. When the link starts from an area's Main Node (e.g. Paragoomba)
+    // and reaches another Kingdom's Main Stage, the wizard instead ASKS how you
+    // got back to the starting Kingdom (sub-area, part, One-Way) - see
+    // openConnectReturnPrompt(). Otherwise: same two parts, opposite direction,
+    // skipped quietly if the rules reject it.
     const srcKingdomId = nodes[src] && nodes[src].kingdomKey ? `kingdom:${nodes[src].kingdomKey}` : null;
-    const toKingdomMain = sPart === PART_MID && !isKingdomNode(src) && !isPaintingNode(src)
-      && srcKingdomId && nodes[srcKingdomId] && srcKingdomId !== tgt;
+    const askReturn = !!onReturnPrompt && sPart === PART_MID && !isKingdomNode(src) && !isPaintingNode(src)
+      && isKingdomNode(tgt) && srcKingdomId && nodes[srcKingdomId] && srcKingdomId !== tgt;
     let back = null;
-    if (toKingdomMain) {
-      const kPart = normalizePart(srcKingdomId, PART_MID);
-      if (!findEdge(tgt, tPart, srcKingdomId, kPart) && canConnect(tgt, tPart, srcKingdomId, kPart)) {
-        back = { src: tgt, sPart: tPart, tgt: srcKingdomId, tPart: kPart };
-      }
+    if (askReturn) {
+      returnPromptPending = { unsure: answer === 'unknown' };
     } else if (!findEdge(tgt, tPart, src, sPart) && canConnect(tgt, tPart, src, sPart)) {
       back = { src: tgt, sPart: tPart, tgt: src, tPart: sPart };
     }
@@ -3888,8 +3886,10 @@ function connectWithOneWay(src, sPart, tgt, tPart, answer) {
   applyOneWayClasses();
   renderConnections();
   renderDisplayPanel();
+  if (returnPromptPending) { returnPromptPending = null; onReturnPrompt(); }
   return true;
 }
+let returnPromptPending = null;
 
 /** Removes ALL outgoing arrows from a node (used by double-click). */
 function disconnectOutgoing(id) {
@@ -5784,9 +5784,12 @@ const ONE_WAY_ICONS = {   // same glyphs / image as the Notes tab's One-Way ques
   no:  '<span class="ow-badge ow-no">\u2715</span>',
   unknown: '<span class="ow-badge"><img src="assets/DeadEnd.png" alt="I don\'t remember"></span>',
 };
-function openConnectOneWayPicker(x, y, srcId, srcPart, tgtId, tPart, trail, backTo) {
+function openConnectOneWayPicker(x, y, srcId, srcPart, tgtId, tPart, trail, backTo, isReturn) {
   // A Main Stage always ends the connection: answering finishes the link, no END / CONTINUE step.
-  const goFinal = (answer) => connectWithOneWay(srcId, srcPart, tgtId, tPart, answer);
+  // On No / I don't remember (forward links only) we then ask how you got back.
+  const goFinal = (answer) => connectWithOneWay(srcId, srcPart, tgtId, tPart, answer,
+    isReturn || answer === 'yes' ? null : () => openConnectReturnPrompt(x, y, srcId, tgtId, trail, answer === 'unknown'),
+    isReturn ? (isReturn === 'unsure' ? 'return-unsure' : 'return') : undefined);
   openConnectChoicePicker({
     title: 'Was there a One-Way in that chain?',
     trail: trail.concat([{ id: tgtId, part: normalizePart(tgtId, tPart), pending: true }]),
@@ -5794,10 +5797,52 @@ function openConnectOneWayPicker(x, y, srcId, srcPart, tgtId, tPart, trail, back
     oneRow: true, threeCol: true,
     items: [
       { label: 'Yes', sub: 'Marks the Main Stage one-way (dimmed); no return arrow', icon: ONE_WAY_ICONS.yes, color: '#4ee06a', onPick: () => goFinal('yes') },
-      { label: 'No', sub: 'Adds a return arrow (from a Main Node, to its Kingdom's main node)', icon: ONE_WAY_ICONS.no, color: '#ff5a5a', onPick: () => goFinal('no') },
-      { label: "I don't remember", sub: 'Adds a dashed return arrow with a ?', icon: ONE_WAY_ICONS.unknown, color: '#fbbf24', onPick: () => goFinal('unknown') },
+      { label: 'No', sub: 'Then asks how you got back', icon: ONE_WAY_ICONS.no, color: '#ff5a5a', onPick: () => goFinal('no') },
+      { label: "I don't remember", sub: 'Then asks how you got back (dashed ? arrow)', icon: ONE_WAY_ICONS.unknown, color: '#fbbf24', onPick: () => goFinal('unknown') },
     ],
   });
+}
+
+/**
+ * After No / I don't remember on a Main Node -> Kingdom link: "How did you reach
+ * <starting Kingdom>?" Pick the sub-area of the Kingdom you landed in, which part
+ * of it (In / Out / Main), then the One-Way question again, and link that
+ * area -> the starting Kingdom's Main Stage.
+ */
+function openConnectReturnPrompt(x, y, srcId, landedKingdomId, trail, unsure) {
+  const srcKingdomId = `kingdom:${nodes[srcId].kingdomKey}`;
+  const landedKey = nodes[landedKingdomId].kingdomKey;
+  const kLabel = trailNodeLabel(srcKingdomId);
+  const baseTrail = trail.concat([{ id: landedKingdomId, part: PART_MID }]);
+  const pickArea = () => openConnectAreaPickerFullscreen(
+    landedKey, `How did you reach ${kLabel}?`, undefined,
+    (areaLabel, areaId) => pickPart(areaLabel, areaId), null, baseTrail);
+
+  const pickPart = (areaLabel, areaId) => {
+    const parts = availableConnectParts(areaId);
+    const trailTo = baseTrail.concat([{ id: areaId, part: PART_MID, pending: true, noPart: true }]);
+    const askOneWay = (part, backTo) => openConnectOneWayPicker(
+      x, y, areaId, part, srcKingdomId, PART_MID,
+      baseTrail.concat([{ id: areaId, part: normalizePart(areaId, part) }]), backTo, unsure ? 'unsure' : true);
+    if (parts.length === 1) { askOneWay(parts[0], pickArea); return; }
+    const hasOut = parts.includes(PART_OUT);
+    const layout = {
+      [PART_IN]:  { col: hasOut ? '1' : '1 / span 2', row: '1', color: '#4ade80', label: 'IN',        sub: 'Entrance' },
+      [PART_OUT]: { col: '2',                          row: '1', color: '#fb923c', label: 'OUT',       sub: 'Exit' },
+      [PART_MID]: { col: '1 / span 2',                 row: '2', color: '#7c86ff', label: 'MAIN NODE', sub: 'The area itself', wide: true },
+    };
+    openConnectChoicePicker({
+      title: `Reach ${kLabel} from ${areaLabel} at:`,
+      trail: trailTo,
+      onBack: pickArea,
+      items: parts.map(part => ({
+        label: layout[part].label, sub: layout[part].sub, icon: partIconSvg(part),
+        color: layout[part].color, col: layout[part].col, row: layout[part].row, wide: !!layout[part].wide,
+        onPick: () => askOneWay(part, () => pickPart(areaLabel, areaId)),
+      })),
+    });
+  };
+  pickArea();
 }
 
 /**
