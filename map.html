@@ -502,6 +502,12 @@
   .map-node.one-way:hover { opacity: 0.75; }
   .conn-unsure-q { fill: #fff; font-size: 15px; font-weight: 800; text-anchor: middle; dominant-baseline: central;
                    paint-order: stroke; stroke: #181818; stroke-width: 4px; pointer-events: none; }
+  .req-picker-item--action .action-icon:has(.ow-badge) { width: min(46%, 120px); }
+  .ow-badge { width: 100%; aspect-ratio: 1 / 1; display: flex; align-items: center; justify-content: center;
+              border-radius: 50%; background: rgba(0,0,0,.3); font-size: clamp(2.4rem, 6vw, 3.6rem); font-weight: 800; line-height: 1; }
+  .ow-badge img { width: 66%; height: 66%; object-fit: contain; }
+  .ow-yes { color: #4ee06a; }
+  .ow-no  { color: #ff5a5a; }
   .req-picker-grid.req-picker-grid--choice.three-col { grid-template-columns: 1fr 1fr 1fr; grid-template-rows: 1fr; }
   .req-picker-popup--wide3 { width: min(94vw, 960px); }
 
@@ -1835,7 +1841,7 @@
     <div class="controls-desktop">
       <div class="controls-section-title">Controls</div>
       <div class="controls-grid">
-        <div class="ctrl-card"><span class="ctrl-key">Click a node</span><div class="ctrl-desc">Opens the connect wizard: pick which Kingdom it goes to, then which Area, then that Area's In / Out / Main Node, then END (finish) or CONTINUE (keep chaining from the spot you just linked) - no dragging needed. Landing on a Kingdom's Main Stage also asks &ldquo;Was there a One-Way in that chain?&rdquo; (Yes dims the Main Stage, No adds a return arrow, I don't remember adds a dashed ? return arrow). A node can carry any number of arrows, except dead-end nodes.</div></div>
+        <div class="ctrl-card"><span class="ctrl-key">Click a node</span><div class="ctrl-desc">Opens the connect wizard: pick which Kingdom it goes to, then which Area, then that Area's In / Out / Main Node, then END (finish) or CONTINUE (keep chaining from the spot you just linked) - no dragging needed. Landing on a Kingdom's Main Stage always ends the connection and instead asks &ldquo;Was there a One-Way in that chain?&rdquo; (Yes dims the Main Stage, No adds a return arrow, I don't remember adds a dashed ? return arrow). A node can carry any number of arrows, except dead-end nodes.</div></div>
         <div class="ctrl-card"><span class="ctrl-key">Drag a node</span><div class="ctrl-desc">Still works too - hold left mouse and drag from one node to another to <strong>draw a connection arrow</strong> directly.</div></div>
         <div class="ctrl-card"><span class="ctrl-key">Shift + click a node</span><div class="ctrl-desc">Highlights every chain running through it, and opens the connection navigator below the header. Shift-click again (or empty canvas) to clear.</div></div>
         <div class="ctrl-card"><span class="ctrl-key">Right-click a node</span><div class="ctrl-desc">Cycles its color through the palette, then back to none. With Segmented Nodes on, colors the entrance, name, or exit separately.</div></div>
@@ -5728,24 +5734,24 @@ function continuePartFor(id, arrivedPart) {
 
 /**
  * Step 3b (Main Stage targets only): "Was there a One-Way in that chain?"
- * Same three answers as the Notes tab. Nothing is linked until END / CONTINUE.
+ * Same three answers and icons as the Notes tab. Picking one links and ends the connection.
  */
-const ONE_WAY_ICONS = {
-  yes: '<svg viewBox="0 0 24 24"><path d="m4 12.5 5 5L20 6.5"/></svg>',
-  no:  '<svg viewBox="0 0 24 24"><path d="M5 5l14 14"/><path d="M19 5 5 19"/></svg>',
-  unknown: '<svg viewBox="0 0 24 24"><path d="M9 9a3 3 0 1 1 4.6 2.5c-1 .7-1.6 1.2-1.6 2.5"/><circle cx="12" cy="18" r=".6" style="fill:currentColor"/></svg>',
+const ONE_WAY_ICONS = {   // same glyphs / image as the Notes tab's One-Way question
+  yes: '<span class="ow-badge ow-yes">\u2713</span>',
+  no:  '<span class="ow-badge ow-no">\u2715</span>',
+  unknown: '<span class="ow-badge"><img src="assets/DeadEnd.png" alt="I don\'t remember"></span>',
 };
 function openConnectOneWayPicker(x, y, srcId, srcPart, tgtId, tPart, trail, backTo) {
-  const goFinal = (answer) => openConnectFinalPrompt(x, y, srcId, srcPart, tgtId, tPart, trail,
-    () => openConnectOneWayPicker(x, y, srcId, srcPart, tgtId, tPart, trail, backTo), answer);
+  // A Main Stage always ends the connection: answering finishes the link, no END / CONTINUE step.
+  const goFinal = (answer) => connectWithOneWay(srcId, srcPart, tgtId, tPart, answer);
   openConnectChoicePicker({
     title: 'Was there a One-Way in that chain?',
     trail: trail.concat([{ id: tgtId, part: normalizePart(tgtId, tPart), pending: true }]),
     onBack: backTo,
     oneRow: true, threeCol: true,
     items: [
-      { label: 'Yes', sub: 'Marks the Main Stage one-way (dimmed); no return arrow', icon: ONE_WAY_ICONS.yes, color: '#4ade80', onPick: () => goFinal('yes') },
-      { label: 'No', sub: 'Adds a return arrow back to where you started', icon: ONE_WAY_ICONS.no, color: '#f87171', onPick: () => goFinal('no') },
+      { label: 'Yes', sub: 'Marks the Main Stage one-way (dimmed); no return arrow', icon: ONE_WAY_ICONS.yes, color: '#4ee06a', onPick: () => goFinal('yes') },
+      { label: 'No', sub: 'Adds a return arrow back to where you started', icon: ONE_WAY_ICONS.no, color: '#ff5a5a', onPick: () => goFinal('no') },
       { label: "I don't remember", sub: 'Adds a dashed return arrow with a ?', icon: ONE_WAY_ICONS.unknown, color: '#fbbf24', onPick: () => goFinal('unknown') },
     ],
   });
