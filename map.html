@@ -506,6 +506,7 @@
   .ow-badge { width: 100%; aspect-ratio: 1 / 1; display: flex; align-items: center; justify-content: center;
               border-radius: 50%; background: rgba(0,0,0,.3); font-size: clamp(2.4rem, 6vw, 3.6rem); font-weight: 800; line-height: 1; }
   .ow-badge img { width: 66%; height: 66%; object-fit: contain; }
+  .ow-badge svg { width: 62%; height: 62%; fill: none; stroke: currentColor; stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; }
   .ow-yes { color: #4ee06a; }
   .ow-no  { color: #ff5a5a; }
   .req-picker-grid.req-picker-grid--choice.three-col { grid-template-columns: 1fr 1fr 1fr; grid-template-rows: 1fr; }
@@ -3857,7 +3858,7 @@ function connectWithOneWay(src, sPart, tgt, tPart, answer, onReturnPrompt, forwa
   pushUndoSnapshot();
   if (!exists) {
     const ed = { src, sPart, tgt, tPart };
-    if (forwardMode === 'return-unsure') ed.unsure = true;   // dashed "?" link ("I don't remember" earlier)
+    if (forwardMode && answer === 'unknown') ed.unsure = true;   // dashed "?" link ("I don't remember")
     edgeList.push(ed);
     rebuildAdjacency();
     if (forwardMode) assignNewChain(ed); else autoAssignChain(ed);   // return links get their own chain
@@ -3886,15 +3887,6 @@ function connectWithOneWay(src, sPart, tgt, tPart, answer, onReturnPrompt, forwa
       edgeList.push(back);
       rebuildAdjacency();
       assignNewChain(back);   // its own chain, so it doesn't fold into the forward chain
-    }
-  } else if (forwardMode && (answer === 'no' || answer === 'unknown')) {
-    // Second (return-link) question: plain return arrow back down the same link.
-    if (!findEdge(tgt, tPart, src, sPart) && canConnect(tgt, tPart, src, sPart)) {
-      const back = { src: tgt, sPart: tPart, tgt: src, tPart: sPart };
-      if (answer === 'unknown') back.unsure = true;
-      edgeList.push(back);
-      rebuildAdjacency();
-      assignNewChain(back);
     }
   }
 
@@ -5798,9 +5790,9 @@ function continuePartFor(id, arrivedPart) {
  * Same three answers and icons as the Notes tab. Picking one links and ends the connection.
  */
 const ONE_WAY_ICONS = {   // same glyphs / image as the Notes tab's One-Way question
-  yes: '<span class="ow-badge ow-yes">\u2713</span>',
-  no:  '<span class="ow-badge ow-no">\u2715</span>',
-  unknown: '<span class="ow-badge"><img src="assets/DeadEnd.png" alt="I don\'t remember"></span>',
+  yes: '<span class="ow-badge ow-yes"><svg viewBox="0 0 24 24"><polyline points="5 12.5 10 17.5 19 7"/></svg></span>',
+  no:  '<span class="ow-badge ow-no"><svg viewBox="0 0 24 24"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></span>',
+  unknown: '<span class="ow-badge"><img src="assets/DeadEnd.png" alt="I don\'t remember" onerror="this.replaceWith(document.createTextNode(\'?\'))"></span>',
 };
 function openConnectOneWayPicker(x, y, srcId, srcPart, tgtId, tPart, trail, backTo, isReturn) {
   // Main Node -> another Kingdom's Main Stage: skip this question. Make the link, then ask
@@ -5823,8 +5815,8 @@ function openConnectOneWayPicker(x, y, srcId, srcPart, tgtId, tPart, trail, back
     oneRow: true, threeCol: true,
     items: [
       { label: 'Yes', sub: isReturn ? `Marks ${trailNodeLabel(srcId)} one-way (dimmed)` : 'Then asks how you got back', icon: ONE_WAY_ICONS.yes, color: '#4ee06a', onPick: () => goFinal('yes') },
-      { label: 'No', sub: isReturn ? 'Adds a return arrow back' : 'Then asks how you got back', icon: ONE_WAY_ICONS.no, color: '#ff5a5a', onPick: () => goFinal('no') },
-      { label: "I don't remember", sub: isReturn ? 'Adds a dashed return arrow with a ?' : 'Then asks how you got back', icon: ONE_WAY_ICONS.unknown, color: '#fbbf24', onPick: () => goFinal('unknown') },
+      { label: 'No', sub: isReturn ? 'Links it as a normal two-way route' : 'Then asks how you got back', icon: ONE_WAY_ICONS.no, color: '#ff5a5a', onPick: () => goFinal('no') },
+      { label: "I don't remember", sub: isReturn ? 'Links it with a dashed arrow and a ?' : 'Then asks how you got back', icon: ONE_WAY_ICONS.unknown, color: '#fbbf24', onPick: () => goFinal('unknown') },
     ],
   });
 }
@@ -5845,28 +5837,11 @@ function openConnectReturnPrompt(x, y, srcId, landedKingdomId, trail, unsure) {
     (areaLabel, areaId) => pickPart(areaLabel, areaId), null, baseTrail);
 
   const pickPart = (areaLabel, areaId) => {
-    const parts = availableConnectParts(areaId);
-    const trailTo = baseTrail.concat([{ id: areaId, part: PART_MID, pending: true, noPart: true }]);
-    const askOneWay = (part, backTo) => openConnectOneWayPicker(
-      x, y, areaId, part, srcKingdomId, PART_MID,
-      baseTrail.concat([{ id: areaId, part: normalizePart(areaId, part) }]), backTo, unsure ? 'unsure' : true);
-    if (parts.length === 1) { askOneWay(parts[0], pickArea); return; }
-    const hasOut = parts.includes(PART_OUT);
-    const layout = {
-      [PART_IN]:  { col: hasOut ? '1' : '1 / span 2', row: '1', color: '#4ade80', label: 'IN',        sub: 'Entrance' },
-      [PART_OUT]: { col: '2',                          row: '1', color: '#fb923c', label: 'OUT',       sub: 'Exit' },
-      [PART_MID]: { col: '1 / span 2',                 row: '2', color: '#7c86ff', label: 'MAIN NODE', sub: 'The area itself', wide: true },
-    };
-    openConnectChoicePicker({
-      title: `Reach ${kLabel} from ${areaLabel} at:`,
-      trail: trailTo,
-      onBack: pickArea,
-      items: parts.map(part => ({
-        label: layout[part].label, sub: layout[part].sub, icon: partIconSvg(part),
-        color: layout[part].color, col: layout[part].col, row: layout[part].row, wide: !!layout[part].wide,
-        onPick: () => askOneWay(part, () => pickPart(areaLabel, areaId)),
-      })),
-    });
+    // The way back always leaves from the area's MAIN node (no In / Out choice).
+    openConnectOneWayPicker(
+      x, y, areaId, PART_MID, srcKingdomId, PART_MID,
+      baseTrail.concat([{ id: areaId, part: normalizePart(areaId, PART_MID) }]),
+      pickArea, true);
   };
   pickArea();
 }
