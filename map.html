@@ -3859,8 +3859,22 @@ function connectWithOneWay(src, sPart, tgt, tPart, answer) {
     delete oneWayNodes[tgt];
     // Return trip: same two parts, opposite direction. Skipped quietly if the
     // rules reject it (e.g. the source is a dead end that already has an arrow in).
-    if (!findEdge(tgt, tPart, src, sPart) && canConnect(tgt, tPart, src, sPart)) {
-      const back = { src: tgt, sPart: tPart, tgt: src, tPart: sPart };
+    // If the link starts from an area's Main Node (e.g. the Cap Shop), the
+    // return arrow goes from that area to its own Kingdom's Main Stage node
+    // (Shop -> Cap Kingdom) instead of back from the target to the source.
+    const srcKingdomId = nodes[src] && nodes[src].kingdomKey ? `kingdom:${nodes[src].kingdomKey}` : null;
+    const toKingdomMain = sPart === PART_MID && !isKingdomNode(src) && !isPaintingNode(src)
+      && srcKingdomId && nodes[srcKingdomId] && srcKingdomId !== tgt;
+    let back = null;
+    if (toKingdomMain) {
+      const kPart = normalizePart(srcKingdomId, PART_MID);
+      if (!findEdge(src, sPart, srcKingdomId, kPart) && canConnect(src, sPart, srcKingdomId, kPart)) {
+        back = { src, sPart, tgt: srcKingdomId, tPart: kPart };
+      }
+    } else if (!findEdge(tgt, tPart, src, sPart) && canConnect(tgt, tPart, src, sPart)) {
+      back = { src: tgt, sPart: tPart, tgt: src, tPart: sPart };
+    }
+    if (back) {
       if (answer === 'unknown') back.unsure = true;
       edgeList.push(back);
       rebuildAdjacency();
@@ -5780,7 +5794,7 @@ function openConnectOneWayPicker(x, y, srcId, srcPart, tgtId, tPart, trail, back
     oneRow: true, threeCol: true,
     items: [
       { label: 'Yes', sub: 'Marks the Main Stage one-way (dimmed); no return arrow', icon: ONE_WAY_ICONS.yes, color: '#4ee06a', onPick: () => goFinal('yes') },
-      { label: 'No', sub: 'Adds a return arrow back to where you started', icon: ONE_WAY_ICONS.no, color: '#ff5a5a', onPick: () => goFinal('no') },
+      { label: 'No', sub: 'Adds a return arrow (from a Main Node, back to its Kingdom)', icon: ONE_WAY_ICONS.no, color: '#ff5a5a', onPick: () => goFinal('no') },
       { label: "I don't remember", sub: 'Adds a dashed return arrow with a ?', icon: ONE_WAY_ICONS.unknown, color: '#fbbf24', onPick: () => goFinal('unknown') },
     ],
   });
