@@ -462,11 +462,17 @@
 
   /* ── Connect wizard: In / Out / Main and End / Continue pickers ── */
   .req-picker-popup--choice { width: min(92vw, 760px); height: min(84vh, 540px); }
-  .req-picker-grid--choice {
-    grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr;
-    overflow: visible; padding: 4px;
+  /* Doubled class = beats the generic .req-picker-grid rule that comes later. */
+  .req-picker-grid.req-picker-grid--choice {
+    grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 30%;
+    overflow: visible; padding: 4px; gap: 12px;
   }
-  .req-picker-grid--choice.one-row { grid-template-rows: 1fr; }
+  .req-picker-grid.req-picker-grid--choice.one-row { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr; }
+  .req-picker-grid--choice .req-picker-item--action { width: 100%; height: 100%; }
+  /* The short MAIN NODE bar: icon and label side by side. */
+  .req-picker-item--action.is-wide { flex-direction: row !important; gap: 16px !important; padding: 2% 4% !important; }
+  .req-picker-item--action.is-wide .action-icon { width: auto; height: 62%; }
+  .req-picker-item--action.is-wide .action-text { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
   .req-picker-item--action {
     gap: 12px !important;
     background: linear-gradient(160deg, color-mix(in srgb, var(--act-color, var(--accent)) 20%, transparent), transparent);
@@ -478,7 +484,7 @@
     border-color: var(--act-color, var(--accent));
     box-shadow: 0 6px 18px color-mix(in srgb, var(--act-color, var(--accent)) 30%, transparent);
   }
-  .req-picker-item--action .action-icon { width: min(42%, 110px); aspect-ratio: 1 / 1; display: flex; }
+  .req-picker-item--action .action-icon { width: min(46%, 150px); aspect-ratio: 1 / 1; display: flex; }
   .req-picker-item--action .action-icon svg { width: 100%; height: 100%; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
   .req-picker-item--action .action-label {
     display: block !important; font-size: clamp(1.1rem, 3.2vw, 1.7rem) !important; font-weight: 700;
@@ -490,6 +496,14 @@
     background: var(--bg-card2); color: var(--text-dim); font-family: var(--font); font-size: .8rem; cursor: pointer;
   }
   .connect-picker-back:hover { color: var(--text); background: var(--bg-hover); }
+
+  /* ── One-way Main Stage nodes (dimmed) + unsure "?" return arrows ── */
+  .map-node.one-way { opacity: 0.4; filter: grayscale(0.6); }
+  .map-node.one-way:hover { opacity: 0.75; }
+  .conn-unsure-q { fill: #fff; font-size: 15px; font-weight: 800; text-anchor: middle; dominant-baseline: central;
+                   paint-order: stroke; stroke: #181818; stroke-width: 4px; pointer-events: none; }
+  .req-picker-grid.req-picker-grid--choice.three-col { grid-template-columns: 1fr 1fr 1fr; grid-template-rows: 1fr; }
+  .req-picker-popup--wide3 { width: min(94vw, 960px); }
 
   /* ── Node right-click context menu (Delete) ─────────────────────── */
   .node-context-menu {
@@ -1821,7 +1835,7 @@
     <div class="controls-desktop">
       <div class="controls-section-title">Controls</div>
       <div class="controls-grid">
-        <div class="ctrl-card"><span class="ctrl-key">Click a node</span><div class="ctrl-desc">Opens the connect wizard: pick which Kingdom it goes to, then which Area, then that Area's In / Out / Main Node, then END (finish) or CONTINUE (keep chaining from the spot you just linked) - no dragging needed. A node can carry any number of arrows, except dead-end nodes.</div></div>
+        <div class="ctrl-card"><span class="ctrl-key">Click a node</span><div class="ctrl-desc">Opens the connect wizard: pick which Kingdom it goes to, then which Area, then that Area's In / Out / Main Node, then END (finish) or CONTINUE (keep chaining from the spot you just linked) - no dragging needed. Landing on a Kingdom's Main Stage also asks &ldquo;Was there a One-Way in that chain?&rdquo; (Yes dims the Main Stage, No adds a return arrow, I don't remember adds a dashed ? return arrow). A node can carry any number of arrows, except dead-end nodes.</div></div>
         <div class="ctrl-card"><span class="ctrl-key">Drag a node</span><div class="ctrl-desc">Still works too - hold left mouse and drag from one node to another to <strong>draw a connection arrow</strong> directly.</div></div>
         <div class="ctrl-card"><span class="ctrl-key">Shift + click a node</span><div class="ctrl-desc">Highlights every chain running through it, and opens the connection navigator below the header. Shift-click again (or empty canvas) to clear.</div></div>
         <div class="ctrl-card"><span class="ctrl-key">Right-click a node</span><div class="ctrl-desc">Cycles its color through the palette, then back to none. With Segmented Nodes on, colors the entrance, name, or exit separately.</div></div>
@@ -3113,6 +3127,7 @@ let outgoing = {}, incoming = {}, marks = {};
 // each region (in / mid / out) is colored independently via segColors. Segment
 // colors are discarded the moment segmentation is turned off.
 let colorPalette = ['#f87171', '#4ade80', '#facc15', '#22d3ee', '#60a5fa']; // red, green, yellow, cyan, blue
+let oneWayNodes = {};  // id -> true: Main Stage nodes marked one-way (drawn dimmed)
 let nodeColors = {};   // id -> palette index (whole-node color, used when not segmented)
 let segColors  = {};   // id -> { in, mid, out } palette indices (used when segmented)
 let fillColorsOn  = true;  // color renders as a fill
@@ -3438,8 +3453,12 @@ function loadAll() {
       if (Array.isArray(d.edgeList) && d.edgeList.length) {
         edgeList = d.edgeList
           .filter(e => e && e.src && e.tgt)
-          .map(e => ({ src: e.src, tgt: e.tgt,
-                       sPart: e.sPart || PART_OUT, tPart: e.tPart || PART_IN }));
+          .map(e => {
+            const ed = { src: e.src, tgt: e.tgt,
+                         sPart: e.sPart || PART_OUT, tPart: e.tPart || PART_IN };
+            if (e.unsure) ed.unsure = true;   // "I don't remember" return link
+            return ed;
+          });
       } else {
         // Migrate: every arrow saved before segments existed was exit → entrance.
         edgeList = [];
@@ -3554,6 +3573,7 @@ function loadAll() {
       if (c && typeof c === 'object') {
         nodeColors = c.nodeColors || {};
         segColors  = c.segColors  || {};
+        oneWayNodes = c.oneWayNodes || {};
       }
     }
   } catch (e) {}
@@ -3603,7 +3623,7 @@ function loadMoonIcons() {
   } catch (e) { moonIcons = {}; }
 }
 function saveNodeColors() {
-  localStorage.setItem(STORAGE_NODE_COLORS, JSON.stringify({ nodeColors, segColors }));
+  localStorage.setItem(STORAGE_NODE_COLORS, JSON.stringify({ nodeColors, segColors, oneWayNodes }));
 }
 function savePanelNotes() {
   localStorage.setItem(STORAGE_PANEL_NOTES, JSON.stringify(panelNotes));
@@ -3633,7 +3653,7 @@ function saveNotes() { localStorage.setItem(STORAGE_NOTES, JSON.stringify(mapNot
 function captureSnapshot() {
   return JSON.parse(JSON.stringify({
     edgeList, edgeChains, chainColors, nextChainId,
-    nodeColors, segColors,
+    nodeColors, segColors, oneWayNodes,
     mapNotes, nextNoteId,
     panelNotes, nextPanelNoteId,
     nodePositions,
@@ -3647,6 +3667,7 @@ function restoreSnapshot(s) {
   nextChainId     = s.nextChainId     || 0;
   nodeColors      = s.nodeColors      || {};
   segColors       = s.segColors       || {};
+  oneWayNodes     = s.oneWayNodes     || {};
   mapNotes        = s.mapNotes        || [];
   nextNoteId      = s.nextNoteId      || 1;
   panelNotes      = s.panelNotes      || [];
@@ -3801,6 +3822,53 @@ function connect(src, sPart, tgt, tPart) {
   saveEdgeChains();
   renderConnections();
   renderDisplayPanel();
+}
+
+/**
+ * Wizard link with the "Was there a One-Way in that chain?" answer applied.
+ * Everything (forward arrow, return arrow, one-way mark) is ONE undo step.
+ *   'yes'     - forward arrow only; the target Main Stage is marked one-way (dimmed).
+ *   'no'      - forward arrow + a solid return arrow (target -> source).
+ *   'unknown' - forward arrow + a dashed "?" return arrow.
+ *   null      - plain link (target isn't a Main Stage).
+ * Returns true if the forward link exists afterwards.
+ */
+function connectWithOneWay(src, sPart, tgt, tPart, answer) {
+  sPart = normalizePart(src, sPart);
+  tPart = normalizePart(tgt, tPart);
+  const exists = !!findEdge(src, sPart, tgt, tPart);
+  if (!exists && !canConnect(src, sPart, tgt, tPart)) { flashRejected(src); return false; }
+
+  pushUndoSnapshot();
+  if (!exists) {
+    const ed = { src, sPart, tgt, tPart };
+    edgeList.push(ed);
+    rebuildAdjacency();
+    autoAssignChain(ed);
+  }
+
+  if (answer === 'yes') {
+    oneWayNodes[tgt] = true;
+  } else if (answer === 'no' || answer === 'unknown') {
+    delete oneWayNodes[tgt];
+    // Return trip: same two parts, opposite direction. Skipped quietly if the
+    // rules reject it (e.g. the source is a dead end that already has an arrow in).
+    if (!findEdge(tgt, tPart, src, sPart) && canConnect(tgt, tPart, src, sPart)) {
+      const back = { src: tgt, sPart: tPart, tgt: src, tPart: sPart };
+      if (answer === 'unknown') back.unsure = true;
+      edgeList.push(back);
+      rebuildAdjacency();
+      assignNewChain(back);   // its own chain, so it doesn't fold into the forward chain
+    }
+  }
+
+  saveState();
+  saveEdgeChains();
+  saveNodeColors();
+  applyOneWayClasses();
+  renderConnections();
+  renderDisplayPanel();
+  return true;
 }
 
 /** Removes ALL outgoing arrows from a node (used by double-click). */
@@ -4101,6 +4169,22 @@ function openNodeContextMenu(clientX, clientY, id, region) {
   });
   menu.appendChild(colorItem);
 
+  if (isKingdomNode(id) && !isPaintingNode(id)) {
+    const owItem = document.createElement('button');
+    owItem.type = 'button';
+    owItem.className = 'node-context-menu-item';
+    owItem.textContent = oneWayNodes[id] ? 'Unmark One-Way' : 'Mark One-Way';
+    owItem.addEventListener('click', (e) => {
+      e.stopPropagation();
+      pushUndoSnapshot();
+      if (oneWayNodes[id]) delete oneWayNodes[id]; else oneWayNodes[id] = true;
+      saveNodeColors();
+      applyOneWayClasses();
+      closeNodeContextMenu();
+    });
+    menu.appendChild(owItem);
+  }
+
   const deleteItem = document.createElement('button');
   deleteItem.type = 'button';
   deleteItem.className = 'node-context-menu-item danger';
@@ -4115,7 +4199,7 @@ function openNodeContextMenu(clientX, clientY, id, region) {
   document.body.appendChild(menu);
   activeNodeContextMenuEl = menu;
 
-  const mw = 150, mh = 80;
+  const mw = 150, mh = 120;
   let x = clientX, y = clientY;
   if (x + mw > window.innerWidth)  x = window.innerWidth - mw - 8;
   if (y + mh > window.innerHeight) y = window.innerHeight - mh - 8;
@@ -4313,6 +4397,13 @@ const imgBody    = document.getElementById('image-viewer-body');
 // ─────────────────────────────────────────────────────────────────
 // Full re-render
 // ─────────────────────────────────────────────────────────────────
+/** Re-syncs the dimmed look of one-way Main Stage nodes without a full re-render. */
+function applyOneWayClasses() {
+  document.querySelectorAll('.map-node').forEach(el => {
+    el.classList.toggle('one-way', !!oneWayNodes[el.dataset.id]);
+  });
+}
+
 function fullRender() {
   refreshZoneNameCache();
   // Remove all existing cluster-bgs and nodes (keep SVG)
@@ -4663,6 +4754,7 @@ function renderNodes() {
     const el = document.createElement('div');
     el.className = 'map-node' + (n.type === 'kingdom' ? ' kingdom-node' : '');
     if (DEAD_END_IDS.has(n.id)) el.classList.add('dead-end');
+    if (oneWayNodes[n.id]) el.classList.add('one-way');
     el.dataset.id = n.id;
     el.style.left = n.x + 'px';
     el.style.top  = n.y + 'px';
@@ -5541,13 +5633,13 @@ function buildConnectTrailEl(trail) {
  * In / Out / Main Node step and the END / CONTINUE step.
  * items: [{ label, sub, icon(svg), color, col, row, onPick }]
  */
-function openConnectChoicePicker({ title, trail, items, onBack, oneRow }) {
+function openConnectChoicePicker({ title, trail, items, onBack, oneRow, threeCol }) {
   document.querySelectorAll('.req-picker-overlay').forEach(p => p.remove());
 
   const overlay = document.createElement('div');
   overlay.className = 'req-picker-overlay';
   const popup = document.createElement('div');
-  popup.className = 'req-picker-popup req-picker-popup--choice';
+  popup.className = 'req-picker-popup req-picker-popup--choice' + (threeCol ? ' req-picker-popup--wide3' : '');
   popup.addEventListener('click', (e) => e.stopPropagation());
   overlay.appendChild(popup);
 
@@ -5581,7 +5673,7 @@ function openConnectChoicePicker({ title, trail, items, onBack, oneRow }) {
   if (tr) popup.appendChild(tr);
 
   const grid = document.createElement('div');
-  grid.className = 'req-picker-grid req-picker-grid--choice' + (oneRow ? ' one-row' : '');
+  grid.className = 'req-picker-grid req-picker-grid--choice' + (oneRow ? ' one-row' : '') + (threeCol ? ' three-col' : '');
   items.forEach(it => {
     const cell = document.createElement('button');
     cell.type = 'button';
@@ -5596,12 +5688,14 @@ function openConnectChoicePicker({ title, trail, items, onBack, oneRow }) {
     lb.className = 'action-label';
     lb.textContent = it.label;
     cell.appendChild(ic);
-    cell.appendChild(lb);
+    const textWrap = it.wide ? document.createElement('div') : cell;
+    if (it.wide) { cell.classList.add('is-wide'); textWrap.className = 'action-text'; cell.appendChild(textWrap); }
+    textWrap.appendChild(lb);
     if (it.sub) {
       const sb = document.createElement('span');
       sb.className = 'action-sub';
       sb.textContent = it.sub;
-      cell.appendChild(sb);
+      textWrap.appendChild(sb);
     }
     cell.addEventListener('click', () => {
       bounce(cell);
@@ -5633,18 +5727,45 @@ function continuePartFor(id, arrivedPart) {
 }
 
 /**
+ * Step 3b (Main Stage targets only): "Was there a One-Way in that chain?"
+ * Same three answers as the Notes tab. Nothing is linked until END / CONTINUE.
+ */
+const ONE_WAY_ICONS = {
+  yes: '<svg viewBox="0 0 24 24"><path d="m4 12.5 5 5L20 6.5"/></svg>',
+  no:  '<svg viewBox="0 0 24 24"><path d="M5 5l14 14"/><path d="M19 5 5 19"/></svg>',
+  unknown: '<svg viewBox="0 0 24 24"><path d="M9 9a3 3 0 1 1 4.6 2.5c-1 .7-1.6 1.2-1.6 2.5"/><circle cx="12" cy="18" r=".6" style="fill:currentColor"/></svg>',
+};
+function openConnectOneWayPicker(x, y, srcId, srcPart, tgtId, tPart, trail, backTo) {
+  const goFinal = (answer) => openConnectFinalPrompt(x, y, srcId, srcPart, tgtId, tPart, trail,
+    () => openConnectOneWayPicker(x, y, srcId, srcPart, tgtId, tPart, trail, backTo), answer);
+  openConnectChoicePicker({
+    title: 'Was there a One-Way in that chain?',
+    trail: trail.concat([{ id: tgtId, part: normalizePart(tgtId, tPart), pending: true }]),
+    onBack: backTo,
+    oneRow: true, threeCol: true,
+    items: [
+      { label: 'Yes', sub: 'Marks the Main Stage one-way (dimmed); no return arrow', icon: ONE_WAY_ICONS.yes, color: '#4ade80', onPick: () => goFinal('yes') },
+      { label: 'No', sub: 'Adds a return arrow back to where you started', icon: ONE_WAY_ICONS.no, color: '#f87171', onPick: () => goFinal('no') },
+      { label: "I don't remember", sub: 'Adds a dashed return arrow with a ?', icon: ONE_WAY_ICONS.unknown, color: '#fbbf24', onPick: () => goFinal('unknown') },
+    ],
+  });
+}
+
+/**
  * Step 4 (final): END or CONTINUE. Nothing is linked until one is chosen.
  *   END      - make this link and stop.
  *   CONTINUE - make this link, then start the next link from the node it
  *              just landed on (same chain, so arrows extend the same route).
  */
-function openConnectFinalPrompt(x, y, srcId, srcPart, tgtId, tPart, trail, backTo) {
+function openConnectFinalPrompt(x, y, srcId, srcPart, tgtId, tPart, trail, backTo, oneWay) {
   const sP = normalizePart(srcId, srcPart);
   const tP = normalizePart(tgtId, tPart);
   const pendingTrail = trail.concat([{ id: tgtId, part: tP, pending: true }]);
 
-  // Links src -> tgt (or accepts it if that exact arrow already exists).
+  // Links src -> tgt (or accepts it if that exact arrow already exists),
+  // applying the One-Way answer when the target was a Main Stage.
   const commit = () => {
+    if (oneWay) return connectWithOneWay(srcId, sP, tgtId, tP, oneWay);
     if (!findEdge(srcId, sP, tgtId, tP)) connect(srcId, sP, tgtId, tP);
     return !!findEdge(srcId, sP, tgtId, tP);
   };
@@ -5675,17 +5796,23 @@ function openConnectFinalPrompt(x, y, srcId, srcPart, tgtId, tPart, trail, backT
  */
 function openConnectPartPicker(x, y, srcId, srcPart, tgtId, tgtLabel, trail, backTo) {
   const parts = availableConnectParts(tgtId);
-  const goFinal = (part) => openConnectFinalPrompt(x, y, srcId, srcPart, tgtId, part, trail,
-    parts.length > 1 ? () => openConnectPartPicker(x, y, srcId, srcPart, tgtId, tgtLabel, trail, backTo) : backTo);
+  const backFromFinal = parts.length > 1 ? () => openConnectPartPicker(x, y, srcId, srcPart, tgtId, tgtLabel, trail, backTo) : backTo;
+  const goFinal = (part) => {
+    // Only a Main Stage target gets the One-Way question (Paintings have no Main Stage).
+    if (isKingdomNode(tgtId) && !isPaintingNode(tgtId)) openConnectOneWayPicker(x, y, srcId, srcPart, tgtId, part, trail, backFromFinal);
+    else openConnectFinalPrompt(x, y, srcId, srcPart, tgtId, part, trail, backFromFinal, null);
+  };
 
   const onlyPart = singleValidPart(tgtId);
   if (onlyPart !== null) { goFinal(onlyPart); return; }
 
   const hasOut = parts.includes(PART_OUT);
+  // IN left, OUT right (both fill the top), MAIN NODE a short bar along the bottom.
+  // No Out on this area: IN takes the whole top row instead.
   const layout = {
-    [PART_IN]:  { col: '1', row: hasOut ? '1' : '1 / span 2', color: '#4ade80', label: 'IN',        sub: 'Entrance' },
-    [PART_OUT]: { col: '1', row: '2',                          color: '#fb923c', label: 'OUT',       sub: 'Exit' },
-    [PART_MID]: { col: '2', row: '1 / span 2',                 color: '#7c86ff', label: 'MAIN NODE', sub: 'The area itself' },
+    [PART_IN]:  { col: hasOut ? '1' : '1 / span 2', row: '1', color: '#4ade80', label: 'IN',        sub: 'Entrance' },
+    [PART_OUT]: { col: '2',                          row: '1', color: '#fb923c', label: 'OUT',       sub: 'Exit' },
+    [PART_MID]: { col: '1 / span 2',                 row: '2', color: '#7c86ff', label: 'MAIN NODE', sub: 'The area itself', wide: true },
   };
   openConnectChoicePicker({
     title: `Connect to ${tgtLabel} at:`,
@@ -5694,7 +5821,7 @@ function openConnectPartPicker(x, y, srcId, srcPart, tgtId, tgtLabel, trail, bac
     onBack: backTo,
     items: parts.map(part => ({
       label: layout[part].label, sub: layout[part].sub, icon: partIconSvg(part),
-      color: layout[part].color, col: layout[part].col, row: layout[part].row,
+      color: layout[part].color, col: layout[part].col, row: layout[part].row, wide: !!layout[part].wide,
       onPick: () => goFinal(part),
     })),
   });
@@ -5815,11 +5942,23 @@ function renderConnections() {
       line.setAttribute('stroke-width', 2.5);
       line.setAttribute('stroke-linecap', 'round');
       line.setAttribute('marker-end', `url(#${markerId})`);
+      if (ed.unsure) line.setAttribute('stroke-dasharray', '8 6');
       line.dataset.ekey = key;
       line.dataset.normalStroke = strokeVal;
       line.dataset.normalMarker = `url(#${markerId})`;
       line.classList.add('conn-line');
       linesLayer.appendChild(line);
+      if (ed.unsure) {
+        // "I don't remember" return link: mark the middle of the arrow with a "?".
+        const mid = pathPts.length > 2
+          ? pathPts[Math.floor(pathPts.length / 2)]
+          : { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+        const q = document.createElementNS(SVG_NS, 'text');
+        q.setAttribute('x', mid.x); q.setAttribute('y', mid.y);
+        q.setAttribute('class', 'conn-unsure-q');
+        q.textContent = '?';
+        linesLayer.appendChild(q);
+      }
 
       // Invisible wide hit target
       const hit = document.createElementNS(SVG_NS, segPts ? 'polyline' : 'line');
@@ -7418,7 +7557,7 @@ document.getElementById('btn-clear').addEventListener('click', () => {
   pushUndoSnapshot();
   edgeList=[]; outgoing={}; incoming={}; marks={};
   edgeChains={}; chainColors={}; nextChainId=0;
-  nodeColors={}; segColors={};
+  nodeColors={}; segColors={}; oneWayNodes={};
   moonIcons={}; saveMoonIcons();
   hoverHighlightChainId = null; pinnedHighlightChainId = null; pinnedHighlightNodeId = null;
   clearNodeNav();
