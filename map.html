@@ -3970,12 +3970,32 @@ function canOpenChainPicker(src) {
   return true;
 }
 
+/**
+ * Chains arriving at a node, ordered for a new arrow leaving `part` of it.
+ * An area's In and Out are one pass-through: an arrow leaving OUT prefers the
+ * chain that ended at IN, and an arrow leaving IN prefers the chain that
+ * ended at OUT. Anything else (Main Node, unsegmented nodes) keeps the plain
+ * "any arrow into this node" order.
+ */
+function getIncomingChainIdsFor(nodeId, part) {
+  const all = getIncomingChainIds(nodeId);
+  if (!canSegment(nodeId) || DEAD_END_IDS.has(nodeId)) return all;
+  const partner = part === PART_OUT ? PART_IN : part === PART_IN ? PART_OUT : null;
+  if (!partner) return all;
+  const preferred = [], seen = new Set();
+  edgeList.filter(e => e.tgt === nodeId && e.tPart === partner).forEach(e => {
+    const cid = edgeChains[edgeKeyOf(e)];
+    if (cid !== undefined && !seen.has(cid)) { seen.add(cid); preferred.push(cid); }
+  });
+  return preferred.concat(all.filter(c => !seen.has(c)));
+}
+
 /** Auto-assign a chain to a newly created edge. */
 function autoAssignChain(ed) {
   if ((incoming[ed.src] || []).length === 0 || DEAD_END_IDS.has(ed.src)) {
     assignNewChain(ed);
   } else {
-    const inChains = getIncomingChainIds(ed.src);
+    const inChains = getIncomingChainIdsFor(ed.src, ed.sPart);
     if (inChains.length > 0) assignChain(ed, inChains[0]);
     else assignNewChain(ed);
   }
@@ -5118,7 +5138,7 @@ function openChainPicker(event, ed) {
   closeActiveChainPicker();
   const edgeKey = edgeKeyOf(ed);
   const currentChainId = getEdgeChainId(ed);
-  const inChains = getIncomingChainIds(ed.src);
+  const inChains = getIncomingChainIdsFor(ed.src, ed.sPart);
 
   const picker = document.createElement('div');
   picker.className = 'chain-picker-popup';
