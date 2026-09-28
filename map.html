@@ -3833,7 +3833,7 @@ function connect(src, sPart, tgt, tPart) {
 /**
  * Wizard link with the "Was there a One-Way in that chain?" answer applied.
  * Everything (forward arrow, return arrow, one-way mark) is ONE undo step.
- *   'yes'     - forward arrow only; the target Main Stage is marked one-way (dimmed).
+ *   'yes'     - forward arrow only (the destination is never dimmed).
  *   'no'      - forward arrow + a solid return arrow (target -> source).
  *   'unknown' - forward arrow + a dashed "?" return arrow.
  *   null      - plain link (target isn't a Main Stage).
@@ -3854,29 +3854,40 @@ function connectWithOneWay(src, sPart, tgt, tPart, answer, onReturnPrompt, forwa
     if (forwardMode) assignNewChain(ed); else autoAssignChain(ed);   // return links get their own chain
   }
 
-  if (answer === 'yes') {
-    oneWayNodes[tgt] = true;
-  } else if (answer === 'no' || answer === 'unknown') {
+  // Return links (forwardMode set): the One-Way answer is about the area you LEFT
+  // from (e.g. Luncheon Slots), so that area is the one that gets dimmed.
+  // Otherwise "Yes" never dims the destination Kingdom.
+  const dimId = forwardMode ? src : tgt;
+  if (forwardMode) {
+    if (answer === 'yes') oneWayNodes[dimId] = true; else delete oneWayNodes[dimId];
+  } else {
     delete oneWayNodes[tgt];
-    // Return trip. When the link starts from an area's Main Node (e.g. Paragoomba)
-    // and reaches another Kingdom's Main Stage, the wizard instead ASKS how you
-    // got back to the starting Kingdom (sub-area, part, One-Way) - see
-    // openConnectReturnPrompt(). Otherwise: same two parts, opposite direction,
-    // skipped quietly if the rules reject it.
+  }
+
+  if (!forwardMode && (answer === 'yes' || answer === 'no' || answer === 'unknown')) {
+    // Every answer on a Main Node -> Kingdom link goes on to ask "How did you reach
+    // <starting Kingdom>?" (sub-area, part, One-Way) - see openConnectReturnPrompt().
+    // Any other link: No / I don't remember add a plain return arrow (target -> source).
     const srcKingdomId = nodes[src] && nodes[src].kingdomKey ? `kingdom:${nodes[src].kingdomKey}` : null;
     const askReturn = !!onReturnPrompt && sPart === PART_MID && !isKingdomNode(src) && !isPaintingNode(src)
       && isKingdomNode(tgt) && srcKingdomId && nodes[srcKingdomId] && srcKingdomId !== tgt;
-    let back = null;
     if (askReturn) {
       returnPromptPending = { unsure: answer === 'unknown' };
-    } else if (!findEdge(tgt, tPart, src, sPart) && canConnect(tgt, tPart, src, sPart)) {
-      back = { src: tgt, sPart: tPart, tgt: src, tPart: sPart };
-    }
-    if (back) {
+    } else if (answer !== 'yes' && !findEdge(tgt, tPart, src, sPart) && canConnect(tgt, tPart, src, sPart)) {
+      const back = { src: tgt, sPart: tPart, tgt: src, tPart: sPart };
       if (answer === 'unknown') back.unsure = true;
       edgeList.push(back);
       rebuildAdjacency();
       assignNewChain(back);   // its own chain, so it doesn't fold into the forward chain
+    }
+  } else if (forwardMode && (answer === 'no' || answer === 'unknown')) {
+    // Second (return-link) question: plain return arrow back down the same link.
+    if (!findEdge(tgt, tPart, src, sPart) && canConnect(tgt, tPart, src, sPart)) {
+      const back = { src: tgt, sPart: tPart, tgt: src, tPart: sPart };
+      if (answer === 'unknown') back.unsure = true;
+      edgeList.push(back);
+      rebuildAdjacency();
+      assignNewChain(back);
     }
   }
 
@@ -5788,7 +5799,7 @@ function openConnectOneWayPicker(x, y, srcId, srcPart, tgtId, tPart, trail, back
   // A Main Stage always ends the connection: answering finishes the link, no END / CONTINUE step.
   // On No / I don't remember (forward links only) we then ask how you got back.
   const goFinal = (answer) => connectWithOneWay(srcId, srcPart, tgtId, tPart, answer,
-    isReturn || answer === 'yes' ? null : () => openConnectReturnPrompt(x, y, srcId, tgtId, trail, answer === 'unknown'),
+    isReturn ? null : () => openConnectReturnPrompt(x, y, srcId, tgtId, trail, answer === 'unknown'),
     isReturn ? (isReturn === 'unsure' ? 'return-unsure' : 'return') : undefined);
   openConnectChoicePicker({
     title: 'Was there a One-Way in that chain?',
@@ -5796,9 +5807,9 @@ function openConnectOneWayPicker(x, y, srcId, srcPart, tgtId, tPart, trail, back
     onBack: backTo,
     oneRow: true, threeCol: true,
     items: [
-      { label: 'Yes', sub: 'Marks the Main Stage one-way (dimmed); no return arrow', icon: ONE_WAY_ICONS.yes, color: '#4ee06a', onPick: () => goFinal('yes') },
-      { label: 'No', sub: 'Then asks how you got back', icon: ONE_WAY_ICONS.no, color: '#ff5a5a', onPick: () => goFinal('no') },
-      { label: "I don't remember", sub: 'Then asks how you got back (dashed ? arrow)', icon: ONE_WAY_ICONS.unknown, color: '#fbbf24', onPick: () => goFinal('unknown') },
+      { label: 'Yes', sub: isReturn ? `Marks ${trailNodeLabel(srcId)} one-way (dimmed)` : 'Then asks how you got back', icon: ONE_WAY_ICONS.yes, color: '#4ee06a', onPick: () => goFinal('yes') },
+      { label: 'No', sub: isReturn ? 'Adds a return arrow back' : 'Then asks how you got back', icon: ONE_WAY_ICONS.no, color: '#ff5a5a', onPick: () => goFinal('no') },
+      { label: "I don't remember", sub: isReturn ? 'Adds a dashed return arrow with a ?' : 'Then asks how you got back', icon: ONE_WAY_ICONS.unknown, color: '#fbbf24', onPick: () => goFinal('unknown') },
     ],
   });
 }
