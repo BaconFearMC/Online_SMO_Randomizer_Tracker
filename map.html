@@ -3992,7 +3992,7 @@ function getIncomingChainIdsFor(nodeId, part) {
 
 /** Auto-assign a chain to a newly created edge. */
 function autoAssignChain(ed) {
-  if ((incoming[ed.src] || []).length === 0 || DEAD_END_IDS.has(ed.src)) {
+  if (isPaintingNode(ed.src) || (incoming[ed.src] || []).length === 0 || DEAD_END_IDS.has(ed.src)) {
     assignNewChain(ed);
   } else {
     const inChains = getIncomingChainIdsFor(ed.src, ed.sPart);
@@ -5479,11 +5479,17 @@ function openConnectAreaPickerFullscreen(kingdomKey, headerText, excludeTgtId, o
       const cell = document.createElement('button');
       cell.type = 'button';
       cell.className = 'req-picker-item req-picker-item--capture';
-      if (tmpl && tmpl.color) cell.style.setProperty('--kingdom-color', tmpl.color);
+      // Painting entries are named after Kingdoms: show that Kingdom's own icon and color
+      // (same as the Notes tab's Painting rows) instead of a missing subarea icon.
+      const paintKd = (kingdomKey === PAINTINGS_KEY && !it.isMain) ? LOADING_ZONES_TEMPLATE[it.label] : null;
+      const cellColor = paintKd ? paintKd.color : (tmpl && tmpl.color);
+      if (cellColor) cell.style.setProperty('--kingdom-color', cellColor);
       const img = document.createElement('img');
-      img.src = it.isMain
-        ? (kingdomKey === PAINTINGS_KEY ? 'assets/Painting.png' : `assets/${tmpl.icon}`)
-        : connectZoneIconSrc(kingdomKey, it.label);
+      img.src = paintKd
+        ? `assets/${paintKd.icon}`
+        : it.isMain
+          ? (kingdomKey === PAINTINGS_KEY ? 'assets/Painting.png' : `assets/${tmpl.icon}`)
+          : connectZoneIconSrc(kingdomKey, it.label);
       img.alt = it.label;
       img.addEventListener('error', () => {
         cell.classList.add('req-picker-item--broken-icon');
@@ -5600,7 +5606,10 @@ function trailNodeLabel(id) {
 function trailNodeIconSrc(id) {
   const n = nodes[id];
   if (!n) return '';
-  if (isPaintingNode(id)) return 'assets/Painting.png';
+  if (isPaintingNode(id)) {
+    const kd = n.type === 'zone' ? LOADING_ZONES_TEMPLATE[n.label] : null;
+    return kd && kd.icon ? `assets/${kd.icon}` : 'assets/Painting.png';
+  }
   const t = sectionTemplate(n.kingdomKey);
   return t && t.icon ? `assets/${t.icon}` : '';
 }
@@ -5826,6 +5835,11 @@ function openConnectPartPicker(x, y, srcId, srcPart, tgtId, tgtLabel, trail, bac
   const goFinal = (part) => {
     // Only a Main Stage target gets the One-Way question (Paintings have no Main Stage).
     if (isKingdomNode(tgtId) && !isPaintingNode(tgtId)) openConnectOneWayPicker(x, y, srcId, srcPart, tgtId, part, trail, backFromFinal);
+    else if (isPaintingNode(tgtId)) {
+      // Paintings only ever lead from one Painting to another, then end.
+      const sP = normalizePart(srcId, srcPart), tP = normalizePart(tgtId, part);
+      if (!findEdge(srcId, sP, tgtId, tP)) connect(srcId, sP, tgtId, tP);
+    }
     else openConnectFinalPrompt(x, y, srcId, srcPart, tgtId, part, trail, backFromFinal, null);
   };
 
