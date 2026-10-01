@@ -32,21 +32,21 @@
       aspect-ratio: auto !important; max-height: none !important;
     }
     .req-picker-item--refight-overview img { width: 42%; max-height: 70%; object-fit: contain; }
-    .req-find-popup--refights { width: min(760px, 94vw) !important; max-width: 94vw !important; }
+    .req-find-popup--refights { width: min(1120px, 96vw) !important; max-width: 96vw !important; }
     .req-refights-grid {
-      display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; padding: 14px;
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; padding: 22px;
     }
-    .req-refights-slot { display: flex; flex-direction: column; justify-content: space-between; gap: 8px; }
+    .req-refights-slot { display: flex; flex-direction: column; justify-content: space-between; gap: 12px; }
     .req-refights-tile {
       display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
-      padding: 10px; border-radius: 10px; text-align: center; font-size: .85rem;
+      padding: 22px 14px; min-height: 190px; border-radius: 14px; text-align: center; font-size: 1.1rem; font-weight: 600;
       border: 2px solid color-mix(in srgb, var(--refight-c1, #ffd700) 60%, transparent);
       background: linear-gradient(135deg,
         color-mix(in srgb, var(--refight-c1, #ffd700) 28%, transparent),
         color-mix(in srgb, var(--refight-c2, #ffd700) 28%, transparent));
     }
-    .req-refights-tile img { width: 64px; height: 64px; object-fit: contain; }
-    .req-refights-desc { margin: 0; font-size: .8rem; line-height: 1.3; text-align: center; opacity: .9; }
+    .req-refights-tile img { width: 104px; height: 104px; object-fit: contain; }
+    .req-refights-desc { margin: 0; font-size: 1rem; line-height: 1.4; text-align: center; opacity: .9; }
   </style>
   <style>
     /* Collapsed zone (e.g. Rolling On): greyed out and inert, but still
@@ -5569,7 +5569,11 @@
         popOverlay.className = 'req-find-popup-overlay';
         const pop = document.createElement('div');
         pop.className = 'req-find-popup req-find-popup--refights';
-        pop.style.setProperty('--popup-color', (dragon && dragon.colors && dragon.colors[0]) || '#ff5a5a');
+        // Every Refight is a Mushroom Kingdom zone, so the whole menu takes
+        // that Kingdom's icon and color (from LOADING_ZONES_TEMPLATE).
+        const kTpl = LOADING_ZONES_TEMPLATE['Mushroom'];
+        const kColor = kTpl.color, kIcon = 'assets/' + kTpl.icon;
+        pop.style.setProperty('--popup-color', kColor);
         pop.addEventListener('click', (e) => e.stopPropagation());
         popOverlay.appendChild(pop);
 
@@ -5577,7 +5581,7 @@
         head.className = 'req-find-popup-head';
         const headIcon = document.createElement('img');
         headIcon.className = 'req-find-popup-head-icon';
-        headIcon.src = dragon ? dragon.src : '';
+        headIcon.src = kIcon;
         headIcon.alt = 'Refights';
         const label = document.createElement('div');
         label.className = 'req-find-popup-head-text';
@@ -5604,10 +5608,8 @@
 
           const tile = document.createElement('div');
           tile.className = 'req-refights-tile';
-          if (colorsOk) {
-            tile.style.setProperty('--refight-c1', item.colors[0]);
-            tile.style.setProperty('--refight-c2', item.colors[1]);
-          }
+          tile.style.setProperty('--refight-c1', kColor);
+          tile.style.setProperty('--refight-c2', kColor);
           tile.title = TIPS.refightBoss(item.name);
           const img = document.createElement('img');
           img.src = item.src; img.alt = item.name;
