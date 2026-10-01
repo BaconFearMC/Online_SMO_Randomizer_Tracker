@@ -356,6 +356,7 @@
     'Cheep_Cheep_Capture',
     'Puzzle_Part_(Lake)_Capture',
     'Taxi_Capture',
+    'RC_Car_Capture',
     'Ty-foo_Capture',
     'Shiverian_Racer_Capture',
     'Volbonan_Capture',
