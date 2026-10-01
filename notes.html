@@ -46,6 +46,8 @@
         color-mix(in srgb, var(--refight-c2, #ffd700) 28%, transparent));
     }
     .req-refights-tile img { width: 104px; height: 104px; object-fit: contain; }
+    .req-refights-desc-line { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 6px; font-weight: 700; }
+    .req-refights-desc-icon { width: 32px; height: 32px; object-fit: contain; flex: 0 0 auto; }
     .req-refights-desc { margin: 0; font-size: 1rem; line-height: 1.4; text-align: center; opacity: .9; }
   </style>
   <style>
@@ -1513,6 +1515,7 @@
   <script src="apc-data.js?v=10"></script>
   <script>
     'use strict';
+
 
     // ════════════════════════════════════════════════════════════════
     //  HOVER DESCRIPTIONS - EDIT EVERYTHING HERE
@@ -5569,11 +5572,7 @@
         popOverlay.className = 'req-find-popup-overlay';
         const pop = document.createElement('div');
         pop.className = 'req-find-popup req-find-popup--refights';
-        // Every Refight is a Mushroom Kingdom zone, so the whole menu takes
-        // that Kingdom's icon and color (from LOADING_ZONES_TEMPLATE).
-        const kTpl = LOADING_ZONES_TEMPLATE['Mushroom'];
-        const kColor = kTpl.color, kIcon = 'assets/' + kTpl.icon;
-        pop.style.setProperty('--popup-color', kColor);
+        pop.style.setProperty('--popup-color', (dragon && dragon.colors && dragon.colors[0]) || '#ff5a5a');
         pop.addEventListener('click', (e) => e.stopPropagation());
         popOverlay.appendChild(pop);
 
@@ -5581,7 +5580,7 @@
         head.className = 'req-find-popup-head';
         const headIcon = document.createElement('img');
         headIcon.className = 'req-find-popup-head-icon';
-        headIcon.src = kIcon;
+        headIcon.src = dragon ? dragon.src : '';
         headIcon.alt = 'Refights';
         const label = document.createElement('div');
         label.className = 'req-find-popup-head-text';
@@ -5608,8 +5607,10 @@
 
           const tile = document.createElement('div');
           tile.className = 'req-refights-tile';
-          tile.style.setProperty('--refight-c1', kColor);
-          tile.style.setProperty('--refight-c2', kColor);
+          if (colorsOk) {
+            tile.style.setProperty('--refight-c1', item.colors[0]);
+            tile.style.setProperty('--refight-c2', item.colors[1]);
+          }
           tile.title = TIPS.refightBoss(item.name);
           const img = document.createElement('img');
           img.src = item.src; img.alt = item.name;
@@ -5620,9 +5621,29 @@
           const desc = document.createElement('p');
           desc.className = 'req-refights-desc';
           const zl = buildRequirementLines('refights', item.key);
-          desc.textContent = zl.length
-            ? 'Available from: ' + zl.map(l => l.fromLabel + ' (' + l.kingdomLabel + ')').join(', ')
-            : 'Not available in any loading zone yet.';
+          if (zl.length) {
+            const lead = document.createElement('div');
+            lead.textContent = 'Available from:';
+            desc.appendChild(lead);
+            zl.forEach(l => {
+              const line = document.createElement('div');
+              line.className = 'req-refights-desc-line';
+              if (l.fromIcon) {
+                const ki = document.createElement('img');
+                ki.className = 'req-refights-desc-icon';
+                ki.src = l.fromIcon;
+                ki.alt = l.kingdomLabel;
+                line.appendChild(ki);
+              }
+              const t = document.createElement('span');
+              t.textContent = l.fromLabel + ' (' + l.kingdomLabel + ')';
+              if (l.fromColor) t.style.color = l.fromColor;
+              line.appendChild(t);
+              desc.appendChild(line);
+            });
+          } else {
+            desc.textContent = 'Not available in any loading zone yet.';
+          }
           desc.title = TIPS.refightDesc;
 
           if (bottomRow) { slot.appendChild(desc); slot.appendChild(tile); }
