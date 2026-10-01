@@ -20,6 +20,28 @@
     .font-comicsans textarea, .font-comicsans input[type="text"] { line-height: 1.25; }
   </style>
   <style>
+    /* No dashed/"pin me" outlines on note icons any more. */
+    .zone-req-icon, .zone-req-icon--auto { outline: none !important; }
+    .zone-req-icon--auto { border-style: solid !important; opacity: 1 !important; }
+    .req-find-popup-shop-where { font-size: .78em; opacity: .85; margin-top: 2px; }
+    .req-picker-item--refight-overview img { width: 42%; }
+    .req-find-popup--refights { width: min(760px, 94vw) !important; max-width: 94vw !important; }
+    .req-refights-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; padding: 14px;
+    }
+    .req-refights-slot { display: flex; flex-direction: column; justify-content: space-between; gap: 8px; }
+    .req-refights-tile {
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+      padding: 10px; border-radius: 10px; text-align: center; font-size: .85rem;
+      border: 2px solid color-mix(in srgb, var(--refight-c1, #ffd700) 60%, transparent);
+      background: linear-gradient(135deg,
+        color-mix(in srgb, var(--refight-c1, #ffd700) 28%, transparent),
+        color-mix(in srgb, var(--refight-c2, #ffd700) 28%, transparent));
+    }
+    .req-refights-tile img { width: 64px; height: 64px; object-fit: contain; }
+    .req-refights-desc { margin: 0; font-size: .8rem; line-height: 1.3; text-align: center; opacity: .9; }
+  </style>
+  <style>
     /* Collapsed zone (e.g. Rolling On): greyed out and inert, but still
        visible/in-place, rather than display:none removing it entirely. */
     .zone-greyed-out {
@@ -1452,8 +1474,8 @@
   <div class="notes-page-header">
     <h2>Loading Zone Notes</h2>
     <div class="modal-header-actions">
-      <button class="ctrl-btn" id="notes-page-collapse-all" title="Collapse all Kingdoms" style="font-size: .78em; padding: 3px 8px;">⊟ Collapse</button>
-      <button class="modal-icon-btn-red" id="notes-page-clear" title="Clear all notes">Clear</button>
+      <button class="ctrl-btn" id="notes-page-collapse-all" style="font-size: .78em; padding: 3px 8px;">⊟ Collapse</button>
+      <button class="modal-icon-btn-red" id="notes-page-clear">Clear</button>
       <!-- Sync button hidden from this main view - Sync now lives entirely
            in its own "Notes Sync [BETA]" page (gear icon → Settings → Notes
            Sync). The controls/status below still exist in the DOM (kept
@@ -1461,14 +1483,14 @@
            whatever room was already saved - keeps working unchanged; only
            the visible entry point moved. -->
       <div id="notes-sync-menu-wrap" class="hidden">
-        <button class="ctrl-btn" id="notes-page-sync-toggle" title="Sync settings">🔄 Sync</button>
+        <button class="ctrl-btn" id="notes-page-sync-toggle">🔄 Sync</button>
         <div id="notes-sync-bar" class="hidden">
           <input type="password" id="notes-room-code" placeholder="Room code" maxlength="12" spellcheck="false">
           <button class="ctrl-btn" id="notes-btn-connect-room">Connect</button>
           <span id="notes-sync-status">Offline</span>
         </div>
       </div>
-      <button class="ctrl-btn gear-btn" id="notes-page-settings" title="Settings">⚙</button>
+      <button class="ctrl-btn gear-btn" id="notes-page-settings">⚙</button>
     </div>
   </div>
   <div class="lz-scroll-wrap">
@@ -1479,6 +1501,93 @@
   <script src="apc-data.js?v=10"></script>
   <script>
     'use strict';
+
+    // ════════════════════════════════════════════════════════════════
+    //  HOVER DESCRIPTIONS - EDIT EVERYTHING HERE
+    //  Every tooltip in the page comes from this one section.
+    //  • TIPS: named tooltips (strings, or functions for dynamic ones)
+    //  • TIP_SELECTORS: [CSS selector, text] fallbacks. Any element that
+    //    matches and has no tooltip yet gets that text, so new/unknown
+    //    elements are never left blank.
+    // ════════════════════════════════════════════════════════════════
+    const TIPS = {
+      // header buttons
+      collapseAll: 'Collapse or expand every Kingdom section',
+      clearAll: 'Clear all notes (cannot be undone)',
+      syncToggle: 'Sync settings',
+      settings: 'Open Settings',
+      // generic
+      close: 'Close this window',
+      find: 'Find: tap, then tap an item below to see where it is',
+      findActive: 'Tap one of the highlighted buttons below…',
+      // zone rows
+      addRequirement: 'Add a Capture, Ability, Refight, Shop, or Kingdom requirement',
+      addPaintingKingdom: 'Pick which Kingdom this Painting leads to',
+      addShopSale: 'Set the Capture & Ability for sale at this Shop',
+      saleBtn: 'Set the Capture & Ability for sale here',
+      multimoonAdd: 'Which Multimoon is here?',
+      idontRemember: "I don't remember (click the Kingdom icon to remove)",
+      zoneNote: 'Notes for this loading zone',
+      zoneName: 'Click to collapse or expand this loading zone',
+      leadsTo: (name) => 'Leads to ' + name + ' (click to remove)',
+      forSale: (name) => name + ' - for sale (click to remove)',
+      chip: (name, via) => name + (via ? ' - ' + via : '') + ' (click to remove)',
+      multimoon: (name) => name + ' Multimoon (click to remove)',
+      // pickers
+      tokenGroup: 'Start/end a group (suppresses auto AND/OR until closed)',
+      tokenInsert: (tok) => 'Insert ' + tok + ' into the note',
+      alreadyHave: (half) => 'I already have the ' + half,
+      pickerSearch: 'Type to filter the list',
+      pickerCell: (name) => name,
+      shopsTitle: 'Show every Shop, where it comes from, and what it sells',
+      shopsOverview: 'Show every Shop, where it comes from, and what it sells',
+      refightsTitle: 'Show the Refights overview',
+      refightsOverview: 'Show all six boss refights and where each is available',
+      refightBoss: (name) => name + ' refight',
+      refightDesc: 'Where this boss refight is (or isn’t) available',
+      shopSells: (name, bits) => name + (bits.length ? ' — sells ' + bits.join(' & ') : ' (click 🏷 to set what it sells)'),
+      coinGrind: 'Coin Grind',
+      deadEnd: 'Dead-End (hides this area)',
+      itemName: (name) => name
+    };
+    const TIP_SELECTORS = [
+      ['.zone-note', TIPS.zoneNote],
+      ['.zone-name', TIPS.zoneName],
+      ['.zone-req-add', TIPS.addRequirement],
+      ['.req-picker-search', TIPS.pickerSearch],
+      ['.req-picker-find-btn', TIPS.find],
+      ['.req-find-popup-close, .req-picker-close', TIPS.close],
+      ['.req-picker-item', 'Click to select'],
+      ['.req-picker-tab, [class*="req-picker-tab"]', 'Switch to this tab'],
+      ['.req-picker-kingdom-col-title', 'Section title'],
+      ['.zone-sub-icon', 'Area icon'],
+      ['.zone-req-icon', 'Click to remove'],
+      ['.req-picker-reach-line-icon', 'Icon'],
+      ['.req-find-popup-shop-icon-big', 'Item for sale'],
+      ['button', 'Button'],
+      ['img', 'Icon'],
+      ['textarea, input', 'Type here']
+    ];
+    function applyMissingTips(root) {
+      (root || document).querySelectorAll && TIP_SELECTORS.forEach(([sel, text]) => {
+        (root || document).querySelectorAll(sel).forEach(el => {
+          if (el.title) return;
+          const im = el.tagName === 'IMG' ? el : (el.classList.contains('req-picker-item') ? el.querySelector('img') : null);
+          el.title = (im && im.alt) ? TIPS.itemName(im.alt) : text;
+        });
+      });
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+      const hdr = { 'notes-page-collapse-all': TIPS.collapseAll, 'notes-page-clear': TIPS.clearAll,
+                    'notes-page-sync-toggle': TIPS.syncToggle, 'notes-page-settings': TIPS.settings };
+      Object.keys(hdr).forEach(id => { const e = document.getElementById(id); if (e) e.title = hdr[id]; });
+      applyMissingTips(document);
+      let pending = false;
+      new MutationObserver(() => {
+        if (pending) return; pending = true;
+        requestAnimationFrame(() => { pending = false; applyMissingTips(document); });
+      }).observe(document.body, { childList: true, subtree: true });
+    });
 
     // Re-triggers the .click-bounce CSS animation on an element. Removing
     // the class first (and forcing a reflow) means rapid repeat clicks each
@@ -2798,7 +2907,7 @@
           const addBtn = document.createElement('button');
           addBtn.type = 'button';
           addBtn.className = 'zone-req-add';
-          addBtn.title = 'Pick which Kingdom this Painting leads to';
+          addBtn.title = TIPS.addPaintingKingdom;
           addBtn.textContent = '+';
           addBtn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -2865,7 +2974,7 @@
               img.className = 'zone-req-icon zone-req-icon--kingdom';
               img.src = item.src;
               img.alt = item.name;
-              img.title = 'Leads to ' + item.name + ' (click to remove)';
+              img.title = TIPS.leadsTo(item.name);
               if (item.color) img.style.setProperty('--kingdom-color', item.color);
               img.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -3003,7 +3112,7 @@
         img.className = 'zone-req-icon ' + (kind === 'captures' ? 'zone-req-icon--capture' : 'zone-req-icon--ability');
         img.src = item.src;
         img.alt = item.name;
-        img.title = item.name + ' - for sale (click to remove)';
+        img.title = TIPS.forSale(item.name);
         img.addEventListener('click', (e) => {
           e.stopPropagation();
           bounce(img);
@@ -3049,7 +3158,7 @@
         const addBtn = document.createElement('button');
         addBtn.type = 'button';
         addBtn.className = 'zone-req-add';
-        addBtn.title = 'Set the Capture & Ability for sale at this Shop';
+        addBtn.title = TIPS.addShopSale;
         addBtn.textContent = '+';
         addBtn.addEventListener('click', (e) => {
           e.stopPropagation();
@@ -3282,7 +3391,7 @@
         img.className = 'zone-req-icon ' + kindClass + (extraClass ? ' ' + extraClass : '');
         img.src = item.src;
         img.alt = item.name;
-        img.title = item.name + (viaZoneLabel ? ' - ' + viaZoneLabel : '') + ' (click to remove)';
+        img.title = TIPS.chip(item.name, viaZoneLabel);
         if (kind === 'kingdoms' && item.color) img.style.setProperty('--kingdom-color', item.color);
         if (refightColors) {
           img.classList.add('zone-req-icon--refight-active');
@@ -3403,7 +3512,7 @@
           const addBtn = document.createElement('button');
           addBtn.type = 'button';
           addBtn.className = 'zone-req-add';
-          addBtn.title = 'Add a Capture, Ability, Refight, Shop, or Kingdom requirement';
+          addBtn.title = TIPS.addRequirement;
           addBtn.textContent = '+';
           addBtn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -3556,7 +3665,7 @@
               q.className = 'zone-req-icon zone-req-icon--oneway-unknown';
               q.src = 'assets/DeadEnd.png';
               q.alt = '?';
-              q.title = 'I don\'t remember (click the Kingdom icon to remove)';
+              q.title = TIPS.idontRemember;
               group.appendChild(q);
             }
             reqsWrap.appendChild(group);
@@ -3606,29 +3715,22 @@
             explicitIds.add('captures:Coin_Grind_Capture');
           }
         });
+        // Anything named in the note text that isn't already a chip gets
+        // turned into a real, saved chip (no more faded dashed "detected"
+        // icons that came and went on refresh). Re-render once after pinning.
+        const toPin = [];
         APC.detectItemsInText(noteArea.value).forEach((item) => {
           const id = item.kind + ':' + item.key;
           if (explicitIds.has(id)) return;
-          const img = document.createElement('img');
-          const kindClass =
-            item.kind === 'abilities' ? 'zone-req-icon--ability' :
-            item.kind === 'kingdoms'  ? 'zone-req-icon--kingdom'  :
-            item.kind === 'refights'  ? 'zone-req-icon--refight'  :
-            item.kind === 'shops'     ? 'zone-req-icon--shop'     : 'zone-req-icon--capture';
-          img.className = 'zone-req-icon zone-req-icon--auto ' + kindClass;
-          img.src = item.src;
-          img.alt = item.name;
-          img.title = item.name + ' (detected in note - click to pin)';
-          if (item.kind === 'kingdoms' && item.color) img.style.setProperty('--kingdom-color', item.color);
-          img.addEventListener('click', (e) => {
-            e.stopPropagation();
-            bounce(img);
-            zs.requirements.push({ kind: item.kind, key: item.key });
-            renderReqIcons();
-            saveFullState();
-          });
-          reqsWrap.appendChild(img);
+          explicitIds.add(id);
+          toPin.push({ kind: item.kind, key: item.key });
         });
+        if (toPin.length) {
+          toPin.forEach(r => zs.requirements.push(r));
+          saveFullState();
+          renderReqIcons();
+          return;
+        }
 
         // Darkerside's "Odyssey" zone gets an Extra + for the row of Multimoon
         // paintings found there - separate from the normal Capture/Ability/
@@ -3642,7 +3744,7 @@
           const extraBtn = document.createElement('button');
           extraBtn.type = 'button';
           extraBtn.className = 'zone-req-add zone-req-add--extra';
-          extraBtn.title = 'Which Multimoon is here?';
+          extraBtn.title = TIPS.multimoonAdd;
           extraBtn.textContent = '+';
           extraBtn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -3659,7 +3761,7 @@
             img.className = 'zone-req-icon zone-req-icon--kingdom';
             img.src = kItem.src;
             img.alt = kItem.name;
-            img.title = kItem.name + ' Multimoon (click to remove)';
+            img.title = TIPS.multimoon(kItem.name);
             if (kItem.color) img.style.setProperty('--kingdom-color', kItem.color);
             img.addEventListener('click', (e) => {
               e.stopPropagation();
@@ -3965,7 +4067,7 @@
       closeBtn.type = 'button';
       closeBtn.className = 'req-picker-close';
       closeBtn.textContent = '✕';
-      closeBtn.title = 'Close';
+      closeBtn.title = TIPS.close;
       closeBtn.addEventListener('click', () => closePicker());
       header.appendChild(title);
       header.appendChild(closeBtn);
@@ -4067,7 +4169,7 @@
       closeBtn.type = 'button';
       closeBtn.className = 'req-picker-close';
       closeBtn.textContent = '✕';
-      closeBtn.title = 'Close';
+      closeBtn.title = TIPS.close;
       closeBtn.addEventListener('click', () => closePicker());
       header.appendChild(title);
       header.appendChild(closeBtn);
@@ -4446,7 +4548,7 @@
       closeBtn.type = 'button';
       closeBtn.className = 'req-picker-close';
       closeBtn.textContent = '✕';
-      closeBtn.title = 'Close';
+      closeBtn.title = TIPS.close;
       closeBtn.addEventListener('click', () => closePicker());
       header.appendChild(titleWrap);
       header.appendChild(closeBtn);
@@ -4533,17 +4635,31 @@
       // recomputed (see render()/onResize below) any time either could have
       // changed size, rather than assumed once up front.
       function positionAlreadyHaveButtons() {
-        const wrapRect = saleWrap.getBoundingClientRect();
-        const popupRect = popup.getBoundingClientRect();
+        // Measure the popup's UNTRANSFORMED box (offsetWidth/Height ignore
+        // the open animation's scale) so the buttons never land in the
+        // wrong spot while the popup is still animating in.
+        const pr = popup.getBoundingClientRect();
+        const w = popup.offsetWidth, h = popup.offsetHeight;
+        if (!w || !h) return;
+        const cx = pr.left + pr.width / 2;
+        const cy = pr.top + pr.height / 2;
+        const top = cy - h / 2, left = cx - w / 2, right = cx + w / 2;
         [alreadyHaveLeft, alreadyHaveRight].forEach(btn => {
-          btn.style.top = wrapRect.top + 'px';
-          btn.style.height = wrapRect.height + 'px';
+          btn.style.top = top + 'px';
+          btn.style.height = h + 'px';
         });
-        alreadyHaveLeft.style.right = (window.innerWidth - popupRect.left + 16) + 'px';
+        alreadyHaveLeft.style.right = (window.innerWidth - left + 16) + 'px';
         alreadyHaveLeft.style.left = 'auto';
-        alreadyHaveRight.style.left = (popupRect.right + 16) + 'px';
+        alreadyHaveRight.style.left = (right + 16) + 'px';
         alreadyHaveRight.style.right = 'auto';
       }
+      // Keep them glued to the popup through its enter/leave animation too.
+      (function trackAlreadyHave() {
+        let n = 0;
+        const tick = () => { positionAlreadyHaveButtons(); if (overlay.isConnected && n++ < 40) requestAnimationFrame(tick); };
+        requestAnimationFrame(tick);
+        if (window.ResizeObserver) new ResizeObserver(positionAlreadyHaveButtons).observe(popup);
+      })();
 
       const grid = document.createElement('div');
       grid.className = 'req-picker-grid';
@@ -4586,9 +4702,9 @@
       function updateAlreadyHaveButtons() {
         const sale = APC.getShopSale(fullState, shopKey);
         const owned = activeKind === 'captures' ? sale.ownedCapture : sale.ownedAbility;
-        const label = 'I already have the ' + halfLabelFor(activeKind);
+        const label = TIPS.alreadyHave(halfLabelFor(activeKind));
         [alreadyHaveLeft, alreadyHaveRight].forEach(btn => {
-          btn.title = label;
+          btn.title = label; /* text from TIPS.alreadyHave */
           btn.setAttribute('aria-label', label);
           btn.classList.toggle('selected', !!owned);
         });
@@ -5006,7 +5122,7 @@
       closeBtn.type = 'button';
       closeBtn.className = 'req-picker-close';
       closeBtn.textContent = '✕';
-      closeBtn.title = 'Close';
+      closeBtn.title = TIPS.close;
       closeBtn.addEventListener('click', () => closePicker());
       // Holds the Find button (created further down, once its own state/
       // handlers exist) immediately to the left of the X - see the "Find
@@ -5044,9 +5160,7 @@
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.textContent = tok;
-        btn.title = tok === '|'
-          ? 'Start/end a group (suppresses auto AND/OR until closed)'
-          : 'Insert ' + tok + ' into the note';
+        btn.title = tok === '|' ? TIPS.tokenGroup : TIPS.tokenInsert(tok);
         if (TOK_CLASS[tok]) btn.classList.add(TOK_CLASS[tok]);
         btn.addEventListener('click', () => {
           insertNoteToken(noteArea, tok);
@@ -5151,9 +5265,16 @@
 
       const refightCol = document.createElement('div');
       refightCol.className = 'req-picker-kingdom-col';
-      const refightTitle = document.createElement('div');
-      refightTitle.className = 'req-picker-kingdom-col-title';
+      const refightTitle = document.createElement('button');
+      refightTitle.type = 'button';
+      refightTitle.className = 'req-picker-kingdom-col-title req-picker-kingdom-col-title--btn';
       refightTitle.innerHTML = 'Refight <span class="req-picker-kingdom-col-hint">(only one applies)</span>';
+      refightTitle.title = TIPS.refightsTitle;
+      let refightOverviewActive = false;
+      refightTitle.addEventListener('click', () => {
+        refightOverviewActive = !refightOverviewActive;
+        renderKingdomSections();
+      });
       const refightGrid = document.createElement('div');
       refightGrid.className = 'req-picker-grid req-picker-grid--sub';
       refightGrid.id = 'refight-grid-force-3x2';
@@ -5176,7 +5297,7 @@
       shopTitle.type = 'button';
       shopTitle.className = 'req-picker-kingdom-col-title req-picker-kingdom-col-title--btn';
       shopTitle.innerHTML = 'Shops <span class="req-picker-kingdom-col-hint">(only one applies)</span>';
-      shopTitle.title = 'Show every Shop and what it sells';
+      shopTitle.title = TIPS.shopsTitle;
       let shopOverviewActive = false;
       shopTitle.addEventListener('click', () => {
         shopOverviewActive = !shopOverviewActive;
@@ -5212,13 +5333,13 @@
       findBtn.type = 'button';
       findBtn.className = 'req-picker-find-btn';
       findBtn.textContent = '🔍';
-      findBtn.title = 'Find';
+      findBtn.title = TIPS.find;
       headerRight.insertBefore(findBtn, closeBtn);
 
       function setFindMode(active) {
         findModeActive = active;
         findBtn.classList.toggle('active', active);
-        findBtn.title = active ? 'Tap a button below…' : 'Find';
+        findBtn.title = active ? TIPS.findActive : TIPS.find;
         // Kingdom tab's Shop grid swaps between the normal 9-shop grid and
         // the single "All Shops" overview icon depending on findModeActive
         // (see renderKingdomSections) - re-render it now instead of waiting
@@ -5301,7 +5422,7 @@
         closeBtn.type = 'button';
         closeBtn.className = 'req-find-popup-close';
         closeBtn.textContent = '✕';
-        closeBtn.title = 'Close';
+        closeBtn.title = TIPS.close;
         closeBtn.addEventListener('click', () => closeFindPopup());
         head.appendChild(headIcon);
         head.appendChild(label);
@@ -5394,6 +5515,110 @@
         requestAnimationFrame(() => popOverlay.classList.add('active'));
       }
 
+      // ── Refights search result: ONE Dragon tile -> 3x2 boss layout ───
+      function buildRefightOverviewCell() {
+        const dragon = APC.REFIGHTS.find(i => /dragon/i.test((i.name || '') + ' ' + (i.key || ''))) || APC.REFIGHTS[0];
+        const cell = document.createElement('button');
+        cell.type = 'button';
+        cell.className = 'req-picker-item req-picker-item--refight req-picker-item--refight-overview';
+        if (dragon && dragon.colors) {
+          cell.style.setProperty('--refight-c1', dragon.colors[0]);
+          cell.style.setProperty('--refight-c2', dragon.colors[1]);
+        }
+        const img = document.createElement('img');
+        img.src = dragon ? dragon.src : '';
+        img.alt = 'Dragon Refight';
+        const label = document.createElement('span');
+        label.textContent = 'Dragon Refight';
+        cell.appendChild(img);
+        cell.appendChild(label);
+        cell.title = TIPS.refightsOverview;
+        cell.addEventListener('click', () => {
+          if (findModeActive) setFindMode(false);
+          showRefightsPopup(dragon);
+        });
+        return cell;
+      }
+
+      function showRefightsPopup(dragon) {
+        document.querySelectorAll('.req-find-popup-overlay').forEach(p => p.remove());
+        const popOverlay = document.createElement('div');
+        popOverlay.className = 'req-find-popup-overlay';
+        const pop = document.createElement('div');
+        pop.className = 'req-find-popup req-find-popup--refights';
+        pop.style.setProperty('--popup-color', (dragon && dragon.colors && dragon.colors[0]) || '#ff5a5a');
+        pop.addEventListener('click', (e) => e.stopPropagation());
+        popOverlay.appendChild(pop);
+
+        const head = document.createElement('div');
+        head.className = 'req-find-popup-head';
+        const headIcon = document.createElement('img');
+        headIcon.className = 'req-find-popup-head-icon';
+        headIcon.src = dragon ? dragon.src : '';
+        headIcon.alt = 'Refights';
+        const label = document.createElement('div');
+        label.className = 'req-find-popup-head-text';
+        label.textContent = 'Refights';
+        const closeBtn = document.createElement('button');
+        closeBtn.type = 'button';
+        closeBtn.className = 'req-find-popup-close';
+        closeBtn.textContent = '✕';
+        closeBtn.title = TIPS.close;
+        closeBtn.addEventListener('click', () => closeRefightsPopup());
+        head.appendChild(headIcon); head.appendChild(label); head.appendChild(closeBtn);
+        pop.appendChild(head);
+
+        // 3x2 grid in the same order as the in-game menu (APC.REFIGHTS
+        // order). Top row: boss tile, then its description beneath.
+        // Bottom row: description ABOVE its boss tile.
+        const body = document.createElement('div');
+        body.className = 'req-refights-grid';
+        APC.REFIGHTS.slice(0, 6).forEach((item, idx) => {
+          const bottomRow = idx >= 3;
+          const colorsOk = item.colors && item.colors.length >= 2;
+          const slot = document.createElement('div');
+          slot.className = 'req-refights-slot';
+
+          const tile = document.createElement('div');
+          tile.className = 'req-refights-tile';
+          if (colorsOk) {
+            tile.style.setProperty('--refight-c1', item.colors[0]);
+            tile.style.setProperty('--refight-c2', item.colors[1]);
+          }
+          tile.title = TIPS.refightBoss(item.name);
+          const img = document.createElement('img');
+          img.src = item.src; img.alt = item.name;
+          const nm = document.createElement('span');
+          nm.textContent = item.name;
+          tile.appendChild(img); tile.appendChild(nm);
+
+          const desc = document.createElement('p');
+          desc.className = 'req-refights-desc';
+          const zl = buildRequirementLines('refights', item.key);
+          desc.textContent = zl.length
+            ? 'Available from: ' + zl.map(l => l.fromLabel + ' (' + l.kingdomLabel + ')').join(', ')
+            : 'Not available in any loading zone yet.';
+          desc.title = TIPS.refightDesc;
+
+          if (bottomRow) { slot.appendChild(desc); slot.appendChild(tile); }
+          else           { slot.appendChild(tile); slot.appendChild(desc); }
+          body.appendChild(slot);
+        });
+        pop.appendChild(body);
+        document.body.appendChild(popOverlay);
+
+        function onPopKeyDown(e) { if (e.key === 'Escape') closeRefightsPopup(); }
+        function closeRefightsPopup() {
+          popOverlay.classList.remove('active');
+          document.removeEventListener('keydown', onPopKeyDown);
+          setTimeout(() => popOverlay.remove(), 300);
+        }
+        popOverlay.addEventListener('click', (e) => { if (e.target === popOverlay) closeRefightsPopup(); });
+        document.addEventListener('keydown', onPopKeyDown);
+        void popOverlay.offsetWidth;
+        requestAnimationFrame(() => popOverlay.classList.add('active'));
+      }
+
       // Single generic icon shown in the Shop grid in place of the normal
       // 9-shop grid whenever shopOverviewActive is on (see the "Shops" title
       // button above) or Find mode is active (see setFindMode) - stands in
@@ -5410,7 +5635,7 @@
         label.textContent = 'All Shops';
         cell.appendChild(img);
         cell.appendChild(label);
-        cell.title = 'Show every Shop and what it sells';
+        cell.title = TIPS.shopsOverview;
         cell.addEventListener('click', () => {
           // Find mode has no per-shop "which zone needs this Shop" result
           // the way Refights/Kingdoms do, so clicking this while finding
@@ -5456,7 +5681,7 @@
         closeBtn.type = 'button';
         closeBtn.className = 'req-find-popup-close';
         closeBtn.textContent = '✕';
-        closeBtn.title = 'Close';
+        closeBtn.title = TIPS.close;
         closeBtn.addEventListener('click', () => closeShopsPopup());
         head.appendChild(headIcon);
         head.appendChild(label);
@@ -5515,6 +5740,18 @@
             text.textContent = item.name;
           }
           textWrap.appendChild(text);
+          // Which loading zone this Shop comes from.
+          const whereEl = document.createElement('div');
+          whereEl.className = 'req-find-popup-shop-where';
+          if (item.paintingOnly) {
+            whereEl.textContent = 'Comes from: the ' + item.name.replace(/ Shop$/, '') + ' Painting';
+          } else {
+            const zl = buildRequirementLines('shops', item.key);
+            whereEl.textContent = zl.length
+              ? 'Comes from: ' + zl.map(l => l.fromLabel + ' (' + l.kingdomLabel + ')').join(', ')
+              : 'Loading zone: not found yet';
+          }
+          textWrap.appendChild(whereEl);
           row.appendChild(textWrap);
 
           if (complete && hasIcons) {
@@ -5668,7 +5905,7 @@
             const bits = [];
             if (ablItem) bits.push(ablItem.name);
             if (capItem) bits.push(capItem.name);
-            cell.title = item.name + (bits.length ? (' — sells ' + bits.join(' & ')) : ' (click 🏷 to set what it sells)');
+            cell.title = TIPS.shopSells(item.name, bits);
           };
           refreshSaleTitle();
 
@@ -5676,7 +5913,7 @@
           saleBtn.type = 'button';
           saleBtn.className = 'req-picker-item-sale-btn';
           saleBtn.textContent = '🏷';
-          saleBtn.title = 'Set the Capture & Ability for sale here';
+          saleBtn.title = TIPS.saleBtn;
           saleBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             bounce(saleBtn);
@@ -5849,7 +6086,10 @@
           .filter(i => !i.paintingOnly);
         const kingdoms = q ? APC.KINGDOMS.filter(i => i.name.toLowerCase().includes(q)) : APC.KINGDOMS;
 
-        if (!refights.length) {
+        const refightQ = q.length >= 3 && ('refights'.startsWith(q) || 'refight'.startsWith(q));
+        if (refightOverviewActive || findModeActive || refightQ) {
+          refightGrid.appendChild(buildRefightOverviewCell());
+        } else if (!refights.length) {
           const empty = document.createElement('div');
           empty.className = 'req-picker-empty';
           empty.textContent = 'No matches';
@@ -5967,7 +6207,7 @@
         label.textContent = 'Coin Grind';
         cell.appendChild(img);
         cell.appendChild(label);
-        cell.title = 'Coin Grind';
+        cell.title = TIPS.coinGrind;
 
         function refreshSelected() {
           const anySelected = COIN_GRIND_OPTIONS.some(o =>
@@ -6018,7 +6258,7 @@
         label.textContent = 'Dead-End';
         cell.appendChild(img);
         cell.appendChild(label);
-        cell.title = 'Dead-End (hides this area)';
+        cell.title = TIPS.deadEnd;
 
         cell.addEventListener('click', (e) => {
           e.stopPropagation();
