@@ -24,7 +24,14 @@
     .zone-req-icon, .zone-req-icon--auto { outline: none !important; }
     .zone-req-icon--auto { border-style: solid !important; opacity: 1 !important; }
     .req-find-popup-shop-where { font-size: .78em; opacity: .85; margin-top: 2px; }
-    .req-picker-item--refight-overview img { width: 42%; }
+    #refight-grid-force-3x2.req-picker-grid--sub {
+      grid-template-rows: repeat(2, 1fr) !important;
+    }
+    #refight-grid-force-3x2 .req-picker-item--refight-overview {
+      grid-column: 1 / span 3; grid-row: 1 / span 2; width: 100%; height: 100%;
+      aspect-ratio: auto !important; max-height: none !important;
+    }
+    .req-picker-item--refight-overview img { width: 42%; max-height: 70%; object-fit: contain; }
     .req-find-popup--refights { width: min(760px, 94vw) !important; max-width: 94vw !important; }
     .req-refights-grid {
       display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; padding: 14px;
@@ -697,6 +704,11 @@
       z-index: 620;
       width: 150px;
       height: auto !important;
+      min-height: 0 !important;
+      max-height: none !important;
+      aspect-ratio: auto !important;
+      box-sizing: border-box !important;
+      margin: 0 !important;
       display: flex !important;
       flex-direction: column;
       align-items: center;
@@ -1510,6 +1522,13 @@
     //    matches and has no tooltip yet gets that text, so new/unknown
     //    elements are never left blank.
     // ════════════════════════════════════════════════════════════════
+    // "Comes from" text for the Painting-menu-only Shops (Every Shop popup).
+    const TIPS_SHOP_SOURCES = {
+      Cap: 'Cap Kingdom Access',
+      Cascade: 'Cascade Kingdom Access + World Peace',
+      Wooded: 'Wooded Kingdom Access',
+      Seaside: 'Seaside Kingdom Access'
+    };
     const TIPS = {
       // header buttons
       collapseAll: 'Collapse or expand every Kingdom section',
@@ -4646,7 +4665,11 @@
         const top = cy - h / 2, left = cx - w / 2, right = cx + w / 2;
         [alreadyHaveLeft, alreadyHaveRight].forEach(btn => {
           btn.style.top = top + 'px';
-          btn.style.height = h + 'px';
+          // The stylesheet sets height:auto !important, so a plain inline
+          // height was being ignored - that's why these stayed small.
+          btn.style.setProperty('height', h + 'px', 'important');
+          btn.style.setProperty('min-height', h + 'px', 'important');
+          btn.style.setProperty('max-height', h + 'px', 'important');
         });
         alreadyHaveLeft.style.right = (window.innerWidth - left + 16) + 'px';
         alreadyHaveLeft.style.left = 'auto';
@@ -5744,7 +5767,7 @@
           const whereEl = document.createElement('div');
           whereEl.className = 'req-find-popup-shop-where';
           if (item.paintingOnly) {
-            whereEl.textContent = 'Comes from: the ' + item.name.replace(/ Shop$/, '') + ' Painting';
+            whereEl.textContent = 'Comes from: ' + (TIPS_SHOP_SOURCES[item.name.replace(/ Shop$/, '')] || (item.name.replace(/ Shop$/, '') + ' Kingdom Access'));
           } else {
             const zl = buildRequirementLines('shops', item.key);
             whereEl.textContent = zl.length
