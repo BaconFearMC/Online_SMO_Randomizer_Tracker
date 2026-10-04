@@ -363,6 +363,42 @@
       box-shadow: 0 4px 14px rgba(80,140,255,.35), inset 0 1px 0 rgba(255,255,255,.12);
     }
     .req-picker-find-btn:active { transform: translateY(0); }
+    .req-picker-cog-menu {
+      position: fixed;
+      z-index: 100000;
+      min-width: 220px;
+      max-height: 60vh;
+      overflow-y: auto;
+      padding: 8px;
+      border-radius: 10px;
+      border: 1px solid rgba(140,180,255,.35);
+      background: #1b1f2a;
+      box-shadow: 0 8px 28px rgba(0,0,0,.55);
+      color: inherit;
+    }
+    .req-picker-cog-title {
+      font-size: .75rem;
+      font-weight: 700;
+      opacity: .7;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      padding: 2px 6px 6px;
+    }
+    .req-picker-cog-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 6px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: .85rem;
+      user-select: none;
+    }
+    .req-picker-cog-row:hover { background: rgba(255,255,255,.08); }
+    .req-picker-cog-row img { width: 22px; height: 22px; object-fit: contain; }
+    .req-picker-cog-row span { flex: 1; }
+    .req-picker-cog-row input { margin: 0; cursor: pointer; }
+    .req-picker-cog-hint { font-size: .7rem; opacity: .6; padding: 6px 6px 2px; }
 
     .req-picker-reach-panel {
       flex: 1 1 100%;
@@ -1673,6 +1709,20 @@
       return Array.isArray(custom) ? custom : APC.USELESS_CAPTURE_DEFAULT_KEYS;
     }
 
+    // Extra Abilities the user chose to hide (cog in the Add a Requirement
+    // popup). Applies to both the popup's Extra Abilities column and the
+    // Items For Sale picker's Ability tab extras column.
+    function getHiddenExtraAbilityKeys() {
+      const h = fullState.settings.hidden_extra_abilities;
+      return Array.isArray(h) ? h : [];
+    }
+    function setExtraAbilityHidden(key, hidden) {
+      const cur = getHiddenExtraAbilityKeys().filter(k => k !== key);
+      if (hidden) cur.push(key);
+      fullState.settings.hidden_extra_abilities = cur;
+      saveFullState();
+    }
+
     function bounce(el) {
       if (!el) return;
       el.classList.remove('click-bounce');
@@ -1789,6 +1839,7 @@
       show_kingdomsubicons: true,  // Small kingdom+subarea icon next to each zone's name; default on
       hide_useless_captures: true, // Hide the "Useless Captures for Sale" column in the Items For Sale picker; default on
       useless_capture_keys: null,  // null = use APC.USELESS_CAPTURE_DEFAULT_KEYS; else the user's saved list (Notes Settings > Edit List)
+      hidden_extra_abilities: [],  // keys of Extra Abilities the user hid via the cog in the Add a Requirement popup; hidden from that popup AND the Items For Sale picker's Extra Abilities column
       zone_names:    {},           // custom loading-zone name overrides
     };
 
@@ -4962,9 +5013,12 @@
         // is trimmed to 8 entries - a clean 4-tall, 2-wide grid with no
         // dangling single-item row.
         if (activeKind === 'abilities') {
-          const extraSource = APC.SHOP_ABILITY_EXTRAS.filter(i => i.key !== 'AbilityNPCTalking');
+          const hiddenExtraKeys = getHiddenExtraAbilityKeys();
+          const extraSource = APC.SHOP_ABILITY_EXTRAS.filter(i => i.key !== 'AbilityNPCTalking' && !hiddenExtraKeys.includes(i.key));
           const extraList = q ? extraSource.filter(i => i.name.toLowerCase().includes(q)) : extraSource;
           extraList.forEach(item => extrasGrid.appendChild(buildSaleCell(item)));
+          // Every extra hidden via the cog -> drop the empty column/divider too.
+          if (!extraSource.length) extrasCol.style.display = 'none';
         }
 
         // Captures tab only (and only when not hidden by Notes Settings):
@@ -5370,6 +5424,72 @@
       findBtn.textContent = '🔍';
       findBtn.title = TIPS.find;
       headerRight.insertBefore(findBtn, closeBtn);
+
+      // Cog (Abilities tab only): pick which Extra Abilities to hide. Hidden
+      // ones disappear from this popup's Extra Abilities column and from the
+      // Items For Sale picker's Extra Abilities column. Tick = shown.
+      const cogBtn = document.createElement('button');
+      cogBtn.type = 'button';
+      cogBtn.className = 'req-picker-find-btn req-picker-cog-btn';
+      cogBtn.textContent = '⚙';
+      cogBtn.title = 'Show / hide Extra Abilities';
+      cogBtn.style.display = 'none';
+      headerRight.insertBefore(cogBtn, findBtn);
+
+      let cogMenu = null;
+      function closeCogMenu() {
+        if (!cogMenu) return;
+        cogMenu.remove();
+        cogMenu = null;
+        document.removeEventListener('click', onCogDocClick, true);
+      }
+      function onCogDocClick(e) {
+        if (cogMenu && !cogMenu.contains(e.target) && e.target !== cogBtn) closeCogMenu();
+      }
+      function openCogMenu() {
+        closeCogMenu();
+        cogMenu = document.createElement('div');
+        cogMenu.className = 'req-picker-cog-menu';
+        cogMenu.addEventListener('click', (e) => e.stopPropagation());
+        const t = document.createElement('div');
+        t.className = 'req-picker-cog-title';
+        t.textContent = 'Extra Abilities';
+        cogMenu.appendChild(t);
+        const hidden = new Set(getHiddenExtraAbilityKeys());
+        APC.SHOP_ABILITY_EXTRAS.forEach(item => {
+          const row = document.createElement('label');
+          row.className = 'req-picker-cog-row';
+          const img = document.createElement('img');
+          img.src = item.src; img.alt = '';
+          img.onerror = () => { img.style.display = 'none'; };
+          const name = document.createElement('span');
+          name.textContent = item.name;
+          const cb = document.createElement('input');
+          cb.type = 'checkbox';
+          cb.checked = !hidden.has(item.key);
+          cb.addEventListener('change', () => {
+            setExtraAbilityHidden(item.key, !cb.checked);
+            buildAbilityExtrasGrid();
+            applyFindTargetStyling();
+          });
+          row.appendChild(img); row.appendChild(name); row.appendChild(cb);
+          cogMenu.appendChild(row);
+        });
+        const hint = document.createElement('div');
+        hint.className = 'req-picker-cog-hint';
+        hint.textContent = 'Unticked = hidden here and in Items For Sale.';
+        cogMenu.appendChild(hint);
+        document.body.appendChild(cogMenu);
+        const r = cogBtn.getBoundingClientRect();
+        const w = cogMenu.offsetWidth;
+        cogMenu.style.top = (r.bottom + 6) + 'px';
+        cogMenu.style.left = Math.max(8, Math.min(window.innerWidth - w - 8, r.right - w)) + 'px';
+        setTimeout(() => document.addEventListener('click', onCogDocClick, true), 0);
+      }
+      cogBtn.addEventListener('click', () => {
+        bounce(cogBtn);
+        if (cogMenu) closeCogMenu(); else openCogMenu();
+      });
 
       function setFindMode(active) {
         findModeActive = active;
@@ -6222,12 +6342,13 @@
       function buildAbilityExtrasGrid() {
         abilityExtrasGrid.innerHTML = '';
         const q = search.value.trim().toLowerCase();
-        const list = APC.SHOP_ABILITY_EXTRAS;
+        const hiddenKeys = getHiddenExtraAbilityKeys();
+        const list = APC.SHOP_ABILITY_EXTRAS.filter(i => !hiddenKeys.includes(i.key));
         const filtered = q ? list.filter(i => i.name.toLowerCase().includes(q)) : list;
         if (!filtered.length) {
           const empty = document.createElement('div');
           empty.className = 'req-picker-empty';
-          empty.textContent = 'No matches';
+          empty.textContent = list.length || !APC.SHOP_ABILITY_EXTRAS.length ? 'No matches' : 'All hidden (see ⚙)';
           abilityExtrasGrid.appendChild(empty);
           return;
         }
@@ -6399,6 +6520,8 @@
       }
 
       function renderGrid() {
+        cogBtn.style.display = activeKind === 'abilities' ? '' : 'none';
+        if (activeKind !== 'abilities') closeCogMenu();
         if (activeKind === 'kingdom') {
           capturesWrap.style.display = 'none';
           kingdomWrap.style.display = '';
