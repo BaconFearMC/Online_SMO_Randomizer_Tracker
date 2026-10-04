@@ -1712,15 +1712,61 @@
     // Extra Abilities the user chose to hide (cog in the Add a Requirement
     // popup). Applies to both the popup's Extra Abilities column and the
     // Items For Sale picker's Ability tab extras column.
+    // Kept in its own in-memory list + its own localStorage key (and only
+    // mirrored into settings for backup/sync). Reading it back from
+    // fullState.settings each time let a stale sync/storage echo overwrite
+    // the list, so only the most recent hide stuck.
+    const HIDDEN_EXTRAS_KEY = 'notes_hidden_extra_abilities';
+    let hiddenExtraAbilities = null;
     function getHiddenExtraAbilityKeys() {
-      const h = fullState.settings.hidden_extra_abilities;
-      return Array.isArray(h) ? h : [];
+      if (hiddenExtraAbilities) return hiddenExtraAbilities;
+      let list = null;
+      try {
+        const raw = localStorage.getItem(HIDDEN_EXTRAS_KEY);
+        if (raw) list = JSON.parse(raw);
+      } catch (e) {}
+      if (!Array.isArray(list)) {
+        const h = fullState.settings && fullState.settings.hidden_extra_abilities;
+        list = Array.isArray(h) ? h.slice() : [];
+      }
+      hiddenExtraAbilities = list;
+      return hiddenExtraAbilities;
     }
     function setExtraAbilityHidden(key, hidden) {
       const cur = getHiddenExtraAbilityKeys().filter(k => k !== key);
       if (hidden) cur.push(key);
-      fullState.settings.hidden_extra_abilities = cur;
+      hiddenExtraAbilities = cur;
+      try { localStorage.setItem(HIDDEN_EXTRAS_KEY, JSON.stringify(cur)); } catch (e) {}
+      fullState.settings.hidden_extra_abilities = cur.slice();
       saveFullState();
+    }
+
+    // Packs a grid's items so no dead space is left: rows are balanced
+    // (7 -> 3/2/2, 8 -> 3/3/2) and short rows are centred, using a
+    // doubled-resolution grid (each cell spans 2 tracks) so cell size
+    // never changes. perRow=3 -> 6 columns x 6 rows; perRow=2 -> 4 columns.
+    function packExtrasGrid(gridEl, perRow, centerVertically) {
+      ['grid-template-columns', 'grid-template-rows'].forEach(p => gridEl.style.removeProperty(p));
+      const cells = Array.from(gridEl.children).filter(c => !c.classList.contains('req-picker-empty'));
+      cells.forEach(c => { c.style.gridColumn = ''; c.style.gridRow = ''; });
+      if (!cells.length) return;
+      const n = cells.length;
+      const rowsCount = Math.ceil(n / perRow);
+      const base = Math.floor(n / rowsCount), extra = n % rowsCount;
+      const cols = perRow * 2;
+      gridEl.style.setProperty('grid-template-columns', 'repeat(' + cols + ', minmax(0, 1fr))', 'important');
+      if (centerVertically) {
+        gridEl.style.setProperty('grid-template-rows', 'repeat(' + (perRow * 2) + ', minmax(0, 1fr))', 'important');
+      }
+      let idx = 0;
+      for (let r = 0; r < rowsCount; r++) {
+        const k = base + (r < extra ? 1 : 0);
+        const startCol = (perRow - k) + 1;
+        for (let j = 0; j < k; j++, idx++) {
+          cells[idx].style.gridColumn = (startCol + j * 2) + ' / span 2';
+          if (centerVertically) cells[idx].style.gridRow = ((perRow - rowsCount) + 1 + r * 2) + ' / span 2';
+        }
+      }
     }
 
     function bounce(el) {
@@ -5017,6 +5063,7 @@
           const extraSource = APC.SHOP_ABILITY_EXTRAS.filter(i => i.key !== 'AbilityNPCTalking' && !hiddenExtraKeys.includes(i.key));
           const extraList = q ? extraSource.filter(i => i.name.toLowerCase().includes(q)) : extraSource;
           extraList.forEach(item => extrasGrid.appendChild(buildSaleCell(item)));
+          packExtrasGrid(extrasGrid, 2, false);
           // Every extra hidden via the cog -> drop the empty column/divider too.
           if (!extraSource.length) extrasCol.style.display = 'none';
         }
@@ -6349,6 +6396,7 @@
           const empty = document.createElement('div');
           empty.className = 'req-picker-empty';
           empty.textContent = list.length || !APC.SHOP_ABILITY_EXTRAS.length ? 'No matches' : 'All hidden (see ⚙)';
+          packExtrasGrid(abilityExtrasGrid, 3, true);
           abilityExtrasGrid.appendChild(empty);
           return;
         }
@@ -6361,6 +6409,7 @@
           const kindClass = item.isCapture ? 'req-picker-item--capture' : 'req-picker-item--ability';
           abilityExtrasGrid.appendChild(buildPickerCell(item, kind, kindClass));
         });
+        packExtrasGrid(abilityExtrasGrid, 3, true);
       }
 
       // Coin Grind lives in the "Reaching Kingdoms" column, right after Deep
