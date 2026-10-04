@@ -942,6 +942,7 @@
       line-height: 1.1;
     }
     .req-picker-grid--ability-extras .req-picker-item img {
+      object-fit: contain;
       flex: 0 0 auto !important;
       width: 82% !important;
       height: 82% !important;
@@ -1742,9 +1743,9 @@
     }
 
     // Packs a grid's items so no dead space is left: rows are balanced
-    // (7 -> 3/2/2, 8 -> 3/3/2) and short rows are centred, using a
-    // doubled-resolution grid (each cell spans 2 tracks) so cell size
-    // never changes. perRow=3 -> 6 columns x 6 rows; perRow=2 -> 4 columns.
+    // (7 -> 3/2/2, 8 -> 3/3/2) and short rows stretch their cells to fill
+    // the full width, so there are no gaps on the sides. Uses a
+    // doubled-resolution grid. perRow=3 -> 6 columns x 6 rows; perRow=2 -> 4 columns.
     function packExtrasGrid(gridEl, perRow, centerVertically) {
       ['grid-template-columns', 'grid-template-rows'].forEach(p => gridEl.style.removeProperty(p));
       const cells = Array.from(gridEl.children).filter(c => !c.classList.contains('req-picker-empty'));
@@ -1761,9 +1762,10 @@
       let idx = 0;
       for (let r = 0; r < rowsCount; r++) {
         const k = base + (r < extra ? 1 : 0);
-        const startCol = (perRow - k) + 1;
+        // Short rows stretch their cells to span the full width (no side gaps).
+        const span = cols / k;
         for (let j = 0; j < k; j++, idx++) {
-          cells[idx].style.gridColumn = (startCol + j * 2) + ' / span 2';
+          cells[idx].style.gridColumn = (1 + j * span) + ' / span ' + span;
           if (centerVertically) cells[idx].style.gridRow = ((perRow - rowsCount) + 1 + r * 2) + ' / span 2';
         }
       }
