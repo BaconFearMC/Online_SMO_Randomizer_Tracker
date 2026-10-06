@@ -1396,6 +1396,60 @@
       color: var(--text-dim);
       font-variant-numeric: tabular-nums;
     }
+
+    /* ── Per-note pop-out while clearing ─────────────────────────────── */
+    .notes-clear-row { position: relative; }
+    .zone-note.notes-clear-pop {
+      position: relative;
+      z-index: 3;
+      animation: notes-clear-pop .5s cubic-bezier(.3,.1,.3,1) both;
+    }
+    @keyframes notes-clear-pop {
+      0%   { transform: scale(1) rotate(0); opacity: 1; filter: none; box-shadow: 0 0 0 0 transparent; }
+      28%  { transform: scale(1.12) rotate(-1.5deg); opacity: 1;
+             box-shadow: 0 0 0 3px var(--pop-c, #ffd700), 0 0 26px 6px var(--pop-c, #ffd700); }
+      55%  { transform: scale(.45) rotate(3deg); opacity: .1; filter: blur(2px) brightness(1.6);
+             box-shadow: 0 0 0 2px var(--pop-c, #ffd700), 0 0 30px 10px var(--pop-c, #ffd700); }
+      80%  { transform: scale(1.06) rotate(0); opacity: 1; filter: none;
+             box-shadow: 0 0 0 0 transparent; }
+      100% { transform: scale(1) rotate(0); opacity: 1; filter: none; box-shadow: 0 0 0 0 transparent; }
+    }
+    .notes-clear-burst {
+      position: absolute;
+      width: 0; height: 0;
+      pointer-events: none;
+      z-index: 6;
+    }
+    .notes-clear-burst::before {
+      content: '';
+      position: absolute;
+      left: -10px; top: -10px;
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      border: 3px solid var(--pop-c, #ffd700);
+      animation: notes-clear-ring .55s ease-out forwards;
+    }
+    .notes-clear-burst i {
+      position: absolute;
+      left: -4px; top: -4px;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--pop-c, #ffd700);
+      box-shadow: 0 0 8px var(--pop-c, #ffd700);
+      animation: notes-clear-particle .6s ease-out forwards;
+    }
+    @keyframes notes-clear-ring {
+      from { transform: scale(.3); opacity: 1; }
+      to   { transform: scale(7);  opacity: 0; }
+    }
+    @keyframes notes-clear-particle {
+      from { transform: translate(0, 0) scale(1); opacity: 1; }
+      to   { transform: translate(var(--dx), var(--dy)) scale(0); opacity: 0; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .zone-note.notes-clear-pop { animation-duration: .01s; }
+      .notes-clear-burst { display: none; }
+    }
     .notes-clear-fading {
       transition: opacity .25s ease;
       opacity: .25;
@@ -2527,11 +2581,56 @@
     // notes disappear one-by-one behind a small progress bar while this tab
     // is doing it. The other three tabs are cleared afterward silently, with
     // no visual/tab-switch of their own.
-    // Total wall-clock time the Clear animation takes, start to finish.
-    // The only knob you need to touch to change how long it runs - every
-    // Kingdom's per-note timing is derived from this, not hardcoded, so
-    // changing this one number is enough (no animation-logic rewrite).
-    const NOTES_CLEAR_DURATION_MS = 5000;
+    // How long each note takes to clear, one after another. The Clear timer is
+    // simply (number of areas that have a note) x this, so a few notes clear
+    // fast and a full page takes proportionally longer.
+    const NOTES_CLEAR_STEP_MS = 200;
+
+    // Pop-out animation for a single note being cleared: the box swells with a
+    // glow in its Kingdom's color, shrinks away (text is wiped at the smallest
+    // point), then springs back empty, with a ring + particle burst on top.
+    function popClearNote(el, color) {
+      const row = el.closest('.zone-row');
+      // A note hidden by its own collapsed zone has nothing to animate -
+      // expand it first (same handler as clicking the zone's name).
+      if (el.style.display === 'none' && row) {
+        const nameEl = row.querySelector('.zone-name');
+        if (nameEl) nameEl.click();
+      }
+      try { el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (e) {}
+
+      el.style.setProperty('--pop-c', color);
+      el.classList.remove('notes-clear-pop');
+      void el.offsetWidth;
+      el.classList.add('notes-clear-pop');
+      el.addEventListener('animationend', () => el.classList.remove('notes-clear-pop'), { once: true });
+
+      if (row) {
+        row.classList.add('notes-clear-row');
+        const burst = document.createElement('div');
+        burst.className = 'notes-clear-burst';
+        burst.style.setProperty('--pop-c', color);
+        burst.style.left = (el.offsetLeft + el.offsetWidth / 2) + 'px';
+        burst.style.top = (el.offsetTop + el.offsetHeight / 2) + 'px';
+        const n = 9;
+        for (let i = 0; i < n; i++) {
+          const dot = document.createElement('i');
+          const ang = (Math.PI * 2 * i) / n + Math.random() * 0.5;
+          const dist = 34 + Math.random() * 26;
+          dot.style.setProperty('--dx', Math.round(Math.cos(ang) * dist) + 'px');
+          dot.style.setProperty('--dy', Math.round(Math.sin(ang) * dist) + 'px');
+          burst.appendChild(dot);
+        }
+        row.appendChild(burst);
+        setTimeout(() => burst.remove(), 650);
+      }
+
+      // Wipe the text right when the box is at its smallest.
+      setTimeout(() => {
+        if ('value' in el) el.value = ''; else el.textContent = '';
+        el.style.height = '';
+      }, 230);
+    }
 
     // A kingdom column's collapsible body can be either a plain
     // .zones-container or (for the split Paintings column) a
@@ -2673,73 +2772,61 @@
         step();
       }
 
-      // ── Drive every Kingdom's clearing in parallel ────────────────────
-      // Each Kingdom gets its own note-clearing schedule spread evenly
-      // across the shared NOTES_CLEAR_DURATION_MS, all running at once
-      // (rather than one Kingdom finishing before the next starts) so the
-      // whole grid visibly progresses together. A Kingdom with more notes
-      // simply clears them more frequently within the same window, not
-      // faster overall - every Kingdom's bar reaches 100% together, at the
-      // very end of NOTES_CLEAR_DURATION_MS.
+      // ── Phase 2: clear notes one by one ───────────────────────────────
+      // Every note (in page order, across all Kingdoms) gets its own
+      // NOTES_CLEAR_STEP_MS slot, so the whole timer is
+      // totalNotes x NOTES_CLEAR_STEP_MS. Each slot fires the pop-out
+      // animation on that one note and bumps its Kingdom's ring.
+      const queue = [];
+      kState.forEach((ks) => ks.def.notes.forEach((el) => queue.push({ el, ks })));
+      const totalDurationMs = queue.length * NOTES_CLEAR_STEP_MS;
+
       let totalCleared = 0;
+      let nextIdx = 0;
       let rafId = null;
       let startTime = 0;
 
-      function updateKingdom(ks, elapsed) {
+      function refreshKingdomUI(ks) {
         const n = ks.def.notes.length;
-        if (!n) return;
-        const frac = Math.min(1, elapsed / NOTES_CLEAR_DURATION_MS);
-        const shouldBeCleared = Math.floor(frac * n);
-        while (ks.cleared < shouldBeCleared) {
-          const el = ks.def.notes[ks.cleared];
-          el.classList.add('notes-clear-fading');
-          if ('value' in el) el.value = ''; else el.textContent = '';
-          ks.cleared++;
-          totalCleared++;
-        }
-        const pct = Math.round((ks.cleared / n) * 100);
+        const pct = n ? Math.round((ks.cleared / n) * 100) : 0;
         ks.ring.style.setProperty('--p', pct);
         ks.pctEl.textContent = pct + '%';
         ks.card.classList.toggle('is-active', ks.cleared > 0 && ks.cleared < n);
-        ks.card.classList.toggle('is-done', ks.cleared >= n);
+        ks.card.classList.toggle('is-done', n > 0 && ks.cleared >= n);
       }
 
       function tick(now) {
         const elapsed = now - startTime;
-        kState.forEach(ks => updateKingdom(ks, elapsed));
+        const due = Math.min(queue.length, Math.floor(elapsed / NOTES_CLEAR_STEP_MS) + 1);
 
-        const overallPct = Math.round((totalCleared / totalNotes) * 100);
-        const remainingMs = Math.max(0, NOTES_CLEAR_DURATION_MS - elapsed);
-        const remainingSec = (remainingMs / 1000).toFixed(1);
-        overallFill.style.width = (100 - overallPct) + '%';
-        overallCount.textContent = remainingMs > 50 ? remainingSec + 's remaining…' : "Time's up!";
+        while (nextIdx < due) {
+          const { el, ks } = queue[nextIdx];
+          popClearNote(el, ks.def.color);
+          ks.cleared++;
+          totalCleared++;
+          nextIdx++;
+          refreshKingdomUI(ks);
+          sublabel.textContent = 'Clearing ' + ks.def.name + '…';
+        }
 
-        if (elapsed < NOTES_CLEAR_DURATION_MS && totalCleared < totalNotes) {
+        const remainingMs = Math.max(0, totalDurationMs - elapsed);
+        overallFill.style.width = (100 * remainingMs / totalDurationMs) + '%';
+        overallCount.textContent = remainingMs > 50
+          ? (remainingMs / 1000).toFixed(1) + 's remaining · ' + totalCleared + '/' + totalNotes
+          : "Time's up!";
+
+        if (elapsed < totalDurationMs || nextIdx < queue.length) {
           rafId = requestAnimationFrame(tick);
         } else {
-          // Snap everything to fully complete in case rounding left any
-          // Kingdom's last note or the overall bar just short of 100%.
-          kState.forEach(ks => {
-            const n = ks.def.notes.length;
-            while (ks.cleared < n) {
-              const el = ks.def.notes[ks.cleared];
-              el.classList.add('notes-clear-fading');
-              if ('value' in el) el.value = ''; else el.textContent = '';
-              ks.cleared++;
-              totalCleared++;
-            }
-            if (n) {
-              ks.ring.style.setProperty('--p', 100);
-              ks.pctEl.textContent = '100%';
-            }
+          kState.forEach((ks) => {
             ks.card.classList.remove('is-active');
-            ks.card.classList.toggle('is-done', n > 0);
+            ks.card.classList.toggle('is-done', ks.def.notes.length > 0);
           });
           overallFill.style.width = '0%';
           overallCount.textContent = "Time's up!";
           overallCount.classList.add('notes-clear-times-up');
-
-          setTimeout(collapseKingdomsOneByOne, 400);
+          // Brief pause so the last pop-out finishes before everything folds up.
+          setTimeout(collapseKingdomsOneByOne, 700);
         }
       }
 
@@ -2781,7 +2868,7 @@
       // Kick off Phase 1 now; Phase 2 (the tick loop) only starts once every
       // Kingdom has visibly uncollapsed.
       uncollapseKingdomsOneByOne(() => {
-        sublabel.textContent = totalNotes + ' note' + (totalNotes === 1 ? '' : 's') + ' across ' + kingdoms.length + ' Kingdoms';
+        sublabel.textContent = totalNotes + ' note' + (totalNotes === 1 ? '' : 's') + ' × 0.2s = ' + (totalDurationMs / 1000).toFixed(1) + 's';
         startTime = performance.now();
         rafId = requestAnimationFrame(tick);
       });
