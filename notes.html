@@ -20,6 +20,70 @@
     .font-comicsans textarea, .font-comicsans input[type="text"] { line-height: 1.25; }
   </style>
   <style>
+    /* Paintings column: pinned top-right, never scrolls away. */
+    .kingdom-col.paintings-fixed {
+      position: fixed;
+      top: 80px;
+      right: 18px;
+      width: 260px;
+      z-index: 50;
+      overflow-y: auto;
+      box-sizing: border-box;
+      background: var(--bg, #1a1a22);
+      border: 1px solid var(--border, #444);
+      border-radius: 10px;
+      box-shadow: 0 6px 20px rgba(0,0,0,.45);
+    }
+    #lz-content.has-paintings-fixed { padding-right: 296px; }
+
+    .paint-find-wrap { padding: 6px 8px; display: flex; flex-direction: column; gap: 6px; }
+    .paint-find-btn {
+      align-self: stretch;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      padding: 6px 10px;
+      font-weight: 700; font-size: .85rem;
+      border-radius: 8px;
+      border: 1px solid rgba(140,180,255,.35);
+      background: linear-gradient(135deg, rgba(110,160,255,.28), rgba(255,255,255,.05));
+      color: inherit; cursor: pointer;
+    }
+    .paint-find-btn:hover { border-color: rgba(140,180,255,.6); }
+    .paint-find-btn.active {
+      background: linear-gradient(135deg, rgba(110,160,255,.42), rgba(110,160,255,.14));
+      border-color: rgba(150,190,255,.7);
+    }
+    .paint-find-panel {
+      padding: 8px;
+      border: 1px solid rgba(140,180,255,.3);
+      border-radius: 10px;
+      background: rgba(0,0,0,.25);
+      max-height: 55vh;
+      overflow-y: auto;
+    }
+    .paint-find-head {
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: .85rem; font-weight: 700; margin-bottom: 6px;
+    }
+    .paint-find-x {
+      background: none; border: none; color: inherit; cursor: pointer;
+      font-size: .95rem; opacity: .7; padding: 2px 6px;
+    }
+    .paint-find-x:hover { opacity: 1; }
+    .paint-find-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
+    .paint-find-pick {
+      padding: 2px; aspect-ratio: 1 / 1; cursor: pointer; color: inherit;
+      border-radius: 6px;
+      border: 1px solid color-mix(in srgb, var(--kingdom-color, #888) 55%, transparent);
+      background: color-mix(in srgb, var(--kingdom-color, #888) 16%, transparent);
+    }
+    .paint-find-pick img { width: 100%; height: 100%; object-fit: contain; display: block; }
+    .paint-find-pick.selected { box-shadow: 0 0 0 2px rgba(255,215,0,.8); }
+    .paint-find-results { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+    .paint-find-results-title { font-size: .8rem; font-weight: 600; opacity: .85; }
+    .paint-find-results .req-picker-reach-line { padding: 6px 8px; font-size: .8rem; gap: 6px; }
+    .paint-find-results .req-picker-reach-line-icon { width: 22px; height: 22px; }
+  </style>
+  <style>
     /* No dashed/"pin me" outlines on note icons any more. */
     .zone-req-icon, .zone-req-icon--auto { outline: none !important; }
     .zone-req-icon--auto { border-style: solid !important; opacity: 1 !important; }
@@ -2885,7 +2949,8 @@
       const content = document.getElementById('lz-content');
       if (!content) return;
       const s = fullState.settings;
-      const vertical = s.notes_layout === 'vertical';
+      const vertical = true; // Horizontal layout removed: always vertical
+      s.notes_layout = 'vertical';
       const cols = normalizeNotesCols(s.notes_columns);
       content.classList.toggle('lz-layout-vertical', vertical);
       content.classList.toggle('lz-layout-horizontal', !vertical);
@@ -2899,11 +2964,9 @@
       const bar = document.querySelector('.lz-toolbar');
       if (!bar) return;
       const s = fullState.settings;
-      const vertical = s.notes_layout === 'vertical';
+      const vertical = true;
       const cols = normalizeNotesCols(s.notes_columns);
       bar.classList.toggle('orient-vertical', vertical);
-      bar.querySelectorAll('[data-orient]').forEach(b =>
-        b.classList.toggle('active', (b.dataset.orient === 'vertical') === vertical));
       bar.querySelectorAll('[data-cols]').forEach(b =>
         b.classList.toggle('active', Number(b.dataset.cols) === cols));
       const compactBtn = bar.querySelector('[data-compact]');
@@ -2975,13 +3038,6 @@
       const bar = document.createElement('div');
       bar.className = 'lz-toolbar';
       bar.innerHTML =
-        '<div class="lz-toolbar-group">' +
-          '<span class="lz-toolbar-label">Layout</span>' +
-          '<div class="segmented">' +
-            '<button class="seg-btn" data-orient="horizontal">Horizontal</button>' +
-            '<button class="seg-btn" data-orient="vertical">Vertical</button>' +
-          '</div>' +
-        '</div>' +
         '<div class="lz-toolbar-group lz-cols-group">' +
           '<span class="lz-toolbar-label">Columns</span>' +
           '<div class="segmented">' +
@@ -2994,12 +3050,6 @@
           '<button class="lz-compact-btn" data-compact>Compact</button>' +
         '</div>';
 
-      bar.querySelectorAll('[data-orient]').forEach(b =>
-        b.addEventListener('click', () => {
-          fullState.settings.notes_layout = b.dataset.orient;
-          saveFullState();
-          applyNotesLayout();
-        }));
       bar.querySelectorAll('[data-cols]').forEach(b =>
         b.addEventListener('click', () => {
           fullState.settings.notes_columns = Number(b.dataset.cols);
@@ -3031,7 +3081,26 @@
       }
       applyNotesLayout();
       autosizeNotes(container);
+      positionPaintingsColumn();
     }
+
+    // Paintings column is pinned to the top-right of the notes area and
+    // stays there while the rest scrolls. Top/right/size are measured off
+    // the scroll area so it sits right below the page header + toolbar.
+    function positionPaintingsColumn() {
+      const content = document.getElementById('lz-content');
+      const col = content && content.querySelector('.kingdom-col.paintings-fixed');
+      if (!content) return;
+      content.classList.toggle('has-paintings-fixed', !!col);
+      if (!col) return;
+      const wrap = document.querySelector('.lz-scroll-wrap');
+      const r = (wrap || content).getBoundingClientRect();
+      const top = Math.max(0, r.top) + 8;
+      col.style.top = top + 'px';
+      col.style.right = Math.max(8, window.innerWidth - r.right + 18) + 'px';
+      col.style.maxHeight = Math.max(160, window.innerHeight - top - 12) + 'px';
+    }
+    window.addEventListener('resize', positionPaintingsColumn);
 
     // Uncollapses a Kingdom's whole section (if it was collapsed) and
     // smooth-scrolls it into view - used after picking a Kingdom as a
@@ -3055,7 +3124,7 @@
     function buildPaintingNotesColumn() {
       if (!fullState.painting_notes) fullState.painting_notes = {};
       const col = document.createElement('div');
-      col.className = 'kingdom-col';
+      col.className = 'kingdom-col paintings-fixed';
       col.dataset.kingdom = PAINTINGS_NOTES_KEY;
 
       const header = document.createElement('div');
@@ -3266,21 +3335,153 @@
         zonesRoot.appendChild(row);
       });
 
+      const findWrap = buildPaintingFindSection();
       if (fullState.kingdom_collapsed[PAINTINGS_NOTES_KEY]) {
         zonesRoot.style.display = 'none';
+        findWrap.style.display = 'none';
         header.classList.add('collapsed');
       }
       header.addEventListener('click', () => {
         const willCollapse = zonesRoot.style.display !== 'none';
         zonesRoot.style.display = willCollapse ? 'none' : '';
+        findWrap.style.display = willCollapse ? 'none' : '';
         header.classList.toggle('collapsed', willCollapse);
         fullState.kingdom_collapsed[PAINTINGS_NOTES_KEY] = willCollapse;
         saveFullState();
       });
 
       col.appendChild(header);
+      col.appendChild(findWrap);
       col.appendChild(zonesRoot);
       return col;
+    }
+
+    // ── Find (under the Paintings tab) ───────────────────────────────
+    // Sits directly under the Paintings header. Clicking it opens a small
+    // inline panel ABOVE the Find button and BELOW the Paintings header
+    // (not a full-screen pop-up) - pick a Kingdom, see how to reach it.
+    // The panel stays until its X is clicked. State lives outside the
+    // column so it survives the column being rebuilt on every edit.
+    const paintFind = { open: false, key: null };
+
+    function buildPaintingFindSection() {
+      const wrap = document.createElement('div');
+      wrap.className = 'paint-find-wrap';
+
+      const panel = document.createElement('div');
+      panel.className = 'paint-find-panel';
+      panel.style.display = paintFind.open ? '' : 'none';
+
+      const head = document.createElement('div');
+      head.className = 'paint-find-head';
+      const title = document.createElement('span');
+      title.textContent = 'How do I reach…';
+      const x = document.createElement('button');
+      x.type = 'button';
+      x.className = 'paint-find-x';
+      x.textContent = '✕';
+      x.title = 'Close';
+      head.appendChild(title);
+      head.appendChild(x);
+      panel.appendChild(head);
+
+      const grid = document.createElement('div');
+      grid.className = 'paint-find-grid';
+      const results = document.createElement('div');
+      results.className = 'paint-find-results';
+
+      function renderResults() {
+        results.innerHTML = '';
+        grid.querySelectorAll('.paint-find-pick').forEach(b =>
+          b.classList.toggle('selected', b.dataset.key === paintFind.key));
+        if (!paintFind.key) return;
+        const item = APC.findItem('kingdoms', paintFind.key);
+        const name = item ? item.name : paintFind.key;
+        const lines = buildReachLines(paintFind.key);
+        const label = document.createElement('div');
+        label.className = 'paint-find-results-title';
+        label.textContent = 'To reach ' + name + ':';
+        results.appendChild(label);
+        if (!lines.length) {
+          const empty = document.createElement('div');
+          empty.className = 'req-picker-reach-empty';
+          empty.textContent = 'Nothing is tagged as leading to ' + name + ' yet.';
+          results.appendChild(empty);
+          return;
+        }
+        lines.forEach(line => {
+          const row = document.createElement('div');
+          row.className = 'req-picker-reach-line';
+          row.style.setProperty('--line-color', line.fromColor || '#8a8a96');
+          if (line.fromIcon) {
+            const fi = document.createElement('img');
+            fi.className = 'req-picker-reach-line-icon';
+            fi.src = line.fromIcon; fi.alt = line.kingdomLabel;
+            row.appendChild(fi);
+          }
+          const text = document.createElement('span');
+          text.className = 'req-picker-reach-line-text';
+          text.textContent = line.fromLabel;
+          const ks = document.createElement('span');
+          ks.className = 'req-picker-reach-line-kingdom';
+          ks.textContent = ' (' + line.kingdomLabel + ')';
+          text.appendChild(ks);
+          row.appendChild(text);
+          const arrow = document.createElement('span');
+          arrow.className = 'req-picker-reach-line-arrow';
+          arrow.textContent = '→';
+          row.appendChild(arrow);
+          if (line.toIcon) {
+            const ti = document.createElement('img');
+            ti.className = 'req-picker-reach-line-icon req-picker-reach-line-icon--to';
+            ti.src = line.toIcon; ti.alt = line.toLabel;
+            row.appendChild(ti);
+          }
+          results.appendChild(row);
+        });
+      }
+
+      (APC.KINGDOMS || []).forEach(k => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'paint-find-pick';
+        b.dataset.key = k.key;
+        b.title = k.name;
+        if (k.color) b.style.setProperty('--kingdom-color', k.color);
+        const img = document.createElement('img');
+        img.src = k.src; img.alt = k.name;
+        b.appendChild(img);
+        b.addEventListener('click', () => {
+          paintFind.key = (paintFind.key === k.key) ? null : k.key;
+          renderResults();
+        });
+        grid.appendChild(b);
+      });
+      panel.appendChild(grid);
+      panel.appendChild(results);
+      renderResults();
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'paint-find-btn' + (paintFind.open ? ' active' : '');
+      btn.innerHTML = '🔍 <span>Find</span>';
+      btn.title = 'Find how to reach a Kingdom';
+
+      btn.addEventListener('click', () => {
+        paintFind.open = !paintFind.open;
+        panel.style.display = paintFind.open ? '' : 'none';
+        btn.classList.toggle('active', paintFind.open);
+      });
+      x.addEventListener('click', () => {
+        paintFind.open = false;
+        panel.style.display = 'none';
+        btn.classList.remove('active');
+      });
+
+      // Panel first (above), then the Find button underneath it.
+      wrap.appendChild(panel);
+      wrap.appendChild(btn);
+      return wrap;
     }
 
     // One row for a Kingdom-column-only Shop (Cap/Cascade/Wooded/Seaside -
