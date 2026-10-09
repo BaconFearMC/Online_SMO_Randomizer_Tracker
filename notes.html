@@ -21,11 +21,14 @@
   </style>
   <style>
     /* Paintings column: pinned top-right, never scrolls away. */
-    .kingdom-col.paintings-fixed {
-      position: fixed;
+    body > .kingdom-col.paintings-fixed {
+      position: fixed !important;
       top: 80px;
-      right: 18px;
-      width: 260px;
+      right: 16px !important;
+      left: auto !important;
+      width: 260px !important;
+      max-width: 260px !important;
+      flex: none !important;
       z-index: 50;
       overflow-y: auto;
       box-sizing: border-box;
@@ -76,7 +79,8 @@
       border: 1px solid color-mix(in srgb, var(--kingdom-color, #888) 55%, transparent);
       background: color-mix(in srgb, var(--kingdom-color, #888) 16%, transparent);
     }
-    .paint-find-pick img { width: 100%; height: 100%; object-fit: contain; display: block; }
+    .paint-find-pick { min-width: 0; width: 100%; height: auto !important; }
+    .paint-find-pick img { width: 100% !important; height: 100% !important; max-width: 100% !important; object-fit: contain; display: block; }
     .paint-find-pick.selected { box-shadow: 0 0 0 2px rgba(255,215,0,.8); }
     .paint-find-results { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
     .paint-find-results-title { font-size: .8rem; font-weight: 600; opacity: .85; }
@@ -2739,7 +2743,7 @@
       // .kingdom-col/.kingdom-col-header markup). Kingdoms with no text in
       // any of their notes are still shown (as already-"done"/empty), so
       // every Kingdom appears in the grid up front rather than popping in.
-      const cols = Array.from(document.querySelectorAll('#lz-content > .kingdom-col'));
+      const cols = Array.from(document.querySelectorAll('body > .kingdom-col.paintings-fixed, #lz-content > .kingdom-col'));
       const kingdoms = cols.map((col) => {
         const nameEl = col.querySelector('.kingdom-col-header .col-title');
         const iconEl = col.querySelector('.kingdom-col-header img');
@@ -3071,8 +3075,11 @@
     function buildLoadingZonesContent() {
       const container = document.getElementById('lz-content');
       container.innerHTML = '';
+      document.querySelectorAll('body > .kingdom-col.paintings-fixed').forEach(n => n.remove());
       if (fullState.settings.show_painting_notes) {
-        container.appendChild(buildPaintingNotesColumn());
+        // Lives on <body>, outside #lz-content, so the notes layout
+        // (columns/scroll/transform) can never push it around.
+        document.body.appendChild(buildPaintingNotesColumn());
       }
       for (const [kingdom, data] of Object.entries(fullState.loading_zones)) {
         const settingKey = KINGDOM_VISIBILITY_SETTINGS[kingdom];
@@ -3089,16 +3096,24 @@
     // the scroll area so it sits right below the page header + toolbar.
     function positionPaintingsColumn() {
       const content = document.getElementById('lz-content');
-      const col = content && content.querySelector('.kingdom-col.paintings-fixed');
+      const col = document.querySelector('body > .kingdom-col.paintings-fixed');
       if (!content) return;
       content.classList.toggle('has-paintings-fixed', !!col);
       if (!col) return;
       const wrap = document.querySelector('.lz-scroll-wrap');
       const r = (wrap || content).getBoundingClientRect();
       const top = Math.max(0, r.top) + 8;
-      col.style.top = top + 'px';
-      col.style.right = Math.max(8, window.innerWidth - r.right + 18) + 'px';
-      col.style.maxHeight = Math.max(160, window.innerHeight - top - 12) + 'px';
+      const imp = (k, v) => col.style.setProperty(k, v, 'important');
+      imp('position', 'fixed');
+      imp('top', top + 'px');
+      imp('right', '16px');
+      imp('left', 'auto');
+      imp('bottom', 'auto');
+      imp('width', '260px');
+      imp('max-width', '260px');
+      imp('margin', '0');
+      imp('transform', 'none');
+      imp('max-height', Math.max(160, window.innerHeight - top - 12) + 'px');
     }
     window.addEventListener('resize', positionPaintingsColumn);
 
