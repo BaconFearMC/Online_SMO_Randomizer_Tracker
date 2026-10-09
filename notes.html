@@ -27,7 +27,7 @@
       top: 80px;
       right: 16px !important;
       left: auto !important;
-      width: min(460px, calc(100vw - 32px)) !important;
+      width: min(560px, calc(100vw - 32px)) !important;
       max-width: calc(100vw - 32px) !important;
       height: auto !important;
       flex: none !important;
@@ -55,7 +55,7 @@
     .paintings-fixed .paint-grid .zone-row { margin: 0; padding: 2px 0; min-width: 0; }
     .paintings-fixed .paint-grid textarea { width: 100%; box-sizing: border-box; min-height: 0; }
 
-    .paint-find-wrap { padding: 2px 8px 4px; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+    .paint-find-wrap { padding: 2px 8px 6px; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
     .paint-find-btn {
       width: 30px; height: 26px; padding: 0;
       display: flex; align-items: center; justify-content: center;
@@ -70,51 +70,43 @@
       background: linear-gradient(135deg, rgba(110,160,255,.42), rgba(110,160,255,.14));
       border-color: rgba(150,190,255,.7);
     }
-    .paint-find-panel {
-      align-self: stretch;
-      padding: 6px;
-      border: 1px solid rgba(140,180,255,.3);
-      border-radius: 10px;
-      background: rgba(0,0,0,.25);
+    /* The real Notes-menu Find picker, laid out full size then scaled down. */
+    .paint-find-area { align-self: stretch; position: relative; overflow: hidden; }
+    .paint-find-scaler {
+      width: 1000px;
+      transform-origin: top left;
+      position: absolute; top: 0; left: 0;
     }
-    .paint-find-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 6px; }
-    .paint-find-tabs { display: flex; gap: 4px; }
-    .paint-find-tab {
-      padding: 3px 9px; font-size: .75rem; font-weight: 600; cursor: pointer; color: inherit;
-      border-radius: 6px; border: 1px solid var(--border, #444); background: rgba(255,255,255,.04);
+    .paint-find-area .req-picker-overlay,
+    .paint-find-area .req-find-popup-overlay {
+      position: static !important;
+      inset: auto !important;
+      display: block !important;
+      padding: 0 !important;
+      background: none !important;
+      opacity: 1 !important;
+      pointer-events: auto !important;
+      transition: none !important;
     }
-    .paint-find-tab.active { border-color: rgba(150,190,255,.7); background: rgba(110,160,255,.25); }
-    .paint-find-x { background: none; border: none; color: inherit; cursor: pointer; font-size: .95rem; opacity: .7; padding: 2px 6px; }
-    .paint-find-x:hover { opacity: 1; }
-    .paint-find-seclabel { font-size: .68rem; font-weight: 700; opacity: .65; margin: 4px 0 2px; text-transform: uppercase; letter-spacing: .04em; }
-    .paint-find-grid { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 3px; }
-    @keyframes paint-find-shake {
-      0%, 100% { transform: translateX(0) rotate(0deg); }
-      20% { transform: translateX(-1px) rotate(-1deg); }
-      40% { transform: translateX(1px) rotate(1deg); }
-      60% { transform: translateX(-1px) rotate(-1deg); }
-      80% { transform: translateX(1px) rotate(1deg); }
+    .paint-find-area .req-picker-popup,
+    .paint-find-area .req-find-popup,
+    .paint-find-area .req-find-popup--shops,
+    .paint-find-area .req-find-popup--refights {
+      width: 100% !important;
+      max-width: 100% !important;
+      margin: 0 !important;
+      max-height: none !important;
+      transform: none !important;
+      opacity: 1 !important;
     }
-    .paint-find-pick {
-      min-width: 0; width: 100%; aspect-ratio: 1 / 1; height: auto !important; padding: 2px; cursor: pointer; color: inherit;
-      border-radius: 6px;
-      border: 1px solid color-mix(in srgb, var(--tint, #888) 55%, transparent);
-      background: color-mix(in srgb, var(--tint, #888) 16%, transparent);
-      animation: paint-find-shake .45s ease-in-out infinite;
-      filter: grayscale(10%);
-    }
-    .paint-find-pick:hover { animation-play-state: paused; filter: none; }
-    .paint-find-pick img { width: 100% !important; height: 100% !important; max-width: 100% !important; object-fit: contain; display: block; }
-    .paint-find-pick.selected { box-shadow: 0 0 0 2px rgba(255,215,0,.8); }
-    .paint-find-results {
-      display: flex; flex-direction: column; gap: 4px; margin-top: 8px; padding-top: 8px;
-      border-top: 1px solid color-mix(in srgb, var(--tint, #888) 40%, var(--border, #444));
-      max-height: 38vh; overflow-y: auto; /* safety valve for very long result lists only */
-    }
-    .paint-find-results-title { display: flex; align-items: center; gap: 8px; font-size: .82rem; font-weight: 700; }
-    .paint-find-results-title img { width: 26px; height: 26px; object-fit: contain; }
-    .paint-find-results .req-picker-reach-line { padding: 5px 8px; font-size: .78rem; gap: 6px; }
-    .paint-find-results .req-picker-reach-line-icon { width: 22px; height: 22px; }
+    .paint-find-area .req-picker-popup { height: 700px; }
+    .paint-find-area .req-find-popup--refights { height: 700px !important; }
+    /* Find-only: no requirement tokens, no second Find toggle, no sale-edit tags. */
+    .paint-find-area .req-picker-toolbar,
+    .paint-find-area .req-picker-find-btn:not(.req-picker-cog-btn),
+    .paint-find-area .req-picker-item-sale-btn { display: none !important; }
+    /* While a result is showing, it replaces the menu; X returns to the menu. */
+    .paint-find-scaler:has(.req-find-popup-overlay) > .req-picker-overlay { display: none !important; }
   </style>
   <style>
     /* No dashed/"pin me" outlines on note icons any more. */
@@ -3138,7 +3130,7 @@
       imp('right', '16px');
       imp('left', 'auto');
       imp('bottom', 'auto');
-      imp('width', 'min(460px, calc(100vw - 32px))');
+      imp('width', 'min(560px, calc(100vw - 32px))');
       imp('max-width', 'calc(100vw - 32px)');
       imp('height', 'auto');
       imp('margin', '0');
@@ -3398,229 +3390,80 @@
       });
 
       col.appendChild(header);
-      col.appendChild(findWrap);
       col.appendChild(zonesRoot);
+      col.appendChild(findWrap);
       return col;
     }
 
-    // ── Find (icon under the Paintings tab) ──────────────────────────
-    // Works like Find in the Notes menu: pick a Capture / Ability /
-    // Refight / Shop / Kingdom and see which zones have it marked. Unlike
-    // the Notes menu it is all inline - a compact picker plus the results
-    // appear ABOVE the Find icon and BELOW the Paintings header (no
-    // full-screen pop-up) and stay until the X is clicked. State lives
-    // outside the column so it survives the column being rebuilt.
-    const paintFind = { open: false, tab: 'captures', kind: null, key: null };
-
-    function paintFindSections(tab) {
-      const arr = v => Array.isArray(v) ? v : [];
-      if (tab === 'captures') {
-        return [{ kind: 'captures', items: arr(APC.NOTES_CAPTURES).concat(arr(APC.NOTES_CAPTURES_ONETIME)) }];
-      }
-      if (tab === 'abilities') {
-        return [{ kind: 'abilities', items: arr(APC.NOTES_ABILITIES) }];
-      }
-      return [
-        { kind: 'refights', label: 'Refights', items: arr(APC.REFIGHTS) },
-        { kind: 'shops', label: 'Shops', items: arr(APC.SHOPS) },
-        { kind: 'kingdoms', label: 'Kingdoms', items: arr(APC.KINGDOMS) },
-      ];
-    }
-
-    function paintFindTint(kind, item) {
-      if (kind === 'kingdoms' && item.color) return item.color;
-      if ((kind === 'refights' || kind === 'shops') && item.colors) return item.colors[0];
-      if (kind === 'captures') return 'var(--capture-color)';
-      if (kind === 'abilities') return 'var(--ability-color)';
-      return '#8a8a96';
-    }
+    // ── Find (icon BELOW the Paintings panel) ─────────────────────────
+    // Same Find menu as in the Notes menu (the real picker, in its
+    // find-only mode), just scaled down and shown inline instead of
+    // covering the screen. It opens between the Paintings panel and the
+    // Find icon; picking something shows its results in the same spot,
+    // and they stay until the X is clicked.
+    const paintFind = { open: false };
+    const PAINT_FIND_VIRTUAL_W = 1000; // width the menu is laid out at before scaling down
 
     function buildPaintingFindSection() {
       const wrap = document.createElement('div');
       wrap.className = 'paint-find-wrap';
 
-      const panel = document.createElement('div');
-      panel.className = 'paint-find-panel';
-      panel.style.display = paintFind.open ? '' : 'none';
+      const area = document.createElement('div');
+      area.className = 'paint-find-area';
+      const scaler = document.createElement('div');
+      scaler.className = 'paint-find-scaler';
+      area.appendChild(scaler);
+      area.style.display = paintFind.open ? '' : 'none';
 
-      // Header: tabs + X
-      const head = document.createElement('div');
-      head.className = 'paint-find-head';
-      const tabs = document.createElement('div');
-      tabs.className = 'paint-find-tabs';
-      const tabDefs = [['captures', 'Captures'], ['abilities', 'Abilities'], ['kingdom', 'Kingdom']];
-      const tabBtns = {};
-      tabDefs.forEach(([id, label]) => {
-        const t = document.createElement('button');
-        t.type = 'button';
-        t.className = 'paint-find-tab';
-        t.textContent = label;
-        t.addEventListener('click', () => {
-          paintFind.tab = id;
-          paintFind.kind = null;
-          paintFind.key = null;
-          renderGrid();
-          renderResults();
-        });
-        tabBtns[id] = t;
-        tabs.appendChild(t);
-      });
-      const x = document.createElement('button');
-      x.type = 'button';
-      x.className = 'paint-find-x';
-      x.textContent = '✕';
-      x.title = 'Close';
-      head.appendChild(tabs);
-      head.appendChild(x);
-      panel.appendChild(head);
-
-      const gridHost = document.createElement('div');
-      gridHost.className = 'paint-find-gridhost';
-      const results = document.createElement('div');
-      results.className = 'paint-find-results';
-      panel.appendChild(gridHost);
-      panel.appendChild(results);
-
-      function renderGrid() {
-        Object.keys(tabBtns).forEach(id => tabBtns[id].classList.toggle('active', id === paintFind.tab));
-        gridHost.innerHTML = '';
-        paintFindSections(paintFind.tab).forEach(sec => {
-          if (sec.label) {
-            const lab = document.createElement('div');
-            lab.className = 'paint-find-seclabel';
-            lab.textContent = sec.label;
-            gridHost.appendChild(lab);
-          }
-          const grid = document.createElement('div');
-          grid.className = 'paint-find-grid';
-          sec.items.forEach(item => {
-            const bt = document.createElement('button');
-            bt.type = 'button';
-            bt.className = 'paint-find-pick'; // shakes to invite a click, like Notes-menu Find
-            bt.title = item.name;
-            bt.style.setProperty('--tint', paintFindTint(sec.kind, item));
-            if (paintFind.kind === sec.kind && paintFind.key === item.key) bt.classList.add('selected');
-            const img = document.createElement('img');
-            img.src = item.src; img.alt = item.name;
-            bt.appendChild(img);
-            bt.addEventListener('click', () => {
-              paintFind.kind = sec.kind;
-              paintFind.key = item.key;
-              gridHost.querySelectorAll('.paint-find-pick.selected').forEach(n => n.classList.remove('selected'));
-              bt.classList.add('selected');
-              renderResults();
-            });
-            grid.appendChild(bt);
-          });
-          gridHost.appendChild(grid);
-        });
+      // Scale the full-size menu to the panel's width; keep the area's
+      // height in step so nothing is clipped or left as dead space.
+      function fit() {
+        if (!area.isConnected) return;
+        const k = (area.clientWidth || PAINT_FIND_VIRTUAL_W) / PAINT_FIND_VIRTUAL_W;
+        scaler.style.transform = 'scale(' + k + ')';
+        area.style.height = Math.ceil(scaler.offsetHeight * k) + 'px';
+        positionPaintingsColumn();
       }
+      if (window.ResizeObserver) new ResizeObserver(fit).observe(scaler);
+      window.addEventListener('resize', fit);
 
-      function renderResults() {
-        results.innerHTML = '';
-        results.style.display = paintFind.key ? '' : 'none';
-        if (!paintFind.key) return;
-        const kind = paintFind.kind, key = paintFind.key;
-        const item = APC.findItem(kind, key);
-        if (!item) return;
-        const tint = paintFindTint(kind, item);
-        results.style.setProperty('--tint', tint);
-
-        const title = document.createElement('div');
-        title.className = 'paint-find-results-title';
-        const ti = document.createElement('img');
-        ti.src = item.src; ti.alt = item.name;
-        const tt = document.createElement('span');
-        tt.textContent = kind === 'kingdoms'
-          ? 'How do I reach ' + item.name + ' Kingdom?'
-          : 'Which Loading Zone has the ' + item.name + '?';
-        title.appendChild(ti);
-        title.appendChild(tt);
-        results.appendChild(title);
-
-        const lines = kind === 'kingdoms'
-          ? buildReachLines(key)
-          : buildRequirementLines(kind, key, undefined, kind === 'captures' || kind === 'abilities');
-        if (!lines.length) {
-          const empty = document.createElement('div');
-          empty.className = 'req-picker-reach-empty';
-          empty.textContent = kind === 'kingdoms'
-            ? 'Nothing is tagged as leading to ' + item.name + ' yet.'
-            : 'No loading zone has ' + item.name + ' marked yet.';
-          results.appendChild(empty);
-          return;
-        }
-        lines.forEach(line => {
-          const row = document.createElement('div');
-          row.className = 'req-picker-reach-line';
-          row.style.setProperty('--line-color', line.fromColor || tint);
-          if (line.fromIcon) {
-            const fi = document.createElement('img');
-            fi.className = 'req-picker-reach-line-icon';
-            fi.src = line.fromIcon; fi.alt = line.kingdomLabel;
-            row.appendChild(fi);
-          }
-          const text = document.createElement('span');
-          text.className = 'req-picker-reach-line-text';
-          text.textContent = line.fromLabel;
-          const ks = document.createElement('span');
-          ks.className = 'req-picker-reach-line-kingdom';
-          ks.textContent = ' (' + line.kingdomLabel + ')';
-          text.appendChild(ks);
-          row.appendChild(text);
-          const arrow = document.createElement('span');
-          arrow.className = 'req-picker-reach-line-arrow';
-          arrow.textContent = '→';
-          row.appendChild(arrow);
-          if (Array.isArray(line.toItems) && line.toItems.length) {
-            const grp = document.createElement('div');
-            grp.className = 'req-picker-reach-line-toitems';
-            line.toItems.forEach(it => {
-              const im = document.createElement('img');
-              im.className = 'req-picker-reach-line-icon';
-              im.src = it.src; im.alt = it.name; im.title = it.name;
-              grp.appendChild(im);
-            });
-            row.appendChild(grp);
-          } else if (line.toIcon) {
-            const im = document.createElement('img');
-            im.className = 'req-picker-reach-line-icon req-picker-reach-line-icon--to';
-            im.src = line.toIcon; im.alt = line.toLabel;
-            row.appendChild(im);
-          }
-          results.appendChild(row);
-        });
-      }
-
-      renderGrid();
-      renderResults();
-
-      // Icon-only Find button (no text), under the Paintings header.
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'paint-find-btn' + (paintFind.open ? ' active' : '');
       btn.textContent = '🔍';
       btn.title = 'Find: pick something to see where it is marked';
-      btn.addEventListener('click', () => {
-        paintFind.open = !paintFind.open;
-        panel.style.display = paintFind.open ? '' : 'none';
-        btn.classList.toggle('active', paintFind.open);
-        positionPaintingsColumn();
-      });
-      x.addEventListener('click', () => {
-        paintFind.open = false;
-        paintFind.kind = null;
-        paintFind.key = null;
-        panel.style.display = 'none';
-        btn.classList.remove('active');
-        renderGrid();
-        renderResults();
-        positionPaintingsColumn();
-      });
 
-      // Panel sits ABOVE the Find icon, which stays right under the header.
-      wrap.appendChild(panel);
+      function openFind() {
+        paintFind.open = true;
+        area.style.display = '';
+        btn.classList.add('active');
+        openRequirementPicker(null, { requirements: [] }, null, () => {}, null, null, {
+          findOnly: true,
+          host: scaler,
+          onClose: () => {
+            paintFind.open = false;
+            area.style.display = 'none';
+            btn.classList.remove('active');
+            positionPaintingsColumn();
+          },
+        });
+        requestAnimationFrame(fit);
+      }
+      function closeFind() {
+        const ov = scaler.querySelector('.req-picker-overlay');
+        const x = ov && ov.querySelector('.req-picker-close');
+        if (x) { x.click(); return; }
+        paintFind.open = false;
+        area.style.display = 'none';
+        btn.classList.remove('active');
+        positionPaintingsColumn();
+      }
+      btn.addEventListener('click', () => { if (paintFind.open) closeFind(); else openFind(); });
+
+      // Menu/results on top, the Find icon underneath.
+      wrap.appendChild(area);
       wrap.appendChild(btn);
+      if (paintFind.open) setTimeout(() => { if (wrap.isConnected) openFind(); }, 0);
       return wrap;
     }
 
@@ -5660,8 +5503,17 @@
     // adds its icon above the location and its name into the note text.
     // Presented as a fullscreen overlay (same fade+pop-in language as the
     // Dark Side map lightbox above) with a big, easy-to-click icon grid.
-    function openRequirementPicker(event, zs, noteArea, onChange, originKingdom, originZone) {
-      document.querySelectorAll('.req-picker-overlay').forEach(p => p.remove());
+    function openRequirementPicker(event, zs, noteArea, onChange, originKingdom, originZone, opts) {
+      opts = opts || {};
+      // Find-only mode (used by the Find icon under the Paintings panel):
+      // the very same picker, but it only ever looks things up, and it is
+      // mounted inline in opts.host instead of as a full-screen overlay.
+      const findOnly = !!opts.findOnly;
+      if (findOnly) {
+        if (opts.host) opts.host.querySelectorAll('.req-picker-overlay').forEach(p => p.remove());
+      } else {
+        document.querySelectorAll('.req-picker-overlay').forEach(p => p.remove());
+      }
 
       const overlay = document.createElement('div');
       overlay.className = 'req-picker-overlay';
@@ -5682,7 +5534,7 @@
       titleIcon.onerror = () => { titleIcon.style.display = 'none'; };
       const title = document.createElement('div');
       title.className = 'req-picker-title';
-      title.textContent = 'Add a Requirement';
+      title.textContent = findOnly ? 'Find' : 'Add a Requirement';
       titleWrap.appendChild(titleIcon);
       titleWrap.appendChild(title);
       const closeBtn = document.createElement('button');
@@ -5970,6 +5822,7 @@
       });
 
       function setFindMode(active) {
+        if (findOnly) active = true; // Find-only picker always stays in find mode
         findModeActive = active;
         findBtn.classList.toggle('active', active);
         findBtn.title = active ? TIPS.findActive : TIPS.find;
@@ -6133,7 +5986,7 @@
         }
         pop.appendChild(body);
 
-        document.body.appendChild(popOverlay);
+        (findOnly && opts.host ? opts.host : document.body).appendChild(popOverlay);
 
         function onPopKeyDown(e) { if (e.key === 'Escape') closeFindPopup(); }
         function closeFindPopup() {
@@ -6258,7 +6111,7 @@
           body.appendChild(slot);
         });
         pop.appendChild(body);
-        document.body.appendChild(popOverlay);
+        (findOnly && opts.host ? opts.host : document.body).appendChild(popOverlay);
 
         function onPopKeyDown(e) { if (e.key === 'Escape') closeRefightsPopup(); }
         function closeRefightsPopup() {
@@ -6447,7 +6300,7 @@
         refreshBody();
 
         pop.appendChild(body);
-        document.body.appendChild(popOverlay);
+        (findOnly && opts.host ? opts.host : document.body).appendChild(popOverlay);
 
         function onPopKeyDown(e) { if (e.key === 'Escape') closeShopsPopup(); }
         function closeShopsPopup() {
@@ -7062,9 +6915,13 @@
       tabKingdom.addEventListener('click', () => { bounce(tabKingdom); setActiveTab('kingdom'); });
       search.addEventListener('input', renderGrid);
 
+      if (findOnly) {
+        overlay.classList.add('req-picker-overlay--inline');
+        setFindMode(true);
+      }
       renderGrid();
       popup.style.setProperty('--picker-active-color', TAB_COLORS[activeKind]);
-      document.body.appendChild(overlay);
+      (findOnly && opts.host ? opts.host : document.body).appendChild(overlay);
       // clientWidth/getBoundingClientRect are 0 before the popup is in the
       // DOM/laid out, so redo the row math (and the indicator's position)
       // once it actually has real dimensions. animate=false so the
@@ -7095,7 +6952,9 @@
         overlay.classList.remove('active');
         document.removeEventListener('keydown', onKeyDown);
         window.removeEventListener('resize', onResize);
+        const wasLive = overlay.isConnected;
         setTimeout(() => overlay.remove(), 230);
+        if (findOnly && opts.onClose && wasLive) opts.onClose();
       }
       overlay.addEventListener('click', (e) => {
         if (e.target === overlay) closePicker();
@@ -7106,7 +6965,7 @@
       void overlay.offsetWidth;
       requestAnimationFrame(() => overlay.classList.add('active'));
 
-      search.focus();
+      if (!findOnly) search.focus();
     }
 
     // ── Horizontal scroll (wheel / configurable mouse+key bindings) ──
