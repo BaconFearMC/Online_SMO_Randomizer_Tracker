@@ -20,31 +20,46 @@
     .font-comicsans textarea, .font-comicsans input[type="text"] { line-height: 1.25; }
   </style>
   <style>
-    /* Paintings column: pinned top-right, never scrolls away. */
+    /* Paintings column: compact, pinned top-right, never scrolls away.
+       Only as tall as its content - it does NOT run down the right side. */
     body > .kingdom-col.paintings-fixed {
       position: fixed !important;
       top: 80px;
       right: 16px !important;
       left: auto !important;
-      width: 260px !important;
-      max-width: 260px !important;
+      width: min(460px, calc(100vw - 32px)) !important;
+      max-width: calc(100vw - 32px) !important;
+      height: auto !important;
       flex: none !important;
       z-index: 50;
-      overflow-y: auto;
+      overflow-x: hidden;
+      overflow-y: auto; /* only ever kicks in if the window is shorter than the panel */
       box-sizing: border-box;
       background: var(--bg, #1a1a22);
       border: 1px solid var(--border, #444);
       border-radius: 10px;
       box-shadow: 0 6px 20px rgba(0,0,0,.45);
     }
-    #lz-content.has-paintings-fixed { padding-right: 296px; }
+    .paintings-fixed .kingdom-col-header { padding-top: 4px; padding-bottom: 4px; }
+    /* 2 columns, filled top-to-bottom: 5 rows (Normal) / 8 rows (Extra). */
+    .paintings-fixed .zones-container.paint-grid {
+      display: grid;
+      grid-auto-flow: column;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-rows: repeat(var(--paint-rows, 5), auto);
+      gap: 2px 8px;
+      padding: 2px 8px 8px;
+      max-height: none;
+      overflow: visible;
+    }
+    .paintings-fixed .paint-grid .zone-row { margin: 0; padding: 2px 0; min-width: 0; }
+    .paintings-fixed .paint-grid textarea { width: 100%; box-sizing: border-box; min-height: 0; }
 
-    .paint-find-wrap { padding: 6px 8px; display: flex; flex-direction: column; gap: 6px; }
+    .paint-find-wrap { padding: 2px 8px 4px; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
     .paint-find-btn {
-      align-self: stretch;
-      display: flex; align-items: center; justify-content: center; gap: 6px;
-      padding: 6px 10px;
-      font-weight: 700; font-size: .85rem;
+      width: 30px; height: 26px; padding: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .9rem;
       border-radius: 8px;
       border: 1px solid rgba(140,180,255,.35);
       background: linear-gradient(135deg, rgba(110,160,255,.28), rgba(255,255,255,.05));
@@ -56,35 +71,49 @@
       border-color: rgba(150,190,255,.7);
     }
     .paint-find-panel {
-      padding: 8px;
+      align-self: stretch;
+      padding: 6px;
       border: 1px solid rgba(140,180,255,.3);
       border-radius: 10px;
       background: rgba(0,0,0,.25);
-      max-height: 55vh;
-      overflow-y: auto;
     }
-    .paint-find-head {
-      display: flex; align-items: center; justify-content: space-between;
-      font-size: .85rem; font-weight: 700; margin-bottom: 6px;
+    .paint-find-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 6px; }
+    .paint-find-tabs { display: flex; gap: 4px; }
+    .paint-find-tab {
+      padding: 3px 9px; font-size: .75rem; font-weight: 600; cursor: pointer; color: inherit;
+      border-radius: 6px; border: 1px solid var(--border, #444); background: rgba(255,255,255,.04);
     }
-    .paint-find-x {
-      background: none; border: none; color: inherit; cursor: pointer;
-      font-size: .95rem; opacity: .7; padding: 2px 6px;
-    }
+    .paint-find-tab.active { border-color: rgba(150,190,255,.7); background: rgba(110,160,255,.25); }
+    .paint-find-x { background: none; border: none; color: inherit; cursor: pointer; font-size: .95rem; opacity: .7; padding: 2px 6px; }
     .paint-find-x:hover { opacity: 1; }
-    .paint-find-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
-    .paint-find-pick {
-      padding: 2px; aspect-ratio: 1 / 1; cursor: pointer; color: inherit;
-      border-radius: 6px;
-      border: 1px solid color-mix(in srgb, var(--kingdom-color, #888) 55%, transparent);
-      background: color-mix(in srgb, var(--kingdom-color, #888) 16%, transparent);
+    .paint-find-seclabel { font-size: .68rem; font-weight: 700; opacity: .65; margin: 4px 0 2px; text-transform: uppercase; letter-spacing: .04em; }
+    .paint-find-grid { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 3px; }
+    @keyframes paint-find-shake {
+      0%, 100% { transform: translateX(0) rotate(0deg); }
+      20% { transform: translateX(-1px) rotate(-1deg); }
+      40% { transform: translateX(1px) rotate(1deg); }
+      60% { transform: translateX(-1px) rotate(-1deg); }
+      80% { transform: translateX(1px) rotate(1deg); }
     }
-    .paint-find-pick { min-width: 0; width: 100%; height: auto !important; }
+    .paint-find-pick {
+      min-width: 0; width: 100%; aspect-ratio: 1 / 1; height: auto !important; padding: 2px; cursor: pointer; color: inherit;
+      border-radius: 6px;
+      border: 1px solid color-mix(in srgb, var(--tint, #888) 55%, transparent);
+      background: color-mix(in srgb, var(--tint, #888) 16%, transparent);
+      animation: paint-find-shake .45s ease-in-out infinite;
+      filter: grayscale(10%);
+    }
+    .paint-find-pick:hover { animation-play-state: paused; filter: none; }
     .paint-find-pick img { width: 100% !important; height: 100% !important; max-width: 100% !important; object-fit: contain; display: block; }
     .paint-find-pick.selected { box-shadow: 0 0 0 2px rgba(255,215,0,.8); }
-    .paint-find-results { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
-    .paint-find-results-title { font-size: .8rem; font-weight: 600; opacity: .85; }
-    .paint-find-results .req-picker-reach-line { padding: 6px 8px; font-size: .8rem; gap: 6px; }
+    .paint-find-results {
+      display: flex; flex-direction: column; gap: 4px; margin-top: 8px; padding-top: 8px;
+      border-top: 1px solid color-mix(in srgb, var(--tint, #888) 40%, var(--border, #444));
+      max-height: 38vh; overflow-y: auto; /* safety valve for very long result lists only */
+    }
+    .paint-find-results-title { display: flex; align-items: center; gap: 8px; font-size: .82rem; font-weight: 700; }
+    .paint-find-results-title img { width: 26px; height: 26px; object-fit: contain; }
+    .paint-find-results .req-picker-reach-line { padding: 5px 8px; font-size: .78rem; gap: 6px; }
     .paint-find-results .req-picker-reach-line-icon { width: 22px; height: 22px; }
   </style>
   <style>
@@ -3109,8 +3138,9 @@
       imp('right', '16px');
       imp('left', 'auto');
       imp('bottom', 'auto');
-      imp('width', '260px');
-      imp('max-width', '260px');
+      imp('width', 'min(460px, calc(100vw - 32px))');
+      imp('max-width', 'calc(100vw - 32px)');
+      imp('height', 'auto');
       imp('margin', '0');
       imp('transform', 'none');
       imp('max-height', Math.max(160, window.innerHeight - top - 12) + 'px');
@@ -3164,7 +3194,9 @@
       header.appendChild(chevron);
 
       const zonesRoot = document.createElement('div');
-      zonesRoot.className = 'zones-container';
+      zonesRoot.className = 'zones-container paint-grid';
+      // Normal Paintings: 5 tall x 2 wide. Extra Paintings: 8 tall x 2 wide.
+      zonesRoot.style.setProperty('--paint-rows', fullState.settings.extra_paintings ? 8 : 5);
 
       const irlActive = paintingIrlInfoActive();
 
@@ -3371,13 +3403,37 @@
       return col;
     }
 
-    // ── Find (under the Paintings tab) ───────────────────────────────
-    // Sits directly under the Paintings header. Clicking it opens a small
-    // inline panel ABOVE the Find button and BELOW the Paintings header
-    // (not a full-screen pop-up) - pick a Kingdom, see how to reach it.
-    // The panel stays until its X is clicked. State lives outside the
-    // column so it survives the column being rebuilt on every edit.
-    const paintFind = { open: false, key: null };
+    // ── Find (icon under the Paintings tab) ──────────────────────────
+    // Works like Find in the Notes menu: pick a Capture / Ability /
+    // Refight / Shop / Kingdom and see which zones have it marked. Unlike
+    // the Notes menu it is all inline - a compact picker plus the results
+    // appear ABOVE the Find icon and BELOW the Paintings header (no
+    // full-screen pop-up) and stay until the X is clicked. State lives
+    // outside the column so it survives the column being rebuilt.
+    const paintFind = { open: false, tab: 'captures', kind: null, key: null };
+
+    function paintFindSections(tab) {
+      const arr = v => Array.isArray(v) ? v : [];
+      if (tab === 'captures') {
+        return [{ kind: 'captures', items: arr(APC.NOTES_CAPTURES).concat(arr(APC.NOTES_CAPTURES_ONETIME)) }];
+      }
+      if (tab === 'abilities') {
+        return [{ kind: 'abilities', items: arr(APC.NOTES_ABILITIES) }];
+      }
+      return [
+        { kind: 'refights', label: 'Refights', items: arr(APC.REFIGHTS) },
+        { kind: 'shops', label: 'Shops', items: arr(APC.SHOPS) },
+        { kind: 'kingdoms', label: 'Kingdoms', items: arr(APC.KINGDOMS) },
+      ];
+    }
+
+    function paintFindTint(kind, item) {
+      if (kind === 'kingdoms' && item.color) return item.color;
+      if ((kind === 'refights' || kind === 'shops') && item.colors) return item.colors[0];
+      if (kind === 'captures') return 'var(--capture-color)';
+      if (kind === 'abilities') return 'var(--ability-color)';
+      return '#8a8a96';
+    }
 
     function buildPaintingFindSection() {
       const wrap = document.createElement('div');
@@ -3387,47 +3443,117 @@
       panel.className = 'paint-find-panel';
       panel.style.display = paintFind.open ? '' : 'none';
 
+      // Header: tabs + X
       const head = document.createElement('div');
       head.className = 'paint-find-head';
-      const title = document.createElement('span');
-      title.textContent = 'How do I reach…';
+      const tabs = document.createElement('div');
+      tabs.className = 'paint-find-tabs';
+      const tabDefs = [['captures', 'Captures'], ['abilities', 'Abilities'], ['kingdom', 'Kingdom']];
+      const tabBtns = {};
+      tabDefs.forEach(([id, label]) => {
+        const t = document.createElement('button');
+        t.type = 'button';
+        t.className = 'paint-find-tab';
+        t.textContent = label;
+        t.addEventListener('click', () => {
+          paintFind.tab = id;
+          paintFind.kind = null;
+          paintFind.key = null;
+          renderGrid();
+          renderResults();
+        });
+        tabBtns[id] = t;
+        tabs.appendChild(t);
+      });
       const x = document.createElement('button');
       x.type = 'button';
       x.className = 'paint-find-x';
       x.textContent = '✕';
       x.title = 'Close';
-      head.appendChild(title);
+      head.appendChild(tabs);
       head.appendChild(x);
       panel.appendChild(head);
 
-      const grid = document.createElement('div');
-      grid.className = 'paint-find-grid';
+      const gridHost = document.createElement('div');
+      gridHost.className = 'paint-find-gridhost';
       const results = document.createElement('div');
       results.className = 'paint-find-results';
+      panel.appendChild(gridHost);
+      panel.appendChild(results);
+
+      function renderGrid() {
+        Object.keys(tabBtns).forEach(id => tabBtns[id].classList.toggle('active', id === paintFind.tab));
+        gridHost.innerHTML = '';
+        paintFindSections(paintFind.tab).forEach(sec => {
+          if (sec.label) {
+            const lab = document.createElement('div');
+            lab.className = 'paint-find-seclabel';
+            lab.textContent = sec.label;
+            gridHost.appendChild(lab);
+          }
+          const grid = document.createElement('div');
+          grid.className = 'paint-find-grid';
+          sec.items.forEach(item => {
+            const bt = document.createElement('button');
+            bt.type = 'button';
+            bt.className = 'paint-find-pick'; // shakes to invite a click, like Notes-menu Find
+            bt.title = item.name;
+            bt.style.setProperty('--tint', paintFindTint(sec.kind, item));
+            if (paintFind.kind === sec.kind && paintFind.key === item.key) bt.classList.add('selected');
+            const img = document.createElement('img');
+            img.src = item.src; img.alt = item.name;
+            bt.appendChild(img);
+            bt.addEventListener('click', () => {
+              paintFind.kind = sec.kind;
+              paintFind.key = item.key;
+              gridHost.querySelectorAll('.paint-find-pick.selected').forEach(n => n.classList.remove('selected'));
+              bt.classList.add('selected');
+              renderResults();
+            });
+            grid.appendChild(bt);
+          });
+          gridHost.appendChild(grid);
+        });
+      }
 
       function renderResults() {
         results.innerHTML = '';
-        grid.querySelectorAll('.paint-find-pick').forEach(b =>
-          b.classList.toggle('selected', b.dataset.key === paintFind.key));
+        results.style.display = paintFind.key ? '' : 'none';
         if (!paintFind.key) return;
-        const item = APC.findItem('kingdoms', paintFind.key);
-        const name = item ? item.name : paintFind.key;
-        const lines = buildReachLines(paintFind.key);
-        const label = document.createElement('div');
-        label.className = 'paint-find-results-title';
-        label.textContent = 'To reach ' + name + ':';
-        results.appendChild(label);
+        const kind = paintFind.kind, key = paintFind.key;
+        const item = APC.findItem(kind, key);
+        if (!item) return;
+        const tint = paintFindTint(kind, item);
+        results.style.setProperty('--tint', tint);
+
+        const title = document.createElement('div');
+        title.className = 'paint-find-results-title';
+        const ti = document.createElement('img');
+        ti.src = item.src; ti.alt = item.name;
+        const tt = document.createElement('span');
+        tt.textContent = kind === 'kingdoms'
+          ? 'How do I reach ' + item.name + ' Kingdom?'
+          : 'Which Loading Zone has the ' + item.name + '?';
+        title.appendChild(ti);
+        title.appendChild(tt);
+        results.appendChild(title);
+
+        const lines = kind === 'kingdoms'
+          ? buildReachLines(key)
+          : buildRequirementLines(kind, key, undefined, kind === 'captures' || kind === 'abilities');
         if (!lines.length) {
           const empty = document.createElement('div');
           empty.className = 'req-picker-reach-empty';
-          empty.textContent = 'Nothing is tagged as leading to ' + name + ' yet.';
+          empty.textContent = kind === 'kingdoms'
+            ? 'Nothing is tagged as leading to ' + item.name + ' yet.'
+            : 'No loading zone has ' + item.name + ' marked yet.';
           results.appendChild(empty);
           return;
         }
         lines.forEach(line => {
           const row = document.createElement('div');
           row.className = 'req-picker-reach-line';
-          row.style.setProperty('--line-color', line.fromColor || '#8a8a96');
+          row.style.setProperty('--line-color', line.fromColor || tint);
           if (line.fromIcon) {
             const fi = document.createElement('img');
             fi.className = 'req-picker-reach-line-icon';
@@ -3446,54 +3572,53 @@
           arrow.className = 'req-picker-reach-line-arrow';
           arrow.textContent = '→';
           row.appendChild(arrow);
-          if (line.toIcon) {
-            const ti = document.createElement('img');
-            ti.className = 'req-picker-reach-line-icon req-picker-reach-line-icon--to';
-            ti.src = line.toIcon; ti.alt = line.toLabel;
-            row.appendChild(ti);
+          if (Array.isArray(line.toItems) && line.toItems.length) {
+            const grp = document.createElement('div');
+            grp.className = 'req-picker-reach-line-toitems';
+            line.toItems.forEach(it => {
+              const im = document.createElement('img');
+              im.className = 'req-picker-reach-line-icon';
+              im.src = it.src; im.alt = it.name; im.title = it.name;
+              grp.appendChild(im);
+            });
+            row.appendChild(grp);
+          } else if (line.toIcon) {
+            const im = document.createElement('img');
+            im.className = 'req-picker-reach-line-icon req-picker-reach-line-icon--to';
+            im.src = line.toIcon; im.alt = line.toLabel;
+            row.appendChild(im);
           }
           results.appendChild(row);
         });
       }
 
-      (APC.KINGDOMS || []).forEach(k => {
-        const b = document.createElement('button');
-        b.type = 'button';
-        b.className = 'paint-find-pick';
-        b.dataset.key = k.key;
-        b.title = k.name;
-        if (k.color) b.style.setProperty('--kingdom-color', k.color);
-        const img = document.createElement('img');
-        img.src = k.src; img.alt = k.name;
-        b.appendChild(img);
-        b.addEventListener('click', () => {
-          paintFind.key = (paintFind.key === k.key) ? null : k.key;
-          renderResults();
-        });
-        grid.appendChild(b);
-      });
-      panel.appendChild(grid);
-      panel.appendChild(results);
+      renderGrid();
       renderResults();
 
+      // Icon-only Find button (no text), under the Paintings header.
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'paint-find-btn' + (paintFind.open ? ' active' : '');
-      btn.innerHTML = '🔍 <span>Find</span>';
-      btn.title = 'Find how to reach a Kingdom';
-
+      btn.textContent = '🔍';
+      btn.title = 'Find: pick something to see where it is marked';
       btn.addEventListener('click', () => {
         paintFind.open = !paintFind.open;
         panel.style.display = paintFind.open ? '' : 'none';
         btn.classList.toggle('active', paintFind.open);
+        positionPaintingsColumn();
       });
       x.addEventListener('click', () => {
         paintFind.open = false;
+        paintFind.kind = null;
+        paintFind.key = null;
         panel.style.display = 'none';
         btn.classList.remove('active');
+        renderGrid();
+        renderResults();
+        positionPaintingsColumn();
       });
 
-      // Panel first (above), then the Find button underneath it.
+      // Panel sits ABOVE the Find icon, which stays right under the header.
       wrap.appendChild(panel);
       wrap.appendChild(btn);
       return wrap;
