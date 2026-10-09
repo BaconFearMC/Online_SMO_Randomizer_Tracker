@@ -32,7 +32,7 @@
       height: auto !important;
       flex: none !important;
       z-index: 50;
-      overflow: hidden; /* never a scrollbar: the Find menu scales to fit instead */
+      overflow-x: hidden; overflow-y: auto; /* Find menu keeps a readable size; panel scrolls if tall */
       box-sizing: border-box;
       background: var(--bg, #1a1a22);
       border: 1px solid var(--border, #444);
@@ -72,7 +72,7 @@
     /* The real Notes-menu Find picker, laid out full size then scaled down. */
     .paint-find-area { align-self: flex-end; position: relative; overflow: hidden; }
     .paint-find-scaler {
-      width: 900px;
+      width: 600px;
       transform-origin: top left;
       position: absolute; top: 0; left: 0;
     }
@@ -1099,6 +1099,59 @@
       color: var(--text-dim);
     }
 
+    /* Timer Challenges: one tile that opens a 2x2 popup of its four real
+       abilities (P-Switches top-left, Cappy Flowers bottom-left,
+       Scarecrows top-right, Notes bottom-right). */
+    .req-picker-timer-submenu {
+      position: fixed;
+      z-index: 10001;
+      display: grid;
+      grid-template-columns: repeat(2, 130px);
+      grid-template-rows: repeat(2, 130px);
+      grid-auto-flow: column;
+      gap: 10px;
+      padding: 16px;
+      border-radius: 14px;
+      border: 1px solid var(--border, #444);
+      background: var(--bg, #1a1a22);
+      box-shadow: 0 10px 34px rgba(0,0,0,.55);
+      opacity: 0;
+      transform: translateY(-4px) scale(.97);
+      transition: opacity .16s ease, transform .16s ease;
+      pointer-events: none;
+    }
+    .req-picker-timer-submenu.active {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      pointer-events: auto;
+    }
+    .req-picker-timer-opt {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 8px;
+      border-radius: 10px;
+      border: 1px solid color-mix(in srgb, var(--ability-color, #8cb4ff) 55%, transparent);
+      background: color-mix(in srgb, var(--ability-color, #8cb4ff) 16%, transparent);
+      color: inherit;
+      font-size: .95rem;
+      cursor: pointer;
+      transition: background .15s ease, border-color .15s ease;
+    }
+    .req-picker-timer-opt:hover {
+      background: color-mix(in srgb, var(--ability-color, #8cb4ff) 30%, transparent);
+    }
+    .req-picker-timer-opt.selected {
+      border-color: rgba(140,180,255,.8);
+      box-shadow: inset 0 0 0 2px rgba(140,180,255,.45);
+    }
+    .req-picker-timer-opt img {
+      width: 56px;
+      height: 56px;
+      object-fit: contain;
+    }
     /* Coin Grind is one tile that opens a tiny 3-option submenu (Snow /
        Cascade / Wooded) rather than toggling a requirement directly. */
     .req-picker-coingrind-submenu {
@@ -1816,6 +1869,83 @@
     // requirement icon the same paired-icon + gradient-ring treatment a
     // Refight gets, instead of falling through to the plain generic-capture
     // icon path.
+    // ── Timer Challenges ──
+    // No longer its own ability: clicking the tile asks which of four real
+    // abilities it was (P-Switches / Cappy Flowers / Scarecrows / Notes).
+    // They're looked up through APC.findItem (wrapped below) so the rest of
+    // the app - note text, requirement icons, shop sales - treats them like
+    // any other ability without them cluttering the regular ability grids.
+    const TIMER_CHALLENGE_NAME = 'Timer Challenges';
+    const TIMER_CHALLENGE_OPTIONS = (function () {
+      const base = (APC.ABILITIES && APC.ABILITIES[0] && APC.ABILITIES[0].src) || 'assets/ability/x.png';
+      const mk = (key, name, file) => ({ key, name, src: base.replace(/[^\/]+$/, file) });
+      // Order = top-to-bottom, left column then right column (2x2 grid).
+      return [
+        mk('AbilityPSwitches',   'P-Switches',   'AbilityPSwitches.png'),
+        mk('AbilityCappyFlowers','Cappy Flowers','AbilityCappyFlowers.png'),
+        mk('AbilityScarecrows',  'Scarecrows',   'AbilityScarecrows.png'),
+        mk('AbilityNotes',       'Notes',        'AbilityNotes.png'),
+      ];
+    })();
+    const TIMER_CHALLENGE_KEYS = TIMER_CHALLENGE_OPTIONS.map(o => o.key);
+    function isTimerChallengeItem(item) {
+      return !!item && item.name === TIMER_CHALLENGE_NAME;
+    }
+    (function patchFindItemForTimer() {
+      const orig = APC.findItem;
+      try {
+        APC.findItem = function (kind, key) {
+          const found = orig.call(APC, kind, key);
+          if (found) return found;
+          if (kind === 'abilities') return TIMER_CHALLENGE_OPTIONS.find(o => o.key === key) || null;
+          return null;
+        };
+      } catch (e) { console.warn('[timer] could not patch APC.findItem', e); }
+    })();
+
+    // selectedKeys: array of currently-picked timer keys (for highlighting).
+    // onPick(opt) runs when one of the four is clicked.
+    function openTimerChallengeSubmenu(anchorEl, selectedKeys, onPick) {
+      document.querySelectorAll('.req-picker-timer-submenu').forEach(m => m.remove());
+      const menu = document.createElement('div');
+      menu.className = 'req-picker-timer-submenu';
+      document.body.appendChild(menu);
+      TIMER_CHALLENGE_OPTIONS.forEach(opt => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'req-picker-timer-opt';
+        btn.classList.toggle('selected', selectedKeys.includes(opt.key));
+        const img = document.createElement('img');
+        img.src = opt.src;
+        img.alt = opt.name;
+        const label = document.createElement('span');
+        label.textContent = opt.name;
+        btn.appendChild(img);
+        btn.appendChild(label);
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          closeMenu();
+          onPick(opt);
+        });
+        menu.appendChild(btn);
+      });
+      void menu.offsetWidth;
+      const r = menu.getBoundingClientRect();
+      menu.style.left = Math.round((window.innerWidth - r.width) / 2) + 'px';
+      menu.style.top = Math.round((window.innerHeight - r.height) / 2) + 'px';
+      function onDocClick(e) { if (!menu.contains(e.target) && e.target !== anchorEl) closeMenu(); }
+      function onKeyDown(e) { if (e.key === 'Escape') closeMenu(); }
+      function closeMenu() {
+        menu.classList.remove('active');
+        document.removeEventListener('click', onDocClick, true);
+        document.removeEventListener('keydown', onKeyDown);
+        setTimeout(() => menu.remove(), 200);
+      }
+      setTimeout(() => document.addEventListener('click', onDocClick, true), 0);
+      document.addEventListener('keydown', onKeyDown);
+      requestAnimationFrame(() => menu.classList.add('active'));
+    }
+
     const COIN_GRIND_OPTIONS = [
       { label: 'Spinning Coin Grind',      kind: 'captures', key: 'Coin_Grind_Capture', iconOverride: { kind: 'abilities', key: 'Spin' }, hideSub: true, colors: ['#e7930a', '#ffd700'] },
       { label: 'Dino Coin Grind',          kind: 'captures', key: 'T-Rex_Capture', colors: ['#ff9900', '#ffd700'] },
@@ -3407,7 +3537,7 @@
     // Find icon; picking something shows its results in the same spot,
     // and they stay until the X is clicked.
     const paintFind = { open: false };
-    const PAINT_FIND_VIRTUAL_W = 900; // width the menu is laid out at before scaling down
+    const PAINT_FIND_VIRTUAL_W = 600; // width the menu is laid out at before scaling down (smaller = bigger on screen)
 
     function buildPaintingFindSection() {
       const wrap = document.createElement('div');
@@ -3426,15 +3556,10 @@
         if (!area.isConnected) return;
         const col = wrap.closest('.kingdom-col');
         const availW = Math.max(120, (wrap.clientWidth || 560) - 16);
-        let k = availW / PAINT_FIND_VIRTUAL_W;
+        // Scale to the panel's width only - never squash it further to fit
+        // the screen height (the panel scrolls instead), so it stays readable.
+        const k = Math.min(1, availW / PAINT_FIND_VIRTUAL_W);
         const natH = scaler.offsetHeight || 1;
-        if (col) {
-          // Everything in the column except the Find area itself.
-          const others = col.scrollHeight - area.offsetHeight;
-          const top = col.getBoundingClientRect().top;
-          const availH = window.innerHeight - top - others - 14;
-          k = Math.max(0.5, Math.min(k, availH / natH));
-        }
         scaler.style.transform = 'scale(' + k + ')';
         area.style.width = Math.floor(PAINT_FIND_VIRTUAL_W * k) + 'px';
         area.style.height = Math.ceil(natH * k) + 'px';
@@ -5191,7 +5316,8 @@
         const cell = document.createElement('button');
         cell.type = 'button';
         cell.className = 'req-picker-item ' + (activeKind === 'captures' ? 'req-picker-item--capture' : 'req-picker-item--ability');
-        cell.classList.toggle('selected', item.key === selectedKey);
+        const isTimer = activeKind === 'abilities' && isTimerChallengeItem(item);
+        cell.classList.toggle('selected', isTimer ? TIMER_CHALLENGE_KEYS.includes(selectedKey) : item.key === selectedKey);
         const img = document.createElement('img');
         img.src = item.src;
         img.alt = item.name;
@@ -5200,14 +5326,21 @@
         cell.appendChild(img);
         cell.appendChild(label);
         cell.addEventListener('click', () => {
+          if (isTimer) {
+            openTimerChallengeSubmenu(cell, selectedKey ? [selectedKey] : [], (opt) => pickSale(opt.key));
+            return;
+          }
+          pickSale(item.key);
+        });
+        function pickSale(itemKey) {
             bounce(cell);
-            const alreadySelected = item.key === selectedKey;
+            const alreadySelected = itemKey === selectedKey;
             if (!alreadySelected) {
               spawnSelectionFeedback(cell, activeKind === 'captures' ? 'var(--capture-color)' : 'var(--ability-color)');
             }
             const prevSale = APC.getShopSale(fullState, shopKey);
             const prevText = noteArea ? saleText(prevSale) : null;
-            APC.setShopSale(fullState, shopKey, activeKind, alreadySelected ? null : item.key);
+            APC.setShopSale(fullState, shopKey, activeKind, alreadySelected ? null : itemKey);
             saveFullState();
             const sale = APC.getShopSale(fullState, shopKey);
 
@@ -5302,7 +5435,7 @@
 
             // Both halves are now accounted for - the pairing is complete.
             finishIfComplete();
-        });
+        }
         return cell;
       }
 
@@ -6379,7 +6512,10 @@
         const cell = document.createElement('button');
         cell.type = 'button';
         cell.className = 'req-picker-item ' + kindClass;
-        const selected = zs.requirements.some(r => r.kind === kind && r.key === item.key);
+        const isTimer = kind === 'abilities' && isTimerChallengeItem(item);
+        const selected = isTimer
+          ? zs.requirements.some(r => r.kind === 'abilities' && TIMER_CHALLENGE_KEYS.includes(r.key))
+          : zs.requirements.some(r => r.kind === kind && r.key === item.key);
         cell.classList.toggle('selected', selected);
         if (kind === 'kingdoms' && item.color) cell.style.setProperty('--kingdom-color', item.color);
         if ((kind === 'refights' || kind === 'shops') && item.colors) {
@@ -6444,7 +6580,25 @@
           cell.appendChild(saleBtn);
         }
 
-        cell.addEventListener('click', () => {
+        cell.addEventListener('click', (ev) => {
+          if (isTimer) {
+            const pickedKeys = zs.requirements.filter(r => r.kind === 'abilities' && TIMER_CHALLENGE_KEYS.includes(r.key)).map(r => r.key);
+            if (findModeActive) {
+              openTimerChallengeSubmenu(cell, pickedKeys, (opt) => {
+                setFindMode(false);
+                showFindResultsPopup('abilities', opt.key);
+              });
+              return;
+            }
+            bounce(cell);
+            openTimerChallengeSubmenu(cell, pickedKeys, (opt) => {
+              const nowSelected = toggleRequirement(zs, 'abilities', opt.key, noteArea);
+              cell.classList.toggle('selected', zs.requirements.some(r => r.kind === 'abilities' && TIMER_CHALLENGE_KEYS.includes(r.key)));
+              if (nowSelected) spawnSelectionFeedback(cell, pickerFeedbackColor('abilities'));
+              onChange();
+            });
+            return;
+          }
           // Find mode repurposes this same, already-on-screen button: a
           // click looks the item up instead of adding/removing it as a
           // requirement on the currently open zone.
