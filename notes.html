@@ -32,8 +32,7 @@
       height: auto !important;
       flex: none !important;
       z-index: 50;
-      overflow-x: hidden;
-      overflow-y: auto; /* only ever kicks in if the window is shorter than the panel */
+      overflow: hidden; /* never a scrollbar: the Find menu scales to fit instead */
       box-sizing: border-box;
       background: var(--bg, #1a1a22);
       border: 1px solid var(--border, #444);
@@ -55,7 +54,7 @@
     .paintings-fixed .paint-grid .zone-row { margin: 0; padding: 2px 0; min-width: 0; }
     .paintings-fixed .paint-grid textarea { width: 100%; box-sizing: border-box; min-height: 0; }
 
-    .paint-find-wrap { padding: 2px 8px 6px; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+    .paint-find-wrap { padding: 2px 8px 6px; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
     .paint-find-btn {
       width: 30px; height: 26px; padding: 0;
       display: flex; align-items: center; justify-content: center;
@@ -71,7 +70,7 @@
       border-color: rgba(150,190,255,.7);
     }
     /* The real Notes-menu Find picker, laid out full size then scaled down. */
-    .paint-find-area { align-self: stretch; position: relative; overflow: hidden; }
+    .paint-find-area { align-self: flex-end; position: relative; overflow: hidden; }
     .paint-find-scaler {
       width: 1000px;
       transform-origin: top left;
@@ -99,8 +98,8 @@
       transform: none !important;
       opacity: 1 !important;
     }
-    .paint-find-area .req-picker-popup { height: 700px; }
-    .paint-find-area .req-find-popup--refights { height: 700px !important; }
+    .paint-find-area .req-picker-popup { height: 560px; }
+    .paint-find-area .req-find-popup--refights { height: 560px !important; }
     /* Find-only: no requirement tokens, no second Find toggle, no sale-edit tags. */
     .paint-find-area .req-picker-toolbar,
     .paint-find-area .req-picker-find-btn:not(.req-picker-cog-btn),
@@ -1946,8 +1945,11 @@
         if (animate === false) indicator.style.transition = 'none';
         const tabsRect = tabsEl.getBoundingClientRect();
         const btnRect = activeBtn.getBoundingClientRect();
-        indicator.style.transform = 'translateX(' + (btnRect.left - tabsRect.left) + 'px)';
-        indicator.style.width = btnRect.width + 'px';
+        // If an ancestor is scaled (the mini Find menu under Paintings),
+        // screen rects are scaled too; convert back to layout pixels.
+        const sc = (tabsEl.offsetWidth && tabsRect.width) ? tabsRect.width / tabsEl.offsetWidth : 1;
+        indicator.style.transform = 'translateX(' + ((btnRect.left - tabsRect.left) / sc) + 'px)';
+        indicator.style.width = (btnRect.width / sc) + 'px';
         if (color) indicator.style.setProperty('--indicator-color', color);
         if (animate === false) {
           void indicator.offsetWidth;
@@ -3419,9 +3421,20 @@
       // height in step so nothing is clipped or left as dead space.
       function fit() {
         if (!area.isConnected) return;
-        const k = (area.clientWidth || PAINT_FIND_VIRTUAL_W) / PAINT_FIND_VIRTUAL_W;
+        const col = wrap.closest('.kingdom-col');
+        const availW = Math.max(120, (wrap.clientWidth || 560) - 16);
+        let k = availW / PAINT_FIND_VIRTUAL_W;
+        const natH = scaler.offsetHeight || 1;
+        if (col) {
+          // Everything in the column except the Find area itself.
+          const others = col.offsetHeight - area.offsetHeight;
+          const top = col.getBoundingClientRect().top;
+          const availH = window.innerHeight - top - others - 14;
+          if (availH > 80) k = Math.min(k, availH / natH);
+        }
         scaler.style.transform = 'scale(' + k + ')';
-        area.style.height = Math.ceil(scaler.offsetHeight * k) + 'px';
+        area.style.width = Math.floor(PAINT_FIND_VIRTUAL_W * k) + 'px';
+        area.style.height = Math.ceil(natH * k) + 'px';
         positionPaintingsColumn();
       }
       if (window.ResizeObserver) new ResizeObserver(fit).observe(scaler);
