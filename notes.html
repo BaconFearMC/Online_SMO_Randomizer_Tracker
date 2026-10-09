@@ -72,7 +72,7 @@
     /* The real Notes-menu Find picker, laid out full size then scaled down. */
     .paint-find-area { align-self: flex-end; position: relative; overflow: hidden; }
     .paint-find-scaler {
-      width: 1000px;
+      width: 900px;
       transform-origin: top left;
       position: absolute; top: 0; left: 0;
     }
@@ -98,8 +98,11 @@
       transform: none !important;
       opacity: 1 !important;
     }
-    .paint-find-area .req-picker-popup { height: 560px; }
-    .paint-find-area .req-find-popup--refights { height: 560px !important; }
+    .paint-find-area .req-picker-popup { height: 640px !important; min-height: 0 !important; }
+    .paint-find-area .req-find-popup { height: auto !important; min-height: 0 !important; }
+    .paint-find-area .req-find-popup,
+    .paint-find-area .req-find-popup * { overflow: visible !important; max-height: none !important; }
+    .paint-find-area .req-find-popup--refights { height: 640px !important; }
     /* Find-only: no requirement tokens, no second Find toggle, no sale-edit tags. */
     .paint-find-area .req-picker-toolbar,
     .paint-find-area .req-picker-find-btn:not(.req-picker-cog-btn),
@@ -3404,7 +3407,7 @@
     // Find icon; picking something shows its results in the same spot,
     // and they stay until the X is clicked.
     const paintFind = { open: false };
-    const PAINT_FIND_VIRTUAL_W = 1000; // width the menu is laid out at before scaling down
+    const PAINT_FIND_VIRTUAL_W = 900; // width the menu is laid out at before scaling down
 
     function buildPaintingFindSection() {
       const wrap = document.createElement('div');
@@ -3427,10 +3430,10 @@
         const natH = scaler.offsetHeight || 1;
         if (col) {
           // Everything in the column except the Find area itself.
-          const others = col.offsetHeight - area.offsetHeight;
+          const others = col.scrollHeight - area.offsetHeight;
           const top = col.getBoundingClientRect().top;
           const availH = window.innerHeight - top - others - 14;
-          if (availH > 80) k = Math.min(k, availH / natH);
+          k = Math.max(0.5, Math.min(k, availH / natH));
         }
         scaler.style.transform = 'scale(' + k + ')';
         area.style.width = Math.floor(PAINT_FIND_VIRTUAL_W * k) + 'px';
