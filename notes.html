@@ -69,6 +69,19 @@
       background: linear-gradient(135deg, rgba(110,160,255,.42), rgba(110,160,255,.14));
       border-color: rgba(150,190,255,.7);
     }
+    /* Find opens as a floating full-size window over the page. */
+    .paint-find-modal {
+      position: fixed; inset: 0; z-index: 10000;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(0,0,0,.55);
+    }
+    .paint-find-modal .paint-find-card {
+      width: min(1100px, 96vw); position: relative; overflow: visible;
+      align-self: auto; height: auto;
+    }
+    .paint-find-modal .paint-find-scaler {
+      position: relative; width: 100%; transform: none; top: auto; left: auto;
+    }
     /* The real Notes-menu Find picker, laid out full size then scaled down. */
     .paint-find-area { align-self: stretch; position: relative; overflow: hidden; }
     .paint-find-scaler {
@@ -3268,7 +3281,7 @@
       imp('bottom', 'auto');
       const wide4 = col.classList.contains('paint-cols4');
       const findOpen = col.classList.contains('paint-find-open');
-      const panelW = wide4 ? (findOpen ? 1020 : 980) : (findOpen ? 860 : 660);
+      const panelW = wide4 ? 980 : 660;
       imp('width', 'min(' + panelW + 'px, calc(100vw - 32px))');
       imp('max-width', 'calc(100vw - 32px)');
       imp('height', 'auto');
@@ -3589,66 +3602,64 @@
       const wrap = document.createElement('div');
       wrap.className = 'paint-find-wrap';
 
-      const area = document.createElement('div');
-      area.className = 'paint-find-area';
-      const scaler = document.createElement('div');
-      scaler.className = 'paint-find-scaler';
-      area.appendChild(scaler);
-      area.style.display = paintFind.open ? '' : 'none';
-
-      // Scale the full-size menu to the panel's width; keep the area's
-      // height in step so nothing is clipped or left as dead space.
-      function fit() {
-        if (!area.isConnected) return;
-        // Sizing (width scale + shrink-to-fit with the list above) is done
-        // in one place so the panel never overflows the screen.
-        positionPaintingsColumn();
-      }
-      if (window.ResizeObserver) new ResizeObserver(fit).observe(scaler);
-      window.addEventListener('resize', fit);
-
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'paint-find-btn' + (paintFind.open ? ' active' : '');
       btn.textContent = '🔍';
       btn.title = 'Find: pick something to see where it is marked';
 
+      // The Find menu opens as a floating, full-size window (the real Find
+      // picker, not a squashed copy) so it is always readable, and it never
+      // changes the size of the Paintings panel.
+      let modal = null;
+      function cleanup() {
+        if (modal) { modal.remove(); modal = null; }
+        document.removeEventListener('keydown', onKey, true);
+        paintFind.open = false;
+        btn.classList.remove('active');
+      }
+      function onKey(e) { if (e.key === 'Escape') closeFind(); }
+      function closeFind() {
+        const x = modal && modal.querySelector('.req-picker-close');
+        if (x) { x.click(); return; }
+        cleanup();
+      }
       function openFind() {
+        if (modal) return;
         paintFind.open = true;
-        area.style.display = '';
         btn.classList.add('active');
-        if (wrap.closest('.kingdom-col')) wrap.closest('.kingdom-col').classList.add('paint-find-open');
+        modal = document.createElement('div');
+        modal.className = 'paint-find-modal';
+        const card = document.createElement('div');
+        card.className = 'paint-find-area paint-find-card';
+        const scaler = document.createElement('div');
+        scaler.className = 'paint-find-scaler';
+        card.appendChild(scaler);
+        modal.appendChild(card);
+        modal.addEventListener('mousedown', (e) => { if (e.target === modal) closeFind(); });
+        document.body.appendChild(modal);
+        document.addEventListener('keydown', onKey, true);
         openRequirementPicker(null, { requirements: [] }, null, () => {}, null, null, {
           findOnly: true,
           host: scaler,
-          onClose: () => {
-            paintFind.open = false;
-            area.style.display = 'none';
-            btn.classList.remove('active');
-            const c = wrap.closest('.kingdom-col');
-            if (c) c.classList.remove('paint-find-open');
-            positionPaintingsColumn();
-          },
+          onClose: cleanup,
         });
+        // Full size normally; only on a very short window is it zoomed down
+        // just enough to fit, so it never runs off the screen.
+        function fit() {
+          if (!card.isConnected) return;
+          card.style.zoom = '1';
+          const natH = Math.max(scaler.offsetHeight, scaler.scrollHeight) || 1;
+          const availH = window.innerHeight - 24;
+          if (natH > availH) card.style.zoom = String(Math.max(0.4, availH / natH));
+        }
+        fit();
         requestAnimationFrame(fit);
+        if (window.ResizeObserver) new ResizeObserver(fit).observe(scaler);
       }
-      function closeFind() {
-        const ov = scaler.querySelector('.req-picker-overlay');
-        const x = ov && ov.querySelector('.req-picker-close');
-        if (x) { x.click(); return; }
-        paintFind.open = false;
-        area.style.display = 'none';
-        btn.classList.remove('active');
-        const c = wrap.closest('.kingdom-col');
-        if (c) c.classList.remove('paint-find-open');
-        positionPaintingsColumn();
-      }
-      btn.addEventListener('click', () => { if (paintFind.open) closeFind(); else openFind(); });
+      btn.addEventListener('click', () => { if (modal) closeFind(); else openFind(); });
 
-      // Menu/results on top, the Find icon underneath.
-      wrap.appendChild(area);
       wrap.appendChild(btn);
-      if (paintFind.open) setTimeout(() => { if (wrap.isConnected) openFind(); }, 0);
       return wrap;
     }
 
