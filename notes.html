@@ -1015,6 +1015,19 @@
       aspect-ratio: 1 / 1;
     }
 
+    /* One-Time Captures: bigger, easier-to-see icons. A wider column with
+       4 columns x 4 rows (16 entries) so every icon is larger AND all of them
+       still fit without scrolling. */
+    .req-picker-onetime-col:has(> .req-picker-grid--onetime) { width: 340px; }
+    .req-picker-grid--onetime { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; gap: 6px; }
+    .req-picker-grid--onetime .req-picker-item { min-height: 84px; padding: 4px 2px !important; }
+    .req-picker-grid--onetime .req-picker-item img { width: 74% !important; }
+    .req-picker-grid--onetime .req-picker-item span { font-size: .68rem !important; }
+
+    /* Spark Pylon's image is cropped tight and tall, so it fills its whole
+       card and looks far bigger than the other Captures. Draw it smaller. */
+    .req-picker-item img[alt="Spark Pylon"] { transform: scale(.62); transform-origin: center; }
+
     /* ── "Add a Requirement" popup, Abilities tab: "Extra Abilities"
        column, past the divider. 9 entries (3x3) - sized down the same way
        as "One-Time Captures" above so all of them fit without scrolling by
