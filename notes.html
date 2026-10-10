@@ -27,7 +27,7 @@
       top: 80px;
       right: 16px !important;
       left: auto !important;
-      width: min(560px, calc(100vw - 32px)) !important;
+      width: min(660px, calc(100vw - 32px)) !important;
       max-width: calc(100vw - 32px) !important;
       height: auto !important;
       flex: none !important;
@@ -44,7 +44,7 @@
     .paintings-fixed .zones-container.paint-grid {
       display: grid;
       grid-auto-flow: column;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: repeat(var(--paint-cols, 2), minmax(0, 1fr));
       grid-template-rows: repeat(var(--paint-rows, 5), auto);
       gap: 2px 8px;
       padding: 2px 8px 8px;
@@ -98,7 +98,7 @@
       transform: none !important;
       opacity: 1 !important;
     }
-    .paint-find-area .req-picker-popup { height: 640px !important; min-height: 0 !important; }
+    .paint-find-area .req-picker-popup { height: 640px !important; min-height: 0 !important; overflow: visible !important; max-height: none !important; }
     .paint-find-area .req-find-popup { height: auto !important; min-height: 0 !important; }
     .paint-find-area .req-find-popup,
     .paint-find-area .req-find-popup * { overflow: visible !important; max-height: none !important; }
@@ -2794,7 +2794,7 @@
       fullState.painting_destinations = {};
       fullState.shop_sales = {};
       if (fullState.kingdom_collapsed) {
-        for (const k of Object.keys(fullState.kingdom_collapsed)) fullState.kingdom_collapsed[k] = true; // collapse each overall Kingdom
+        for (const k of Object.keys(fullState.kingdom_collapsed)) fullState.kingdom_collapsed[k] = (k !== PAINTINGS_NOTES_KEY); // collapse each overall Kingdom (Paintings stays open)
       }
       saveFullState();
     }
@@ -2867,6 +2867,7 @@
       const header = col.querySelector('.kingdom-col-header');
       const zonesRoot = col.querySelector('.zones-container, .zones-split-wrap');
       if (!header || !zonesRoot) return;
+      if (kingdomKey === PAINTINGS_NOTES_KEY) return; // Paintings never collapses
       zonesRoot.style.display = collapsed ? 'none' : '';
       header.classList.toggle('collapsed', collapsed);
       if (fullState.kingdom_collapsed && kingdomKey in fullState.kingdom_collapsed) {
@@ -3265,7 +3266,10 @@
       imp('right', '16px');
       imp('left', 'auto');
       imp('bottom', 'auto');
-      imp('width', col.classList.contains('paint-find-open') ? 'min(800px, calc(100vw - 32px))' : 'min(560px, calc(100vw - 32px))');
+      const wide4 = col.classList.contains('paint-cols4');
+      const findOpen = col.classList.contains('paint-find-open');
+      const panelW = wide4 ? (findOpen ? 1020 : 980) : (findOpen ? 860 : 660);
+      imp('width', 'min(' + panelW + 'px, calc(100vw - 32px))');
       imp('max-width', 'calc(100vw - 32px)');
       imp('height', 'auto');
       imp('margin', '0');
@@ -3288,7 +3292,7 @@
 
       // Full-width scale for the Find menu (its layout never changes, only
       // how big it's drawn), applied at a shrink factor s.
-      const natH = findShown ? (scaler.offsetHeight || 1) : 0;
+      const natH = findShown ? (Math.max(scaler.offsetHeight, scaler.scrollHeight) || 1) : 0;
       const availW = findShown ? Math.max(120, (wrap.clientWidth || 560) - 16) : 0;
       const kW = findShown ? Math.min(1, availW / PAINT_FIND_VIRTUAL_W) : 1;
       function apply(s) {
@@ -3362,18 +3366,21 @@
       title.textContent = 'Paintings';
       title.style.color = '#e6e6ee';
 
-      const chevron = document.createElement('span');
-      chevron.className = 'col-chevron';
-      chevron.textContent = '▾';
+      // Paintings is its own always-open module: no chevron, no collapsing
+      // (not by clicking, and not by Collapse All / Clear either).
+      fullState.kingdom_collapsed[PAINTINGS_NOTES_KEY] = false;
+      header.style.cursor = 'default';
 
       header.appendChild(icon);
       header.appendChild(title);
-      header.appendChild(chevron);
 
       const zonesRoot = document.createElement('div');
       zonesRoot.className = 'zones-container paint-grid';
-      // Normal Paintings: 5 tall x 2 wide. Extra Paintings: 8 tall x 2 wide.
-      zonesRoot.style.setProperty('--paint-rows', fullState.settings.extra_paintings ? 8 : 5);
+      // Normal Paintings: 5 tall x 2 wide. Extra Paintings: 4 tall x 4 wide.
+      // (16 Paintings are laid out 4 x 4 - still filled in order, column by column.)
+      zonesRoot.style.setProperty('--paint-rows', fullState.settings.extra_paintings ? 4 : 5);
+      zonesRoot.style.setProperty('--paint-cols', fullState.settings.extra_paintings ? 4 : 2);
+      col.classList.toggle('paint-cols4', !!fullState.settings.extra_paintings);
 
       const irlActive = paintingIrlInfoActive();
 
@@ -3560,21 +3567,6 @@
       });
 
       const findWrap = buildPaintingFindSection();
-      if (fullState.kingdom_collapsed[PAINTINGS_NOTES_KEY]) {
-        zonesRoot.style.display = 'none';
-        findWrap.style.display = 'none';
-        header.classList.add('collapsed');
-      }
-      header.addEventListener('click', () => {
-        const willCollapse = zonesRoot.style.display !== 'none';
-        zonesRoot.style.display = willCollapse ? 'none' : '';
-        findWrap.style.display = willCollapse ? 'none' : '';
-        header.classList.toggle('collapsed', willCollapse);
-        fullState.kingdom_collapsed[PAINTINGS_NOTES_KEY] = willCollapse;
-        saveFullState();
-        positionPaintingsColumn();
-      });
-
       col.appendChild(header);
       col.appendChild(zonesRoot);
       col.appendChild(findWrap);
@@ -7293,10 +7285,10 @@
     // ── Init ────────────────────────────────────────────────────────
     document.getElementById('notes-page-clear').addEventListener('click', clearAllNotes);
     document.getElementById('notes-page-collapse-all').addEventListener('click', () => {
-      // Collapses every Kingdom column, including the Paintings column
-      // (PAINTINGS_NOTES_KEY) - Collapse All means everything collapses.
+      // Collapses every Kingdom column. The Paintings panel is its own
+      // always-open module and is left alone.
       for (const k of Object.keys(fullState.kingdom_collapsed)) {
-        fullState.kingdom_collapsed[k] = true;
+        fullState.kingdom_collapsed[k] = (k !== PAINTINGS_NOTES_KEY);
       }
       saveFullState();
       buildLoadingZonesContent();
