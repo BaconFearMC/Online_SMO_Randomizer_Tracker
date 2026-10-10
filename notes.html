@@ -1015,6 +1015,24 @@
       aspect-ratio: 1 / 1;
     }
 
+    /* Blurred-icon background fill for Capture/Ability tiles (10% opacity). */
+    .req-picker-blurfill {
+      position: absolute; inset: 0;
+      border-radius: inherit;
+      overflow: hidden;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .req-picker-blurfill-img {
+      position: absolute; inset: -14px;
+      background-size: cover;
+      background-position: center;
+      filter: blur(14px) saturate(1.4);
+      opacity: .10;
+    }
+    .req-picker-item > .req-picker-blurfill ~ img:not([class]),
+    .req-picker-item > .req-picker-blurfill ~ span:not([class]) { position: relative; z-index: 1; }
+
     /* One-Time Captures: bigger, easier-to-see icons. A wider column with
        4 columns x 4 rows (16 entries) so every icon is larger AND all of them
        still fit without scrolling. */
@@ -4606,6 +4624,18 @@
       grid.style.setProperty('--req-picker-rows', best.rows);
     }
 
+    // Capture / Ability tiles get a soft background made from a blurred copy
+    // of their own icon (very faint, ~10% opacity).
+    function addIconBlurFill(cell, src) {
+      const clip = document.createElement('div');
+      clip.className = 'req-picker-blurfill';
+      const inner = document.createElement('div');
+      inner.className = 'req-picker-blurfill-img';
+      inner.style.backgroundImage = 'url("' + String(src).replace(/"/g, '%22') + '")';
+      clip.appendChild(inner);
+      cell.insertBefore(clip, cell.firstChild);
+    }
+
     // ── Kingdom-only picker (Paintings column: a Painting's + button) ──
     // A single grid of all 18 Kingdoms, radio-select. Picking one calls
     // onPick(kingdomKey) and closes; there's no Captures/Abilities/Refights/
@@ -5357,6 +5387,7 @@
         img.alt = item.name;
         const label = document.createElement('span');
         label.textContent = item.name;
+        if (activeKind === 'captures' || activeKind === 'abilities') addIconBlurFill(cell, item.src);
         cell.appendChild(img);
         cell.appendChild(label);
         cell.addEventListener('click', () => {
@@ -6569,6 +6600,7 @@
         img.src = item.src;
         const label = document.createElement('span');
         label.textContent = item.name;
+        if (kind === 'captures' || kind === 'abilities') addIconBlurFill(cell, item.src);
         cell.appendChild(img);
         cell.appendChild(label);
         // A Shop's paired kingdom icon rides alongside its shop.png icon,
