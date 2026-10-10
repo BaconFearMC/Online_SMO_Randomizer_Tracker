@@ -3280,13 +3280,42 @@
     // menu open under it). Normal-size lists that already fit stay at 100%.
     function fitPaintingsGrid(col) {
       const grid = col && col.querySelector('.paint-grid');
-      if (!grid || grid.style.display === 'none') return;
-      grid.style.zoom = '1';
-      const over = col.scrollHeight - col.clientHeight;
-      if (over <= 0) return;
-      const natural = grid.offsetHeight || 1;
-      const z = Math.max(0.45, Math.min(1, (natural - over - 2) / natural));
-      grid.style.zoom = String(z);
+      if (!grid) return;
+      const wrap = col.querySelector('.paint-find-wrap');
+      const area = wrap && wrap.querySelector('.paint-find-area');
+      const scaler = area && area.querySelector('.paint-find-scaler');
+      const findShown = !!(area && scaler && area.style.display !== 'none');
+
+      // Full-width scale for the Find menu (its layout never changes, only
+      // how big it's drawn), applied at a shrink factor s.
+      const natH = findShown ? (scaler.offsetHeight || 1) : 0;
+      const availW = findShown ? Math.max(120, (wrap.clientWidth || 560) - 16) : 0;
+      const kW = findShown ? Math.min(1, availW / PAINT_FIND_VIRTUAL_W) : 1;
+      function apply(s) {
+        grid.style.zoom = String(s);
+        if (findShown) {
+          const k = kW * s;
+          scaler.style.transform = 'scale(' + k + ')';
+          area.style.width = Math.floor(PAINT_FIND_VIRTUAL_W * k) + 'px';
+          area.style.height = Math.ceil(natH * k) + 'px';
+        }
+      }
+
+      // Collapsed panel: nothing to fit.
+      if (grid.style.display === 'none') { apply(1); return; }
+
+      // Shrink the list and the Find menu together, by exactly as much as
+      // the space on screen requires, so the panel never needs scrolling.
+      let s = 1;
+      apply(s);
+      for (let i = 0; i < 6; i++) {
+        const over = col.scrollHeight - col.clientHeight;
+        if (over <= 0) break;
+        const shrinkable = grid.offsetHeight * s + natH * kW * s; // current drawn heights
+        if (shrinkable <= 1) break;
+        s = Math.max(0.2, s * Math.max(0.2, (shrinkable - over - 1) / shrinkable));
+        apply(s);
+      }
     }
     // Notes growing/shrinking as you type changes the height too.
     document.addEventListener('input', (e) => {
@@ -3576,15 +3605,8 @@
       // height in step so nothing is clipped or left as dead space.
       function fit() {
         if (!area.isConnected) return;
-        const col = wrap.closest('.kingdom-col');
-        const availW = Math.max(120, (wrap.clientWidth || 560) - 16);
-        // Scale to the panel's width only - never squash it further to fit
-        // the screen height (the panel scrolls instead), so it stays readable.
-        const k = Math.min(1, availW / PAINT_FIND_VIRTUAL_W);
-        const natH = scaler.offsetHeight || 1;
-        scaler.style.transform = 'scale(' + k + ')';
-        area.style.width = Math.floor(PAINT_FIND_VIRTUAL_W * k) + 'px';
-        area.style.height = Math.ceil(natH * k) + 'px';
+        // Sizing (width scale + shrink-to-fit with the list above) is done
+        // in one place so the panel never overflows the screen.
         positionPaintingsColumn();
       }
       if (window.ResizeObserver) new ResizeObserver(fit).observe(scaler);
