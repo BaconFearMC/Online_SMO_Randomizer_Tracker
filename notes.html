@@ -1030,6 +1030,8 @@
       filter: blur(14px) saturate(1.4);
       opacity: .10;
     }
+    .req-picker-item.selected > .req-picker-blurfill,
+    .req-picker-item[style*="gradient"] > .req-picker-blurfill { display: none; }
     .req-picker-item > .req-picker-blurfill ~ img:not([class]),
     .req-picker-item > .req-picker-blurfill ~ span:not([class]) { position: relative; z-index: 1; }
 
@@ -4634,6 +4636,15 @@
       inner.style.backgroundImage = 'url("' + String(src).replace(/"/g, '%22') + '")';
       clip.appendChild(inner);
       cell.insertBefore(clip, cell.firstChild);
+      // Tiles that already have a gradient background (their own or from the
+      // theme) don't get the blur fill - it would muddy the gradient. Checked
+      // once the tile is on screen, since styles aren't known before that.
+      let tries = 0;
+      (function check() {
+        if (!clip.isConnected) { if (++tries < 8 && cell.isConnected !== false) requestAnimationFrame(check); return; }
+        const bg = getComputedStyle(cell).backgroundImage || '';
+        if (bg.indexOf('gradient') !== -1) clip.remove();
+      })();
     }
 
     // ── Kingdom-only picker (Paintings column: a Painting's + button) ──
