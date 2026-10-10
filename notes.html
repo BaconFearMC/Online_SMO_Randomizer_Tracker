@@ -3608,56 +3608,22 @@
       btn.textContent = '🔍';
       btn.title = 'Find: pick something to see where it is marked';
 
-      // The Find menu opens as a floating, full-size window (the real Find
-      // picker, not a squashed copy) so it is always readable, and it never
-      // changes the size of the Paintings panel.
-      let modal = null;
-      function cleanup() {
-        if (modal) { modal.remove(); modal = null; }
-        document.removeEventListener('keydown', onKey, true);
-        paintFind.open = false;
-        btn.classList.remove('active');
-      }
-      function onKey(e) { if (e.key === 'Escape') closeFind(); }
-      function closeFind() {
-        const x = modal && modal.querySelector('.req-picker-close');
-        if (x) { x.click(); return; }
-        cleanup();
-      }
+      // Opens the very same Find menu as the Notes menu (the normal
+      // full-size picker, in find mode) - no scaled-down copy.
       function openFind() {
-        if (modal) return;
         paintFind.open = true;
         btn.classList.add('active');
-        modal = document.createElement('div');
-        modal.className = 'paint-find-modal';
-        const card = document.createElement('div');
-        card.className = 'paint-find-area paint-find-card';
-        const scaler = document.createElement('div');
-        scaler.className = 'paint-find-scaler';
-        card.appendChild(scaler);
-        modal.appendChild(card);
-        modal.addEventListener('mousedown', (e) => { if (e.target === modal) closeFind(); });
-        document.body.appendChild(modal);
-        document.addEventListener('keydown', onKey, true);
         openRequirementPicker(null, { requirements: [] }, null, () => {}, null, null, {
           findOnly: true,
-          host: scaler,
-          onClose: cleanup,
+          onClose: () => { paintFind.open = false; btn.classList.remove('active'); },
         });
-        // Full size normally; only on a very short window is it zoomed down
-        // just enough to fit, so it never runs off the screen.
-        function fit() {
-          if (!card.isConnected) return;
-          card.style.zoom = '1';
-          const natH = Math.max(scaler.offsetHeight, scaler.scrollHeight) || 1;
-          const availH = window.innerHeight - 24;
-          if (natH > availH) card.style.zoom = String(Math.max(0.4, availH / natH));
-        }
-        fit();
-        requestAnimationFrame(fit);
-        if (window.ResizeObserver) new ResizeObserver(fit).observe(scaler);
       }
-      btn.addEventListener('click', () => { if (modal) closeFind(); else openFind(); });
+      function closeFind() {
+        const x = document.querySelector('.req-picker-overlay .req-picker-close');
+        if (x) x.click();
+        else { paintFind.open = false; btn.classList.remove('active'); }
+      }
+      btn.addEventListener('click', () => { if (paintFind.open) closeFind(); else openFind(); });
 
       wrap.appendChild(btn);
       return wrap;
@@ -5713,8 +5679,8 @@
       // the very same picker, but it only ever looks things up, and it is
       // mounted inline in opts.host instead of as a full-screen overlay.
       const findOnly = !!opts.findOnly;
-      if (findOnly) {
-        if (opts.host) opts.host.querySelectorAll('.req-picker-overlay').forEach(p => p.remove());
+      if (findOnly && opts.host) {
+        opts.host.querySelectorAll('.req-picker-overlay').forEach(p => p.remove());
       } else {
         document.querySelectorAll('.req-picker-overlay').forEach(p => p.remove());
       }
@@ -7141,7 +7107,9 @@
       search.addEventListener('input', renderGrid);
 
       if (findOnly) {
-        overlay.classList.add('req-picker-overlay--inline');
+        // With a host it's mounted inline; with no host it's the normal
+        // full-size overlay (exactly the Notes-menu look), just in find mode.
+        if (opts.host) overlay.classList.add('req-picker-overlay--inline');
         setFindMode(true);
       }
       renderGrid();
