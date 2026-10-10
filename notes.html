@@ -72,7 +72,7 @@
     /* The real Notes-menu Find picker, laid out full size then scaled down. */
     .paint-find-area { align-self: flex-end; position: relative; overflow: hidden; }
     .paint-find-scaler {
-      width: 600px;
+      width: 900px;
       transform-origin: top left;
       position: absolute; top: 0; left: 0;
     }
@@ -3265,14 +3265,35 @@
       imp('right', '16px');
       imp('left', 'auto');
       imp('bottom', 'auto');
-      imp('width', 'min(560px, calc(100vw - 32px))');
+      imp('width', col.classList.contains('paint-find-open') ? 'min(800px, calc(100vw - 32px))' : 'min(560px, calc(100vw - 32px))');
       imp('max-width', 'calc(100vw - 32px)');
       imp('height', 'auto');
       imp('margin', '0');
       imp('transform', 'none');
       imp('max-height', Math.max(160, window.innerHeight - top - 12) + 'px');
+      fitPaintingsGrid(col);
     }
     window.addEventListener('resize', positionPaintingsColumn);
+
+    // Shrinks the Paintings list just enough that the panel fits on screen
+    // without a scrollbar (e.g. Extra Paintings' 8 rows, or with the Find
+    // menu open under it). Normal-size lists that already fit stay at 100%.
+    function fitPaintingsGrid(col) {
+      const grid = col && col.querySelector('.paint-grid');
+      if (!grid || grid.style.display === 'none') return;
+      grid.style.zoom = '1';
+      const over = col.scrollHeight - col.clientHeight;
+      if (over <= 0) return;
+      const natural = grid.offsetHeight || 1;
+      const z = Math.max(0.45, Math.min(1, (natural - over - 2) / natural));
+      grid.style.zoom = String(z);
+    }
+    // Notes growing/shrinking as you type changes the height too.
+    document.addEventListener('input', (e) => {
+      if (e.target && e.target.closest && e.target.closest('.paintings-fixed')) {
+        requestAnimationFrame(positionPaintingsColumn);
+      }
+    });
 
     // Uncollapses a Kingdom's whole section (if it was collapsed) and
     // smooth-scrolls it into view - used after picking a Kingdom as a
@@ -3522,6 +3543,7 @@
         header.classList.toggle('collapsed', willCollapse);
         fullState.kingdom_collapsed[PAINTINGS_NOTES_KEY] = willCollapse;
         saveFullState();
+        positionPaintingsColumn();
       });
 
       col.appendChild(header);
@@ -3537,7 +3559,7 @@
     // Find icon; picking something shows its results in the same spot,
     // and they stay until the X is clicked.
     const paintFind = { open: false };
-    const PAINT_FIND_VIRTUAL_W = 600; // width the menu is laid out at before scaling down (smaller = bigger on screen)
+    const PAINT_FIND_VIRTUAL_W = 900; // width the menu is laid out at before scaling down (same layout as the big menu)
 
     function buildPaintingFindSection() {
       const wrap = document.createElement('div');
@@ -3578,6 +3600,7 @@
         paintFind.open = true;
         area.style.display = '';
         btn.classList.add('active');
+        if (wrap.closest('.kingdom-col')) wrap.closest('.kingdom-col').classList.add('paint-find-open');
         openRequirementPicker(null, { requirements: [] }, null, () => {}, null, null, {
           findOnly: true,
           host: scaler,
@@ -3585,6 +3608,8 @@
             paintFind.open = false;
             area.style.display = 'none';
             btn.classList.remove('active');
+            const c = wrap.closest('.kingdom-col');
+            if (c) c.classList.remove('paint-find-open');
             positionPaintingsColumn();
           },
         });
@@ -3597,6 +3622,8 @@
         paintFind.open = false;
         area.style.display = 'none';
         btn.classList.remove('active');
+        const c = wrap.closest('.kingdom-col');
+        if (c) c.classList.remove('paint-find-open');
         positionPaintingsColumn();
       }
       btn.addEventListener('click', () => { if (paintFind.open) closeFind(); else openFind(); });
