@@ -255,21 +255,27 @@
     .req-timer-center {
       position: absolute; left: 50%; top: 50%; z-index: 2;
       display: flex; flex-direction: column; align-items: center; gap: 4px;
-      padding: 10px 14px; border-radius: 16px; width: 120px; margin-left: -60px; margin-top: -58px;
+      padding: 8px 10px; border-radius: 14px; width: 96px; margin-left: -48px; margin-top: -46px;
       border: 2px solid color-mix(in srgb, var(--ability-color, #8cb4ff) 70%, transparent);
       background: linear-gradient(color-mix(in srgb, var(--ability-color, #8cb4ff) 22%, transparent), color-mix(in srgb, var(--ability-color, #8cb4ff) 22%, transparent)), var(--bg, #1a1a22);
       box-shadow: 0 0 26px color-mix(in srgb, var(--ability-color, #8cb4ff) 40%, transparent);
       font-size: .78rem; font-weight: 700; text-align: center;
       transition: transform .45s cubic-bezier(.22,1,.36,1);
     }
-    .req-timer-center img { width: 64px; height: 64px; object-fit: contain; }
+    .req-timer-center img { width: 48px; height: 48px; object-fit: contain; }
     .req-timer-radial .req-picker-timer-opt {
-      position: absolute; z-index: 1; width: 130px; height: 130px; margin-left: -65px; margin-top: -65px;
+      position: absolute; z-index: 1; width: 104px; height: 104px; margin-left: -52px; margin-top: -52px;
       background: linear-gradient(color-mix(in srgb, var(--ability-color, #8cb4ff) 16%, transparent), color-mix(in srgb, var(--ability-color, #8cb4ff) 16%, transparent)), var(--bg, #1a1a22);
       opacity: 0; transition: transform .4s cubic-bezier(.34,1.56,.64,1), opacity .3s ease, background .15s ease;
     }
     .req-timer-radial .req-picker-timer-opt:hover { filter: brightness(1.25); }
     .req-timer-radial .req-picker-timer-opt.selected { border-width: 2px; }
+    .req-timer-radial .req-picker-timer-opt.is-missing { filter: grayscale(.9) brightness(.8); cursor: default; }
+    .req-timer-radial .req-picker-timer-opt.is-missing:hover { filter: grayscale(.9) brightness(.8); }
+    .req-timer-radial .req-picker-timer-opt.is-found { box-shadow: 0 0 20px color-mix(in srgb, var(--ability-color, #8cb4ff) 45%, transparent); }
+    .req-timer-radial .req-timer-badge { top: 4px; right: 4px; width: 22px; height: 22px; font-size: .8rem; }
+    .req-timer-radial .is-found .req-timer-badge { background: #2fbf71; color: #08210f; border-color: #2fbf71; }
+    .req-timer-center .req-timer-count { font-size: .68rem; font-weight: 600; opacity: .8; }
   </style>
   <style>
     /* Collapsed zone (e.g. Rolling On): greyed out and inert, but still
@@ -2097,7 +2103,7 @@
 
     // selectedKeys: array of currently-picked timer keys (for highlighting).
     // onPick(opt) runs when one of the four is clicked.
-    function openTimerChallengeSubmenu(anchorEl, selectedKeys, onPick) {
+    function openTimerChallengeSubmenu(anchorEl, selectedKeys, onPick, findInfo) {
       document.querySelectorAll('.req-timer-radial').forEach(m => m.remove());
       const opts = visibleTimerOptions();
       if (!opts.length) return;
@@ -2110,14 +2116,14 @@
       if (opts.length === 4) {
         const o = TIMER_CHALLENGE_OPTIONS;
         order = [o[0], o[2], o[1], o[3]];
-        offs = [[-170,-150],[170,-150],[-170,150],[170,150]];
+        offs = [[-122,-108],[122,-108],[-122,108],[122,108]];
       } else if (opts.length === 3) {
-        offs = [[0,-190],[-185,130],[185,130]];
+        offs = [[0,-125],[-125,92],[125,92]];
       } else {
-        offs = [[-210,0],[210,0]];
+        offs = [[-130,0],[130,0]];
       }
-      const maxX = Math.max(...offs.map(o => Math.abs(o[0]))) + 75;
-      const maxY = Math.max(...offs.map(o => Math.abs(o[1]))) + 75;
+      const maxX = Math.max(...offs.map(o => Math.abs(o[0]))) + 60;
+      const maxY = Math.max(...offs.map(o => Math.abs(o[1]))) + 60;
       const sc = Math.min(1, (window.innerWidth - 16) / (2 * maxX), (window.innerHeight - 16) / (2 * maxY));
       offs = offs.map(o => [Math.round(o[0] * sc), Math.round(o[1] * sc)]);
 
@@ -2138,12 +2144,20 @@
       const clabel = document.createElement('span');
       clabel.textContent = TIMER_CHALLENGE_NAME;
       center.appendChild(cimg); center.appendChild(clabel);
+      let foundTotal = 0;
+      if (findInfo) order.forEach(opt => { if (findInfo.linesFor(opt).length) foundTotal++; });
+      if (findInfo) {
+        const cc = document.createElement('span');
+        cc.className = 'req-timer-count';
+        cc.textContent = foundTotal + ' of ' + order.length + ' marked';
+        center.appendChild(cc);
+      }
       overlay.appendChild(center);
 
       const cx = window.innerWidth / 2, cy = window.innerHeight / 2;
       const ar = (ai || anchorEl).getBoundingClientRect();
       const startDx = ar.left + ar.width / 2 - cx, startDy = ar.top + ar.height / 2 - cy;
-      const startScale = Math.max(.25, Math.min(1, ar.width / 120));
+      const startScale = Math.max(.25, Math.min(1, ar.width / 96));
       center.style.transition = 'none';
       center.style.transform = 'translate(' + startDx + 'px,' + startDy + 'px) scale(' + startScale + ')';
       if (ai) ai.style.visibility = 'hidden';
@@ -2163,7 +2177,21 @@
         const label = document.createElement('span');
         label.textContent = opt.name;
         btn.appendChild(img); btn.appendChild(label);
-        btn.addEventListener('click', (e) => { e.stopPropagation(); closeMenu(); onPick(opt); });
+        let isFound = true;
+        if (findInfo) {
+          isFound = findInfo.linesFor(opt).length > 0;
+          btn.classList.add(isFound ? 'is-found' : 'is-missing');
+          const badge = document.createElement('div');
+          badge.className = 'req-timer-badge';
+          badge.textContent = isFound ? '✓' : '✕';
+          btn.appendChild(badge);
+          btn.title = isFound ? 'Click to see where' : 'Not marked anywhere yet';
+        }
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (findInfo && !isFound) return;
+          closeMenu(); onPick(opt);
+        });
         overlay.appendChild(btn);
         tiles.push({ btn, dx, dy });
 
@@ -6465,108 +6493,6 @@
         requestAnimationFrame(() => popOverlay.classList.add('active'));
       }
 
-      // ── Timer Challenges search result: 2x2 board of all four ───────
-      // Shows P-Switches / Scarecrows (top row) and Cappy Flowers / Notes
-      // (bottom row), each marked found/not-found, with every zone that
-      // has it picked as a requirement.
-      function showTimerChallengesPopup() {
-        document.querySelectorAll('.req-find-popup-overlay').forEach(p => p.remove());
-        const popupColor = 'var(--ability-color)';
-        const popOverlay = document.createElement('div');
-        popOverlay.className = 'req-find-popup-overlay';
-        const pop = document.createElement('div');
-        pop.className = 'req-find-popup req-find-popup--timer';
-        pop.style.setProperty('--popup-color', popupColor);
-        pop.addEventListener('click', (e) => e.stopPropagation());
-        popOverlay.appendChild(pop);
-
-        const head = document.createElement('div');
-        head.className = 'req-find-popup-head';
-        const headIcon = document.createElement('img');
-        headIcon.className = 'req-find-popup-head-icon';
-        headIcon.src = TIMER_CHALLENGE_OPTIONS[0].src;
-        headIcon.alt = 'Timer Challenges';
-        const label = document.createElement('div');
-        label.className = 'req-find-popup-head-text';
-        label.textContent = 'Timer Challenges';
-        const closeBtn = document.createElement('button');
-        closeBtn.type = 'button';
-        closeBtn.className = 'req-find-popup-close';
-        closeBtn.textContent = '✕';
-        closeBtn.title = TIPS.close;
-        closeBtn.addEventListener('click', () => closeTimerPopup());
-        head.appendChild(headIcon); head.appendChild(label); head.appendChild(closeBtn);
-        pop.appendChild(head);
-
-        const body = document.createElement('div');
-        body.className = 'req-timer-grid';
-        // Options are ordered column-first (left col, then right col);
-        // re-order row-first so the grid reads P-Switches | Scarecrows
-        // on top and Cappy Flowers | Notes underneath.
-        const o = TIMER_CHALLENGE_OPTIONS;
-        const visKeys = visibleTimerOptions().map(v => v.key);
-        const rowFirst = [o[0], o[2], o[1], o[3]].filter(x => visKeys.includes(x.key));
-        if (rowFirst.length < 2) body.style.gridTemplateColumns = '1fr';
-        let foundCount = 0;
-        rowFirst.forEach(opt => {
-          const lines = buildRequirementLines('abilities', opt.key, undefined, true);
-          const found = lines.length > 0;
-          if (found) foundCount++;
-          const card = document.createElement('div');
-          card.className = 'req-timer-card' + (found ? ' is-found' : '');
-          const badge = document.createElement('div');
-          badge.className = 'req-timer-badge';
-          badge.textContent = found ? '✓' : '✕';
-          const img = document.createElement('img');
-          img.className = 'req-timer-icon';
-          img.src = opt.src; img.alt = opt.name;
-          const nm = document.createElement('div');
-          nm.className = 'req-timer-name';
-          nm.textContent = opt.name;
-          const st = document.createElement('div');
-          st.className = 'req-timer-status';
-          st.textContent = found ? 'Found' : 'Not marked yet';
-          card.appendChild(badge); card.appendChild(img); card.appendChild(nm); card.appendChild(st);
-          if (found) {
-            const where = document.createElement('div');
-            where.className = 'req-timer-where';
-            lines.forEach(l => {
-              const row = document.createElement('div');
-              row.className = 'req-timer-where-line';
-              if (l.fromIcon) {
-                const ki = document.createElement('img');
-                ki.src = l.fromIcon; ki.alt = l.kingdomLabel;
-                row.appendChild(ki);
-              }
-              const t = document.createElement('span');
-              t.textContent = l.fromLabel + ' (' + l.kingdomLabel + ')';
-              if (l.fromColor) t.style.color = l.fromColor;
-              row.appendChild(t);
-              where.appendChild(row);
-            });
-            card.appendChild(where);
-          }
-          body.appendChild(card);
-        });
-        pop.appendChild(body);
-        const sum = document.createElement('div');
-        sum.className = 'req-timer-summary';
-        sum.textContent = foundCount + ' of ' + rowFirst.length + ' marked';
-        pop.appendChild(sum);
-        (findOnly && opts.host ? opts.host : document.body).appendChild(popOverlay);
-
-        function onPopKeyDown(e) { if (e.key === 'Escape') closeTimerPopup(); }
-        function closeTimerPopup() {
-          popOverlay.classList.remove('active');
-          document.removeEventListener('keydown', onPopKeyDown);
-          setTimeout(() => popOverlay.remove(), 300);
-        }
-        popOverlay.addEventListener('click', (e) => { if (e.target === popOverlay) closeTimerPopup(); });
-        document.addEventListener('keydown', onPopKeyDown);
-        void popOverlay.offsetWidth;
-        requestAnimationFrame(() => popOverlay.classList.add('active'));
-      }
-
       // ── Refights search result: ONE Dragon tile -> 3x2 boss layout ───
       function buildRefightOverviewCell() {
         const dragon = APC.REFIGHTS.find(i => /dragon/i.test((i.name || '') + ' ' + (i.key || ''))) || APC.REFIGHTS[0];
@@ -7004,7 +6930,9 @@
             if (findModeActive) {
               // Find covers all four Timer Challenges at once (2x2 board).
               setFindMode(false);
-              showTimerChallengesPopup();
+              openTimerChallengeSubmenu(cell, [], (opt) => showFindResultsPopup('abilities', opt.key), {
+                linesFor: (opt) => buildRequirementLines('abilities', opt.key, undefined, true),
+              });
               return;
             }
             bounce(cell);
