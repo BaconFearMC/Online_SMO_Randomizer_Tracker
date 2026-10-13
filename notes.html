@@ -164,6 +164,114 @@
     .req-refights-desc { flex: 0 0 auto; margin: 0; font-size: clamp(.7rem, 1.7vh, 1rem); line-height: 1.3; text-align: center; opacity: .9; }
   </style>
   <style>
+    /* ── Paintings grid: stop rows overlapping neighbours (10 & 16 modes) ──
+       Each cell is a fixed fraction of the panel, so a long row (source
+       icon + name + arrow + dest icon + dest name + connection label) used
+       to spill into the next column. Now: the row clips to its own cell,
+       its contents wrap onto a second line instead of overflowing, and
+       long names ellipsize. */
+    .paintings-fixed .paint-grid .zone-row { overflow: hidden; box-sizing: border-box; max-width: 100%; }
+    .paintings-fixed .paint-grid .zone-row-top,
+    .paintings-fixed .paint-grid .zone-reqs {
+      min-width: 0; max-width: 100%; flex-wrap: wrap; row-gap: 2px; column-gap: 4px; box-sizing: border-box;
+    }
+    .paintings-fixed .paint-grid .zone-reqs > * { min-width: 0; max-width: 100%; }
+    .paintings-fixed .paint-grid .zone-reqs .zone-name,
+    .paintings-fixed .paint-grid .zone-reqs .zone-name.zone-dest-name {
+      flex: 0 1 auto; min-width: 0; max-width: 100%;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .paintings-fixed .paint-grid .zone-name.zone-name--stacked { min-width: 0; max-width: 100%; overflow: hidden; }
+    .paintings-fixed .paint-grid .zone-name-main,
+    .paintings-fixed .paint-grid .zone-name-sub { overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+    .paintings-fixed .paint-grid .zone-irl-connection-label {
+      flex: 1 1 0; min-width: 0; max-width: 100%;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .paintings-fixed .paint-grid .zone-dest-arrow { flex: 0 0 auto; }
+    .paintings-fixed .paint-grid .zone-req-icon,
+    .paintings-fixed .paint-grid .zone-irl-connection-icon,
+    .paintings-fixed .paint-grid .zone-req-kingdom-wrap { flex: 0 0 auto; max-width: 100%; }
+    .paintings-fixed .paint-grid .zone-note,
+    .paintings-fixed .paint-grid textarea { max-width: 100%; box-sizing: border-box; }
+
+    /* ── Timer Challenges Find: 2x2 status board ── */
+    .req-find-popup--timer { max-width: 760px; overflow: visible; }
+    .req-timer-grid {
+      display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-auto-flow: row; gap: 14px; padding: 18px;
+    }
+    .req-timer-card {
+      --tc: var(--ability-color, #8cb4ff);
+      position: relative; display: flex; flex-direction: column; align-items: center; gap: 8px;
+      padding: 16px 12px 14px; min-width: 0; border-radius: 14px; text-align: center;
+      border: 2px solid color-mix(in srgb, var(--tc) 28%, transparent);
+      background: color-mix(in srgb, var(--tc) 6%, rgba(0,0,0,.25));
+      opacity: .72; transition: transform .15s ease, opacity .15s ease;
+    }
+    .req-timer-card:hover { transform: translateY(-2px); opacity: .9; }
+    .req-timer-card.is-found {
+      opacity: 1;
+      border-color: color-mix(in srgb, var(--tc) 75%, transparent);
+      background: linear-gradient(145deg, color-mix(in srgb, var(--tc) 26%, transparent), color-mix(in srgb, var(--tc) 8%, transparent));
+      box-shadow: 0 0 22px color-mix(in srgb, var(--tc) 30%, transparent);
+    }
+    .req-timer-card img.req-timer-icon { width: 64px; height: 64px; object-fit: contain; }
+    .req-timer-card:not(.is-found) img.req-timer-icon { filter: grayscale(1) brightness(.8); }
+    .req-timer-name { font-weight: 700; font-size: 1.05rem; }
+    .req-timer-badge {
+      position: absolute; top: 8px; right: 8px; width: 26px; height: 26px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: .95rem;
+      background: rgba(255,255,255,.1); color: var(--text-dim, #9aa0ac); border: 1px solid rgba(255,255,255,.2);
+    }
+    .req-timer-card.is-found .req-timer-badge { background: #2fbf71; color: #08210f; border-color: #2fbf71; }
+    .req-timer-status { font-size: .72rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; opacity: .8; }
+    .req-timer-card.is-found .req-timer-status { color: #6fe3a1; opacity: 1; }
+    .req-timer-where { display: flex; flex-direction: column; gap: 3px; width: 100%; font-size: .8rem; font-weight: 600; }
+    .req-timer-where-line { display: flex; align-items: center; justify-content: center; gap: 6px; min-width: 0; }
+    .req-timer-where-line img { width: 20px; height: 20px; object-fit: contain; flex: 0 0 auto; }
+    .req-timer-where-line span { overflow-wrap: anywhere; }
+    .req-timer-summary { text-align: center; padding: 0 18px 16px; font-size: .85rem; opacity: .8; }
+  </style>
+  <style>
+    /* ── Cog menu: Timer Challenges sub-bullets ── */
+    .req-picker-cog-row--sub { padding-left: 30px; font-size: .8rem; }
+    .req-picker-cog-row--sub::before { content: '•'; opacity: .6; margin-right: -2px; }
+    .req-picker-cog-row--sub img { width: 18px; height: 18px; }
+    .req-picker-cog-row--sub.is-dim { opacity: .45; }
+
+    /* ── Timer Challenges radial menu ── */
+    .req-timer-radial {
+      position: fixed; inset: 0; z-index: 10001;
+      background: rgba(0,0,0,0); transition: background .3s ease;
+    }
+    .req-timer-radial.active { background: rgba(0,0,0,.6); }
+    .req-timer-radial svg.req-timer-lines { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+    .req-timer-radial svg.req-timer-lines line {
+      stroke: var(--line-c, #8cb4ff); stroke-width: 3; stroke-linecap: round;
+      filter: drop-shadow(0 0 4px var(--line-c, #8cb4ff));
+      transition: stroke-dashoffset .35s ease;
+    }
+    .req-timer-center {
+      position: absolute; left: 50%; top: 50%; z-index: 2;
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+      padding: 10px 14px; border-radius: 16px; width: 120px; margin-left: -60px; margin-top: -58px;
+      border: 2px solid color-mix(in srgb, var(--ability-color, #8cb4ff) 70%, transparent);
+      background: linear-gradient(color-mix(in srgb, var(--ability-color, #8cb4ff) 22%, transparent), color-mix(in srgb, var(--ability-color, #8cb4ff) 22%, transparent)), var(--bg, #1a1a22);
+      box-shadow: 0 0 26px color-mix(in srgb, var(--ability-color, #8cb4ff) 40%, transparent);
+      font-size: .78rem; font-weight: 700; text-align: center;
+      transition: transform .45s cubic-bezier(.22,1,.36,1);
+    }
+    .req-timer-center img { width: 64px; height: 64px; object-fit: contain; }
+    .req-timer-radial .req-picker-timer-opt {
+      position: absolute; z-index: 1; width: 130px; height: 130px; margin-left: -65px; margin-top: -65px;
+      background: linear-gradient(color-mix(in srgb, var(--ability-color, #8cb4ff) 16%, transparent), color-mix(in srgb, var(--ability-color, #8cb4ff) 16%, transparent)), var(--bg, #1a1a22);
+      opacity: 0; transition: transform .4s cubic-bezier(.34,1.56,.64,1), opacity .3s ease, background .15s ease;
+    }
+    .req-timer-radial .req-picker-timer-opt:hover { filter: brightness(1.25); }
+    .req-timer-radial .req-picker-timer-opt.selected { border-width: 2px; }
+  </style>
+  <style>
     /* Collapsed zone (e.g. Rolling On): greyed out and inert, but still
        visible/in-place, rather than display:none removing it entirely. */
     .zone-greyed-out {
@@ -1937,6 +2045,44 @@
     function isTimerChallengeItem(item) {
       return !!item && item.name === TIMER_CHALLENGE_NAME;
     }
+    // Which of the four Timer Challenges are switched off (⚙ menu sub-bullets).
+    // Cappy Flowers starts hidden. Own in-memory list + localStorage key, same
+    // reasoning as hiddenExtraAbilities above.
+    const HIDDEN_TIMER_KEY = 'notes_hidden_timer_challenges';
+    const HIDDEN_TIMER_DEFAULT = ['AbilityCappyFlowers'];
+    let hiddenTimerChallenges = null;
+    function getHiddenTimerKeys() {
+      if (hiddenTimerChallenges) return hiddenTimerChallenges;
+      let list = null;
+      try { const raw = localStorage.getItem(HIDDEN_TIMER_KEY); if (raw) list = JSON.parse(raw); } catch (e) {}
+      if (!Array.isArray(list)) {
+        const h = fullState.settings && fullState.settings.hidden_timer_challenges;
+        list = Array.isArray(h) ? h.slice() : HIDDEN_TIMER_DEFAULT.slice();
+      }
+      hiddenTimerChallenges = list;
+      return hiddenTimerChallenges;
+    }
+    function setTimerChallengeHidden(key, hidden) {
+      const cur = getHiddenTimerKeys().filter(k => k !== key);
+      if (hidden) cur.push(key);
+      hiddenTimerChallenges = cur;
+      try { localStorage.setItem(HIDDEN_TIMER_KEY, JSON.stringify(cur)); } catch (e) {}
+      fullState.settings.hidden_timer_challenges = cur.slice();
+      saveFullState();
+    }
+    function visibleTimerOptions() {
+      const hidden = getHiddenTimerKeys();
+      return TIMER_CHALLENGE_OPTIONS.filter(o => !hidden.includes(o.key));
+    }
+    // Extra Abilities list mapper: with 0 visible the Timer Challenges tile
+    // disappears; with exactly 1 visible it is swapped for that ability itself.
+    function resolveTimerExtra(item) {
+      if (!isTimerChallengeItem(item)) return item;
+      const v = visibleTimerOptions();
+      if (!v.length) return null;
+      if (v.length === 1) return v[0];
+      return item;
+    }
     (function patchFindItemForTimer() {
       const orig = APC.findItem;
       try {
@@ -1952,44 +2098,109 @@
     // selectedKeys: array of currently-picked timer keys (for highlighting).
     // onPick(opt) runs when one of the four is clicked.
     function openTimerChallengeSubmenu(anchorEl, selectedKeys, onPick) {
-      document.querySelectorAll('.req-picker-timer-submenu').forEach(m => m.remove());
-      const menu = document.createElement('div');
-      menu.className = 'req-picker-timer-submenu';
-      document.body.appendChild(menu);
-      TIMER_CHALLENGE_OPTIONS.forEach(opt => {
+      document.querySelectorAll('.req-timer-radial').forEach(m => m.remove());
+      const opts = visibleTimerOptions();
+      if (!opts.length) return;
+      if (opts.length === 1) { onPick(opts[0]); return; }
+
+      // Offsets from screen centre (px) per layout. Options keep their
+      // natural order (P-Switches, Cappy Flowers, Scarecrows, Notes) except
+      // the 4-way X, which reads P|Scarecrows over Cappy|Notes.
+      let order = opts, offs;
+      if (opts.length === 4) {
+        const o = TIMER_CHALLENGE_OPTIONS;
+        order = [o[0], o[2], o[1], o[3]];
+        offs = [[-170,-150],[170,-150],[-170,150],[170,150]];
+      } else if (opts.length === 3) {
+        offs = [[0,-190],[-185,130],[185,130]];
+      } else {
+        offs = [[-210,0],[210,0]];
+      }
+      const maxX = Math.max(...offs.map(o => Math.abs(o[0]))) + 75;
+      const maxY = Math.max(...offs.map(o => Math.abs(o[1]))) + 75;
+      const sc = Math.min(1, (window.innerWidth - 16) / (2 * maxX), (window.innerHeight - 16) / (2 * maxY));
+      offs = offs.map(o => [Math.round(o[0] * sc), Math.round(o[1] * sc)]);
+
+      const overlay = document.createElement('div');
+      overlay.className = 'req-timer-radial';
+      const NS = 'http://www.w3.org/2000/svg';
+      const svg = document.createElementNS(NS, 'svg');
+      svg.setAttribute('class', 'req-timer-lines');
+      overlay.appendChild(svg);
+
+      // Centre: the Timer Challenges icon, flown in from its tile.
+      const ai = anchorEl.querySelector('img');
+      const center = document.createElement('div');
+      center.className = 'req-timer-center';
+      const cimg = document.createElement('img');
+      cimg.src = (ai && ai.src) || TIMER_CHALLENGE_OPTIONS[0].src;
+      cimg.alt = TIMER_CHALLENGE_NAME;
+      const clabel = document.createElement('span');
+      clabel.textContent = TIMER_CHALLENGE_NAME;
+      center.appendChild(cimg); center.appendChild(clabel);
+      overlay.appendChild(center);
+
+      const cx = window.innerWidth / 2, cy = window.innerHeight / 2;
+      const ar = (ai || anchorEl).getBoundingClientRect();
+      const startDx = ar.left + ar.width / 2 - cx, startDy = ar.top + ar.height / 2 - cy;
+      const startScale = Math.max(.25, Math.min(1, ar.width / 120));
+      center.style.transition = 'none';
+      center.style.transform = 'translate(' + startDx + 'px,' + startDy + 'px) scale(' + startScale + ')';
+      if (ai) ai.style.visibility = 'hidden';
+
+      const tiles = [];
+      order.forEach((opt, i) => {
+        const [dx, dy] = offs[i];
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'req-picker-timer-opt';
         btn.classList.toggle('selected', selectedKeys.includes(opt.key));
+        btn.style.left = (cx + dx) + 'px';
+        btn.style.top = (cy + dy) + 'px';
+        btn.style.transform = 'translate(' + (-dx) + 'px,' + (-dy) + 'px) scale(.3)';
         const img = document.createElement('img');
-        img.src = opt.src;
-        img.alt = opt.name;
+        img.src = opt.src; img.alt = opt.name;
         const label = document.createElement('span');
         label.textContent = opt.name;
-        btn.appendChild(img);
-        btn.appendChild(label);
-        btn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          closeMenu();
-          onPick(opt);
-        });
-        menu.appendChild(btn);
+        btn.appendChild(img); btn.appendChild(label);
+        btn.addEventListener('click', (e) => { e.stopPropagation(); closeMenu(); onPick(opt); });
+        overlay.appendChild(btn);
+        tiles.push({ btn, dx, dy });
+
+        const line = document.createElementNS(NS, 'line');
+        line.setAttribute('x1', cx); line.setAttribute('y1', cy);
+        line.setAttribute('x2', cx + dx); line.setAttribute('y2', cy + dy);
+        const len = Math.hypot(dx, dy);
+        line.style.strokeDasharray = len;
+        line.style.strokeDashoffset = len;
+        line.style.setProperty('--line-c', 'var(--ability-color, #8cb4ff)');
+        svg.appendChild(line);
       });
-      void menu.offsetWidth;
-      const r = menu.getBoundingClientRect();
-      menu.style.left = Math.round((window.innerWidth - r.width) / 2) + 'px';
-      menu.style.top = Math.round((window.innerHeight - r.height) / 2) + 'px';
-      function onDocClick(e) { if (!menu.contains(e.target) && e.target !== anchorEl) closeMenu(); }
+      document.body.appendChild(overlay);
+      void overlay.offsetWidth;
+
+      requestAnimationFrame(() => {
+        overlay.classList.add('active');
+        center.style.transition = '';
+        center.style.transform = 'translate(0,0) scale(1)';
+        // Once the icon lands: draw lines, then pop the tiles out.
+        setTimeout(() => {
+          svg.querySelectorAll('line').forEach(l => { l.style.strokeDashoffset = 0; });
+          tiles.forEach((t, i) => {
+            setTimeout(() => { t.btn.style.opacity = 1; t.btn.style.transform = 'translate(0,0) scale(1)'; }, 120 + i * 70);
+          });
+        }, 380);
+      });
+
       function onKeyDown(e) { if (e.key === 'Escape') closeMenu(); }
       function closeMenu() {
-        menu.classList.remove('active');
-        document.removeEventListener('click', onDocClick, true);
+        overlay.classList.remove('active');
         document.removeEventListener('keydown', onKeyDown);
-        setTimeout(() => menu.remove(), 200);
+        if (ai) ai.style.visibility = '';
+        setTimeout(() => overlay.remove(), 250);
       }
-      setTimeout(() => document.addEventListener('click', onDocClick, true), 0);
+      overlay.addEventListener('click', (e) => { if (e.target === overlay || e.target === svg) closeMenu(); });
       document.addEventListener('keydown', onKeyDown);
-      requestAnimationFrame(() => menu.classList.add('active'));
     }
 
     const COIN_GRIND_OPTIONS = [
@@ -2212,6 +2423,7 @@
       show_kingdomsubicons: true,  // Small kingdom+subarea icon next to each zone's name; default on
       hide_useless_captures: true, // Hide the "Useless Captures for Sale" column in the Items For Sale picker; default on
       useless_capture_keys: null,  // null = use APC.USELESS_CAPTURE_DEFAULT_KEYS; else the user's saved list (Notes Settings > Edit List)
+      hidden_timer_challenges: ['AbilityCappyFlowers'], // Timer Challenges switched off via the cog sub-bullets; Cappy Flowers hidden by default
       hidden_extra_abilities: [],  // keys of Extra Abilities the user hid via the cog in the Add a Requirement popup; hidden from that popup AND the Items For Sale picker's Extra Abilities column
       zone_names:    {},           // custom loading-zone name overrides
     };
@@ -5559,7 +5771,7 @@
         // dangling single-item row.
         if (activeKind === 'abilities') {
           const hiddenExtraKeys = getHiddenExtraAbilityKeys();
-          const extraSource = APC.SHOP_ABILITY_EXTRAS.filter(i => i.key !== 'AbilityNPCTalking' && !hiddenExtraKeys.includes(i.key));
+          const extraSource = APC.SHOP_ABILITY_EXTRAS.filter(i => i.key !== 'AbilityNPCTalking' && !hiddenExtraKeys.includes(i.key)).map(resolveTimerExtra).filter(Boolean);
           const extraList = q ? extraSource.filter(i => i.name.toLowerCase().includes(q)) : extraSource;
           extraList.forEach(item => extrasGrid.appendChild(buildSaleCell(item)));
           packExtrasGrid(extrasGrid, 2);
@@ -6029,10 +6241,37 @@
           });
           row.appendChild(img); row.appendChild(name); row.appendChild(cb);
           cogMenu.appendChild(row);
+          if (isTimerChallengeItem(item)) {
+            const hiddenT = new Set(getHiddenTimerKeys());
+            const subRows = [];
+            const refreshDim = () => subRows.forEach(r => r.classList.toggle('is-dim', !cb.checked));
+            TIMER_CHALLENGE_OPTIONS.forEach(opt => {
+              const sr = document.createElement('label');
+              sr.className = 'req-picker-cog-row req-picker-cog-row--sub';
+              const si = document.createElement('img');
+              si.src = opt.src; si.alt = '';
+              si.onerror = () => { si.style.display = 'none'; };
+              const sn = document.createElement('span');
+              sn.textContent = opt.name;
+              const scb = document.createElement('input');
+              scb.type = 'checkbox';
+              scb.checked = !hiddenT.has(opt.key);
+              scb.addEventListener('change', () => {
+                setTimerChallengeHidden(opt.key, !scb.checked);
+                buildAbilityExtrasGrid();
+                applyFindTargetStyling();
+              });
+              sr.appendChild(si); sr.appendChild(sn); sr.appendChild(scb);
+              cogMenu.appendChild(sr);
+              subRows.push(sr);
+            });
+            cb.addEventListener('change', refreshDim);
+            refreshDim();
+          }
         });
         const hint = document.createElement('div');
         hint.className = 'req-picker-cog-hint';
-        hint.textContent = 'Unticked = hidden here and in Items For Sale.';
+        hint.textContent = 'Unticked = hidden here and in Items For Sale. With one Timer Challenge left, it replaces the Timer Challenges tile.';
         cogMenu.appendChild(hint);
         document.body.appendChild(cogMenu);
         const r = cogBtn.getBoundingClientRect();
@@ -6222,6 +6461,108 @@
         popOverlay.addEventListener('click', (e) => { if (e.target === popOverlay) closeFindPopup(); });
         document.addEventListener('keydown', onPopKeyDown);
 
+        void popOverlay.offsetWidth;
+        requestAnimationFrame(() => popOverlay.classList.add('active'));
+      }
+
+      // ── Timer Challenges search result: 2x2 board of all four ───────
+      // Shows P-Switches / Scarecrows (top row) and Cappy Flowers / Notes
+      // (bottom row), each marked found/not-found, with every zone that
+      // has it picked as a requirement.
+      function showTimerChallengesPopup() {
+        document.querySelectorAll('.req-find-popup-overlay').forEach(p => p.remove());
+        const popupColor = 'var(--ability-color)';
+        const popOverlay = document.createElement('div');
+        popOverlay.className = 'req-find-popup-overlay';
+        const pop = document.createElement('div');
+        pop.className = 'req-find-popup req-find-popup--timer';
+        pop.style.setProperty('--popup-color', popupColor);
+        pop.addEventListener('click', (e) => e.stopPropagation());
+        popOverlay.appendChild(pop);
+
+        const head = document.createElement('div');
+        head.className = 'req-find-popup-head';
+        const headIcon = document.createElement('img');
+        headIcon.className = 'req-find-popup-head-icon';
+        headIcon.src = TIMER_CHALLENGE_OPTIONS[0].src;
+        headIcon.alt = 'Timer Challenges';
+        const label = document.createElement('div');
+        label.className = 'req-find-popup-head-text';
+        label.textContent = 'Timer Challenges';
+        const closeBtn = document.createElement('button');
+        closeBtn.type = 'button';
+        closeBtn.className = 'req-find-popup-close';
+        closeBtn.textContent = '✕';
+        closeBtn.title = TIPS.close;
+        closeBtn.addEventListener('click', () => closeTimerPopup());
+        head.appendChild(headIcon); head.appendChild(label); head.appendChild(closeBtn);
+        pop.appendChild(head);
+
+        const body = document.createElement('div');
+        body.className = 'req-timer-grid';
+        // Options are ordered column-first (left col, then right col);
+        // re-order row-first so the grid reads P-Switches | Scarecrows
+        // on top and Cappy Flowers | Notes underneath.
+        const o = TIMER_CHALLENGE_OPTIONS;
+        const visKeys = visibleTimerOptions().map(v => v.key);
+        const rowFirst = [o[0], o[2], o[1], o[3]].filter(x => visKeys.includes(x.key));
+        if (rowFirst.length < 2) body.style.gridTemplateColumns = '1fr';
+        let foundCount = 0;
+        rowFirst.forEach(opt => {
+          const lines = buildRequirementLines('abilities', opt.key, undefined, true);
+          const found = lines.length > 0;
+          if (found) foundCount++;
+          const card = document.createElement('div');
+          card.className = 'req-timer-card' + (found ? ' is-found' : '');
+          const badge = document.createElement('div');
+          badge.className = 'req-timer-badge';
+          badge.textContent = found ? '✓' : '✕';
+          const img = document.createElement('img');
+          img.className = 'req-timer-icon';
+          img.src = opt.src; img.alt = opt.name;
+          const nm = document.createElement('div');
+          nm.className = 'req-timer-name';
+          nm.textContent = opt.name;
+          const st = document.createElement('div');
+          st.className = 'req-timer-status';
+          st.textContent = found ? 'Found' : 'Not marked yet';
+          card.appendChild(badge); card.appendChild(img); card.appendChild(nm); card.appendChild(st);
+          if (found) {
+            const where = document.createElement('div');
+            where.className = 'req-timer-where';
+            lines.forEach(l => {
+              const row = document.createElement('div');
+              row.className = 'req-timer-where-line';
+              if (l.fromIcon) {
+                const ki = document.createElement('img');
+                ki.src = l.fromIcon; ki.alt = l.kingdomLabel;
+                row.appendChild(ki);
+              }
+              const t = document.createElement('span');
+              t.textContent = l.fromLabel + ' (' + l.kingdomLabel + ')';
+              if (l.fromColor) t.style.color = l.fromColor;
+              row.appendChild(t);
+              where.appendChild(row);
+            });
+            card.appendChild(where);
+          }
+          body.appendChild(card);
+        });
+        pop.appendChild(body);
+        const sum = document.createElement('div');
+        sum.className = 'req-timer-summary';
+        sum.textContent = foundCount + ' of ' + rowFirst.length + ' marked';
+        pop.appendChild(sum);
+        (findOnly && opts.host ? opts.host : document.body).appendChild(popOverlay);
+
+        function onPopKeyDown(e) { if (e.key === 'Escape') closeTimerPopup(); }
+        function closeTimerPopup() {
+          popOverlay.classList.remove('active');
+          document.removeEventListener('keydown', onPopKeyDown);
+          setTimeout(() => popOverlay.remove(), 300);
+        }
+        popOverlay.addEventListener('click', (e) => { if (e.target === popOverlay) closeTimerPopup(); });
+        document.addEventListener('keydown', onPopKeyDown);
         void popOverlay.offsetWidth;
         requestAnimationFrame(() => popOverlay.classList.add('active'));
       }
@@ -6661,10 +7002,9 @@
           if (isTimer) {
             const pickedKeys = zs.requirements.filter(r => r.kind === 'abilities' && TIMER_CHALLENGE_KEYS.includes(r.key)).map(r => r.key);
             if (findModeActive) {
-              openTimerChallengeSubmenu(cell, pickedKeys, (opt) => {
-                setFindMode(false);
-                showFindResultsPopup('abilities', opt.key);
-              });
+              // Find covers all four Timer Challenges at once (2x2 board).
+              setFindMode(false);
+              showTimerChallengesPopup();
               return;
             }
             bounce(cell);
@@ -6921,7 +7261,7 @@
         abilityExtrasGrid.innerHTML = '';
         const q = search.value.trim().toLowerCase();
         const hiddenKeys = getHiddenExtraAbilityKeys();
-        const list = APC.SHOP_ABILITY_EXTRAS.filter(i => !hiddenKeys.includes(i.key));
+        const list = APC.SHOP_ABILITY_EXTRAS.filter(i => !hiddenKeys.includes(i.key)).map(resolveTimerExtra).filter(Boolean);
         const filtered = q ? list.filter(i => i.name.toLowerCase().includes(q)) : list;
         if (!filtered.length) {
           const empty = document.createElement('div');
