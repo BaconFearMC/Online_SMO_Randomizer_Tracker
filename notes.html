@@ -3795,7 +3795,16 @@
       if (!col) return;
       const wrap = document.querySelector('.lz-scroll-wrap');
       const r = (wrap || content).getBoundingClientRect();
-      const top = Math.max(0, r.top) + 2;
+      let top = Math.max(0, r.top) + 2;
+      // While the + picker is open, the abridged panel spans the picker's full height.
+      let abrH = 0;
+      if (col.classList.contains('paint-abridged')) {
+        const pop = document.querySelector('body > .req-picker-overlay .req-picker-popup');
+        const pr = pop && pop.getBoundingClientRect();
+        top = pr && pr.height > 100 ? Math.max(4, pr.top) : 12;
+        abrH = pr && pr.height > 100 ? pr.height : window.innerHeight - top - 12;
+        col.dataset.abrH = String(abrH);
+      }
       const imp = (k, v) => col.style.setProperty(k, v, 'important');
       imp('position', 'fixed');
       imp('top', top + 'px');
@@ -3811,7 +3820,7 @@
       imp('height', 'auto');
       imp('margin', '0');
       imp('transform', 'none');
-      imp('max-height', Math.max(160, window.innerHeight - top - 4) + 'px');
+      imp('max-height', abrH ? abrH + 'px' : Math.max(160, window.innerHeight - top - 4) + 'px');
       fitPaintingsGrid(col);
     }
     window.addEventListener('resize', positionPaintingsColumn);
@@ -3825,7 +3834,7 @@
         last = open;
         col.classList.toggle('paint-abridged', open);
         positionPaintingsColumn();
-        setTimeout(positionPaintingsColumn, 480);
+        setTimeout(positionPaintingsColumn, 120); setTimeout(positionPaintingsColumn, 480);
       };
       new MutationObserver(sync).observe(document.body, { childList: true });
     })();
@@ -3841,7 +3850,7 @@
       fitPaintingsGridInner(col);
       const area = col.querySelector('.paint-find-area');
       const findShown = !col.classList.contains('paint-abridged') && !!(area && area.style.display !== 'none');
-      if (col.classList.contains('paint-abridged')) { const fh = Math.max(160, window.innerHeight - (parseFloat(col.style.top) || 0) - 4) + 'px'; col.style.setProperty('height', fh, 'important'); col.style.setProperty('min-height', fh, 'important'); const g = col.querySelector('.paint-grid'); if (g) g.style.zoom = '1'; return; }
+      if (col.classList.contains('paint-abridged')) { const fh = (parseFloat(col.dataset.abrH) || Math.max(160, window.innerHeight - (parseFloat(col.style.top) || 0) - 4)) + 'px'; col.style.setProperty('height', fh, 'important'); col.style.setProperty('min-height', fh, 'important'); const g = col.querySelector('.paint-grid'); if (g) g.style.zoom = '1'; return; }
       if (!findShown) {
         const top = parseFloat(col.style.top) || 0;
         col.style.setProperty('min-height', Math.max(160, window.innerHeight - top - 4) + 'px', 'important');
