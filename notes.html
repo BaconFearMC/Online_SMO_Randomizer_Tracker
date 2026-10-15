@@ -90,6 +90,10 @@
     .kc-paint { flex-wrap: wrap; }
     .paintings-fixed.paint-irl .paint-chip-row > * { flex: 0 1 auto; }
     .paintings-fixed.paint-irl .paint-chip--y { flex-shrink: 0; }
+    /* Note chips (replace the old note box) */
+    .paintings-fixed .paint-grid textarea.zone-note { display: none !important; }
+    .paint-note-chips { display: flex; flex-wrap: wrap; gap: 4px; padding: 3px 4px; border: 1px solid var(--border, #444); border-radius: 6px; background: rgba(255,255,255,.04); box-sizing: border-box; max-width: 100%; }
+    .paint-chip--note { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.25); color: var(--text, #e6e6ee); white-space: normal; overflow-wrap: anywhere; }
     /* Chips */
     .paint-chip-row { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin: 2px 0 4px 2px; }
     .paint-chip {
@@ -2913,6 +2917,22 @@
         fullState = {};
       }
 
+      // Restore any Painting destinations / notes that went missing from
+      // tracker_state (see the backup written in saveFullState).
+      try {
+        const bk = JSON.parse(localStorage.getItem('tracker_painting_backup') || 'null');
+        if (bk) {
+          if (!fullState.painting_destinations) fullState.painting_destinations = {};
+          for (const [k, v] of Object.entries(bk.painting_destinations || {})) {
+            if (v && !fullState.painting_destinations[k]) fullState.painting_destinations[k] = v;
+          }
+          if (!fullState.painting_notes) fullState.painting_notes = {};
+          for (const [k, v] of Object.entries(bk.painting_notes || {})) {
+            if (v && !fullState.painting_notes[k]) fullState.painting_notes[k] = v;
+          }
+        }
+      } catch (e) { }
+
       if (!fullState.settings) {
         fullState.settings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
       } else {
@@ -3033,6 +3053,16 @@
         }
 
         localStorage.setItem(STATE_KEY, JSON.stringify(fullState));
+        // Separate backup of the Paintings data. Other pages that share
+        // tracker_state can re-save it without these fields, which is what
+        // made destinations/notes vanish on refresh; this key is only ever
+        // written from here.
+        try {
+          localStorage.setItem('tracker_painting_backup', JSON.stringify({
+            painting_destinations: fullState.painting_destinations || {},
+            painting_notes: fullState.painting_notes || {},
+          }));
+        } catch (e2) { }
       } catch (e) {
         console.error('Failed to save state:', e);
       }
@@ -4055,7 +4085,35 @@
           });
         });
 
+        // The note is shown as chips (they wrap, so text is never clipped or
+        // hidden). The textarea stays in the DOM, hidden, as the data store
+        // the + button writes into.
+        noteArea.style.display = 'none';
+        const noteChips = document.createElement('div');
+        noteChips.className = 'paint-note-chips';
+        const renderNoteChips = () => {
+          noteChips.innerHTML = '';
+          const lines = (noteArea.value || '').split(/\n+/).map(t => t.trim()).filter(Boolean);
+          if (!lines.length) {
+            const n = document.createElement('span');
+            n.className = 'paint-chip paint-chip--none';
+            n.textContent = 'Nothing yet...';
+            noteChips.appendChild(n);
+            return;
+          }
+          lines.forEach(t => {
+            const c = document.createElement('span');
+            c.className = 'paint-chip paint-chip--note';
+            c.textContent = t;
+            noteChips.appendChild(c);
+          });
+        };
+        noteArea.addEventListener('input', renderNoteChips);
+        renderNoteChips();
+        paintChipUpdaters.push(renderNoteChips);
+
         row.appendChild(noteArea);
+        row.appendChild(noteChips);
         zonesRoot.appendChild(row);
       });
 
