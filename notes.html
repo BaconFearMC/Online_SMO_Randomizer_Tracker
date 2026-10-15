@@ -71,6 +71,19 @@
     .paintings-fixed.paint-cols4 .paint-grid { grid-template-rows: repeat(4, minmax(128px, auto)); }
     .paintings-fixed.paint-cols4 .paint-grid .zone-row { height: auto; min-height: 128px; overflow: visible; }
     .paintings-fixed .paint-grid textarea.zone-note { flex: 0 0 auto; height: 2.5em !important; max-height: 2.5em; font-size: 13px; }
+    /* Main Kingdom view header chips (hidden while the Kingdom is collapsed) */
+    .kc-paint { display: inline-flex; align-items: center; gap: 6px; margin-left: 8px; flex: 0 1 auto; min-width: 0; }
+    .kingdom-col-header.collapsed .kc-paint { display: none; }
+    .paint-chip-icon { width: 14px; height: 14px; object-fit: contain; flex: none; }
+    .paint-chip--dest { display: inline-flex; align-items: center; gap: 4px; }
+    /* Paintings (Extra, In World Info): one line per header so every cell is the same height */
+    .paintings-fixed.paint-cols4.paint-irl .paint-grid .zone-reqs { flex-wrap: nowrap; }
+    .paintings-fixed.paint-cols4.paint-irl .paint-grid .zone-reqs .zone-name--stacked { flex: 0 1 auto; min-width: 0; overflow: hidden; }
+    .paintings-fixed.paint-cols4.paint-irl .paint-grid .zone-name-main,
+    .paintings-fixed.paint-cols4.paint-irl .paint-grid .zone-name-sub { overflow: hidden; text-overflow: ellipsis; }
+    .paintings-fixed.paint-irl .paint-dest-ind { flex: 0 0 auto; margin-left: auto; }
+    .paintings-fixed.paint-irl .paint-dest-ind .paint-chip--none { font-size: 11px; white-space: nowrap; }
+    .paintings-fixed.paint-cols4.paint-irl .paint-grid .paint-chip-row { flex-wrap: nowrap; }
     /* Chips */
     .paint-chip-row { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin: 2px 0 4px 2px; }
     .paint-chip {
@@ -2755,6 +2768,81 @@
       'Darkside':   { subtext: 'Mainland',                 from: 'Captain Toad',                 conn: 'Reachable with Pylon',      icon: 'paintingpylon.png' },
     };
 
+    // ── Painting destination chips, shared by the Paintings column and the main Kingdom view ──
+    var paintingClearHandlers = {};   // kingdom -> fn that clears that Painting's destination (set by the Paintings column)
+    var mainPaintChips = [];          // [{el, fn}] header chip holders on the main Kingdom view
+
+    function paintDestChip(destKey, onClear) {
+      const it = APC.findItem('kingdoms', destKey);
+      if (!it) return null;
+      const chip = document.createElement('span');
+      chip.className = 'paint-chip paint-chip--dest';
+      if (it.color) chip.style.setProperty('--chip-c', it.color);
+      if (it.src) {
+        const im = document.createElement('img');
+        im.src = it.src; im.alt = ''; im.className = 'paint-chip-icon';
+        chip.appendChild(im);
+      }
+      chip.appendChild(document.createTextNode(it.name));
+      chip.title = TIPS.leadsTo(it.name) + ' (click to clear)';
+      chip.addEventListener('click', (e) => { e.stopPropagation(); onClear(); });
+      return chip;
+    }
+
+    /** "Nothing yet..." or "→ [icon Dest]" for one Kingdom's own Painting. */
+    function paintDestIndicator(kingdom) {
+      const ind = document.createElement('span');
+      ind.className = 'paint-dest-ind';
+      const destKey = APC.getPaintingDestination(fullState, kingdom);
+      const chip = destKey ? paintDestChip(destKey, () => {
+        const h = paintingClearHandlers[kingdom];
+        if (h) h();
+        else { APC.setPaintingDestination(fullState, kingdom, null); saveFullState(); refreshMainPaintChips(); }
+      }) : null;
+      if (chip) {
+        const arrow = document.createElement('span');
+        arrow.className = 'paint-arrow';
+        arrow.textContent = '→';
+        ind.appendChild(arrow);
+        ind.appendChild(chip);
+      } else {
+        const none = document.createElement('span');
+        none.className = 'paint-chip paint-chip--none';
+        none.textContent = 'Nothing yet...';
+        ind.appendChild(none);
+      }
+      return ind;
+    }
+
+    /** Reachable chip + chips of Kingdoms marked to lead here (only Cap/Cloud/Lost/Moon/Darkside, only when marked). */
+    function paintIncomingGroup(kingdom) {
+      const info = PAINTING_IRL_INFO[kingdom];
+      if (!info || !info.conn || !PAINTING_TWO_WAY_KINGDOMS.includes(kingdom)) return null;
+      const incoming = EXTRA_PAINTING_KINGDOMS.filter(k => k !== kingdom && APC.getPaintingDestination(fullState, k) === kingdom);
+      if (!incoming.length) return null;
+      const group = document.createElement('span');
+      group.className = 'paint-chip-group';
+      const x = document.createElement('span');
+      x.className = 'paint-chip paint-chip--x';
+      x.textContent = info.conn;
+      group.appendChild(x);
+      incoming.forEach(k => {
+        const it = APC.findItem('kingdoms', k);
+        const c = document.createElement('span');
+        c.className = 'paint-chip paint-chip--in';
+        c.textContent = it ? it.name : k;
+        if (it && it.color) c.style.setProperty('--chip-c', it.color);
+        c.title = (it ? it.name : k) + ' leads here';
+        group.appendChild(c);
+      });
+      return group;
+    }
+
+    function refreshMainPaintChips() {
+      mainPaintChips = mainPaintChips.filter(m => m.el.isConnected);
+      mainPaintChips.forEach(m => m.fn());
+    }
+
     /** True only when both Extra Paintings and its IRL Info sub-setting are on. */
     function paintingIrlInfoActive() {
       return !!(fullState.settings.extra_paintings && fullState.settings.painting_irl_info);
@@ -3605,7 +3693,7 @@
       imp('bottom', 'auto');
       const wide4 = col.classList.contains('paint-cols4');
       const findOpen = col.classList.contains('paint-find-open');
-      const panelW = wide4 ? 800 : 620;
+      const panelW = wide4 ? 840 : 620;
       imp('width', 'min(' + panelW + 'px, calc(100vw - 32px))');
       imp('max-width', 'calc(100vw - 32px)');
       imp('height', 'auto');
@@ -3776,6 +3864,7 @@
 
         function renderDestChip() {
           refreshPaintChips();
+          refreshMainPaintChips();
           reqsWrap.innerHTML = '';
           const addBtn = document.createElement('button');
           addBtn.type = 'button';
@@ -3833,37 +3922,8 @@
 
           const destKey = APC.getPaintingDestination(fullState, kingdom);
           if (irlInfo) {
-            // Expanded (IRL Info) node: subtle indicator of where this
-            // Painting leads - a destination chip, or "Nothing yet...".
-            const ind = document.createElement('span');
-            ind.className = 'paint-dest-ind';
-            const destItem = destKey ? APC.findItem('kingdoms', destKey) : null;
-            if (destItem) {
-              const arrow = document.createElement('span');
-              arrow.className = 'paint-arrow';
-              arrow.textContent = '→';
-              const chip = document.createElement('span');
-              chip.className = 'paint-chip paint-chip--dest';
-              chip.textContent = destItem.name;
-              chip.title = TIPS.leadsTo(destItem.name) + ' (click to clear)';
-              if (destItem.color) chip.style.setProperty('--chip-c', destItem.color);
-              chip.addEventListener('click', (e) => {
-                e.stopPropagation();
-                APC.setPaintingDestination(fullState, kingdom, null);
-                const destInfo = PAINTING_IRL_INFO[destKey];
-                if (destInfo) removeRequirementText(noteArea, paintingIrlNoteText(destKey, destInfo));
-                saveFullState();
-                renderDestChip();
-              });
-              ind.appendChild(arrow);
-              ind.appendChild(chip);
-            } else {
-              const none = document.createElement('span');
-              none.className = 'paint-chip paint-chip--none';
-              none.textContent = 'Nothing yet...';
-              ind.appendChild(none);
-            }
-            reqsWrap.appendChild(ind);
+            // Expanded (IRL Info) node: subtle indicator of where this Painting leads.
+            reqsWrap.appendChild(paintDestIndicator(kingdom));
           }
           if (destKey && !irlInfo) {
             const item = APC.findItem('kingdoms', destKey);
@@ -3932,6 +3992,21 @@
             }
           }
         }
+        paintingClearHandlers[kingdom] = () => {
+          const dk = APC.getPaintingDestination(fullState, kingdom);
+          if (dk) {
+            if (irlInfo) {
+              const di = PAINTING_IRL_INFO[dk];
+              if (di) removeRequirementText(noteArea, paintingIrlNoteText(dk, di));
+            } else {
+              const it = APC.findItem('kingdoms', dk);
+              if (it) removeRequirementText(noteArea, it.name);
+            }
+          }
+          APC.setPaintingDestination(fullState, kingdom, null);
+          saveFullState();
+          renderDestChip();
+        };
         top.appendChild(reqsWrap);
         row.appendChild(top);
 
@@ -3949,27 +4024,8 @@
               y.textContent = 'from ' + irlInfo.from;
               chipRow.appendChild(y);
             }
-            const incoming = PAINTING_TWO_WAY_KINGDOMS.includes(kingdom)
-              ? activePaintingKingdoms().filter(k => k !== kingdom && APC.getPaintingDestination(fullState, k) === kingdom)
-              : [];
-            if (irlInfo.conn && incoming.length) {
-              const group = document.createElement('span');
-              group.className = 'paint-chip-group';
-              const x = document.createElement('span');
-              x.className = 'paint-chip paint-chip--x';
-              x.textContent = irlInfo.conn;
-              group.appendChild(x);
-              incoming.forEach(k => {
-                const it = APC.findItem('kingdoms', k);
-                const c = document.createElement('span');
-                c.className = 'paint-chip paint-chip--in';
-                c.textContent = it ? it.name : k;
-                if (it && it.color) c.style.setProperty('--chip-c', it.color);
-                c.title = (it ? it.name : k) + ' leads here';
-                group.appendChild(c);
-              });
-              chipRow.appendChild(group);
-            }
+            const grp = paintIncomingGroup(kingdom);
+            if (grp) chipRow.appendChild(grp);
           };
           paintChipUpdaters.push(updateChipRow);
           updateChipRow();
@@ -4200,6 +4256,19 @@
 
       header.appendChild(icon);
       header.appendChild(title);
+      if (EXTRA_PAINTING_KINGDOMS.includes(kingdom)) {
+        const holder = document.createElement('span');
+        holder.className = 'kc-paint';
+        const upd = () => {
+          holder.innerHTML = '';
+          holder.appendChild(paintDestIndicator(kingdom));
+          const g = paintIncomingGroup(kingdom);
+          if (g) holder.appendChild(g);
+        };
+        upd();
+        header.appendChild(holder);
+        mainPaintChips.push({ el: holder, fn: upd });
+      }
       header.appendChild(chevron);
 
       const zoneEntries = orderedZoneEntries(kingdom, data.zones);
