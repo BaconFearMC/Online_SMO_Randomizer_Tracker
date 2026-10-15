@@ -1982,12 +1982,10 @@
     .paintings-fixed { overflow-y: hidden !important; }
     .paintings-fixed .col-title { font-size: 1.1em; }
     .paintings-fixed .paint-grid .zone-name { font-size: 1.1em; }
-    .paintings-fixed.paint-irl .paint-grid .zone-row { align-items: center; text-align: center; }
-    .paintings-fixed.paint-irl .paint-grid .zone-row-top { justify-content: center; }
-    .paintings-fixed.paint-irl .paint-grid .zone-reqs { justify-content: center; }
+    .paintings-fixed .paint-src { display: inline-flex; flex-direction: column; align-items: center; gap: 1px; flex: 0 1 auto; min-width: 0; max-width: 100%; }
+    .paintings-fixed .paint-src > .zone-name { order: 0 !important; text-align: center; }
+    .paintings-fixed .paint-src .zone-name-main, .paintings-fixed .paint-src .zone-name-sub { text-align: center; }
     .paintings-fixed.paint-irl .paint-grid .zone-name--stacked { display: flex; flex-direction: column; align-items: center; text-align: center; }
-    .paintings-fixed.paint-irl .paint-grid .paint-chip-row { justify-content: center; margin-left: 0; }
-    .paintings-fixed.paint-irl .paint-grid .paint-note-chips { justify-content: center; text-align: center; margin-top: 0; }
 
     /* ── Abridged Paintings while the + picker is open ── */
     body > .kingdom-col.paintings-fixed { transition: width .45s cubic-bezier(.2,.8,.2,1), min-height .35s ease, box-shadow .35s; }
@@ -2006,7 +2004,12 @@
       border-width: 0 !important; overflow: hidden !important; pointer-events: none; transform: translateY(-6px) scale(.9);
     }
     .paintings-fixed.paint-abridged .paint-line-break { display: none !important; }
-    .paintings-fixed.paint-abridged .paint-grid { grid-template-columns: 1fr !important; grid-template-rows: none !important; grid-auto-flow: row !important; }
+    .paintings-fixed.paint-abridged .paint-grid { grid-template-columns: 1fr !important; grid-template-rows: none !important; grid-auto-rows: minmax(0, 1fr) !important; grid-auto-flow: row !important; flex: 1 1 0 !important; min-height: 0 !important; zoom: 1 !important; }
+    .paintings-fixed.paint-abridged .paint-src { flex-direction: row; gap: 6px; }
+    .paintings-fixed.paint-abridged .paint-grid .zone-row { justify-content: center; }
+    .paintings-fixed.paint-abridged .zone-req-icon { width: 30px !important; height: 30px !important; }
+    .paintings-fixed.paint-abridged .paint-grid .zone-name { font-size: 17px !important; }
+    .paintings-fixed.paint-abridged .zone-req-add { transform: scale(1.1); }
     .paintings-fixed.paint-abridged .paint-grid .zone-row { min-height: 0 !important; height: auto !important; padding: 1px 4px; align-items: flex-start; text-align: left; }
     .paintings-fixed.paint-abridged .paint-grid .zone-reqs { justify-content: flex-start; flex-wrap: nowrap; }
     .paintings-fixed.paint-abridged .paint-grid .zone-reqs > .zone-name { order: 2 !important; display: block; }
@@ -2014,8 +2017,8 @@
     .paintings-fixed.paint-abridged .paint-chip.paint-chip--dest { font-size: 13px; min-height: 22px; padding: 1px 8px 1px 5px; }
     .paintings-fixed.paint-abridged .paint-chip--dest .paint-chip-icon { width: 16px; height: 16px; }
     /* The + picker leaves room on the right for the abridged Paintings panel */
-    body:has(.paintings-fixed.paint-abridged) > .req-picker-overlay { padding-right: 300px; box-sizing: border-box; }
-    body:has(.paintings-fixed.paint-abridged) > .req-picker-overlay .req-picker-popup { width: calc(100vw - 320px) !important; max-width: calc(100vw - 320px) !important; }
+    body:has(.paintings-fixed.paint-abridged) > .req-picker-overlay { padding-right: 340px; box-sizing: border-box; }
+    body:has(.paintings-fixed.paint-abridged) > .req-picker-overlay .req-picker-popup { width: calc(100vw - 360px) !important; max-width: calc(100vw - 360px) !important; }
   </style>
 </head>
 <body class="notes-page">
@@ -3786,7 +3789,7 @@
       const wide4 = col.classList.contains('paint-cols4');
       const findOpen = col.classList.contains('paint-find-open');
       const abr = col.classList.contains('paint-abridged');
-      const panelW = abr ? 270 : (wide4 ? 840 : 620);
+      const panelW = abr ? 310 : (wide4 ? 840 : 620);
       imp('width', 'min(' + panelW + 'px, calc(100vw - 32px))');
       imp('max-width', 'calc(100vw - 32px)');
       imp('height', 'auto');
@@ -3822,7 +3825,7 @@
       fitPaintingsGridInner(col);
       const area = col.querySelector('.paint-find-area');
       const findShown = !col.classList.contains('paint-abridged') && !!(area && area.style.display !== 'none');
-      if (col.classList.contains('paint-abridged')) { col.style.setProperty('min-height', '0px', 'important'); return; }
+      if (col.classList.contains('paint-abridged')) { const fh = Math.max(160, window.innerHeight - (parseFloat(col.style.top) || 0) - 12) + 'px'; col.style.setProperty('height', fh, 'important'); col.style.setProperty('min-height', fh, 'important'); const g = col.querySelector('.paint-grid'); if (g) g.style.zoom = '1'; return; }
       if (!findShown) {
         const top = parseFloat(col.style.top) || 0;
         col.style.setProperty('min-height', Math.max(160, window.innerHeight - top - 12) + 'px', 'important');
@@ -3831,6 +3834,7 @@
     function fitPaintingsGridInner(col) {
       const grid = col && col.querySelector('.paint-grid');
       if (!grid) return;
+      if (col.classList.contains('paint-abridged')) return;
       const wrap = col.querySelector('.paint-find-wrap');
       const area = wrap && wrap.querySelector('.paint-find-area');
       const scaler = area && area.querySelector('.paint-find-scaler');
@@ -4027,17 +4031,23 @@
           srcIcon.src = 'assets/' + kd.icon;
           srcIcon.alt = kingdom;
           if (kd.color) srcIcon.style.setProperty('--kingdom-color', kd.color);
-          reqsWrap.appendChild(srcIcon);
-          reqsWrap.appendChild(nameLabel);
+          if (irlInfo) {
+            const srcCol = document.createElement('span');
+            srcCol.className = 'paint-src';
+            srcCol.appendChild(srcIcon);
+            srcCol.appendChild(nameLabel);
+            reqsWrap.appendChild(srcCol);
+          } else {
+            reqsWrap.appendChild(srcIcon);
+            reqsWrap.appendChild(nameLabel);
+          }
 
           const destKey = APC.getPaintingDestination(fullState, kingdom);
           if (irlInfo) {
             // Expanded (IRL Info) node: subtle indicator of where this Painting leads.
             {
               // Line 1: [+] [icon] [indicator]; line 2: name + In World Info text (via CSS order).
-              const lineBreak = document.createElement('span');
-              lineBreak.className = 'paint-line-break';
-              reqsWrap.appendChild(lineBreak);
+
             }
             const swapGrp = paintIncomingGroup(kingdom);
             if (swapGrp) {
