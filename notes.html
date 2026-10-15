@@ -52,7 +52,7 @@
       max-height: 2.6em; font-size: 12px; line-height: 1.25; padding: 2px 6px;
       pointer-events: none; user-select: none;
     }
-    .paintings-fixed .paint-grid textarea.zone-note::placeholder { color: var(--text-dim, #9aa0ac); font-style: italic; font-size: 14px; opacity: .9; }
+    .paintings-fixed .paint-grid textarea.zone-note::placeholder { color: var(--text-dim, #9aa0ac); font-style: italic; font-size: 15.4px; opacity: .9; }
     /* Normal mode: keep icon + colored names on one line (no wrapping) */
     .paintings-fixed:not(.paint-cols4) .paint-grid .zone-row-top,
     .paintings-fixed:not(.paint-cols4) .paint-grid .zone-reqs { flex-wrap: nowrap; }
@@ -62,7 +62,7 @@
     /* Extra Paintings (4x4): cells are at least square-ish and grow with their content */
     .paintings-fixed.paint-cols4 .paint-grid { grid-template-rows: repeat(4, minmax(128px, auto)); }
     .paintings-fixed.paint-cols4 .paint-grid .zone-row { height: auto; min-height: 128px; overflow: visible; }
-    .paintings-fixed .paint-grid textarea.zone-note { flex: 0 0 auto; height: 2.5em !important; max-height: 2.5em; font-size: 13px; }
+    .paintings-fixed .paint-grid textarea.zone-note { flex: 0 0 auto; height: 2.5em !important; max-height: 2.5em; font-size: 14.3px; }
     /* Main Kingdom view header chips (hidden while the Kingdom is collapsed) */
     .kc-paint { display: inline-flex; align-items: center; gap: 6px; margin-left: 8px; flex: 0 1 auto; min-width: 0; }
     .kingdom-col-header.collapsed .kc-paint { display: none; }
@@ -86,7 +86,7 @@
     .paintings-fixed.paint-irl .paint-chip { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
     .paintings-fixed.paint-irl .paint-chip-group { flex-wrap: wrap; row-gap: 3px; }
     .paintings-fixed.paint-irl .paint-chip-group > .paint-chip--x { border-radius: 10px 0 0 10px; }
-    .paintings-fixed.paint-irl .paint-chip--none { white-space: nowrap; font-size: 11px; }
+    .paintings-fixed.paint-irl .paint-chip--none { white-space: nowrap; font-size: 12.1px; }
     .kc-paint { flex-wrap: wrap; }
     .paintings-fixed.paint-irl .paint-chip-row > * { flex: 0 1 auto; }
     .paintings-fixed.paint-irl .paint-chip--y { flex-shrink: 0; }
@@ -95,9 +95,9 @@
     .paint-note-chips { display: flex; flex-wrap: wrap; gap: 4px; padding: 3px 4px; border: 1px solid var(--border, #444); border-radius: 6px; background: rgba(255,255,255,.04); box-sizing: border-box; max-width: 100%; }
     .paint-chip--note { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.25); color: var(--text, #e6e6ee); white-space: normal; overflow-wrap: anywhere; }
     /* Destination chip (→ Kingdom): larger than the other chips */
-    .paint-chip.paint-chip--dest { font-size: 15px; min-height: 28px; padding: 3px 12px 3px 8px; gap: 6px; border-radius: 14px; border-width: 2px; }
+    .paint-chip.paint-chip--dest { font-size: 16.5px; min-height: 28px; padding: 3px 12px 3px 8px; gap: 6px; border-radius: 14px; border-width: 2px; }
     .paint-chip--dest .paint-chip-icon { width: 22px; height: 22px; }
-    .paint-dest-ind .paint-arrow { font-size: 16px; font-weight: 700; }
+    .paint-dest-ind .paint-arrow { font-size: 17.6px; font-weight: 700; }
     /* Even spacing: indicator on its own line in Extra mode, notes pinned to the cell bottom */
     .paintings-fixed.paint-cols4.paint-irl .paint-dest-ind { flex: 0 0 auto; margin-left: 2px !important; }
     .paintings-fixed .paint-grid .paint-note-chips { margin-top: auto; }
@@ -121,15 +121,15 @@
     .paint-chip--y { background: rgba(240,170,50,.16); border-color: rgba(240,170,50,.55); color: #f3c26b; }   /* from ... */
     .paint-chip--in { background: rgba(255,255,255,.07); border-color: var(--chip-c, #888); color: var(--chip-c, #ddd); }
     .paint-chip--dest { background: rgba(255,255,255,.07); border-color: var(--chip-c, #888); color: var(--chip-c, #ddd); cursor: pointer; }
-    .paint-chip--none { background: transparent; border-color: transparent; color: var(--text-dim, #9aa0ac); font-weight: 600; font-style: italic; padding: 0 2px; font-size: 12px; }
+    .paint-chip--none { background: transparent; border-color: transparent; color: var(--text-dim, #9aa0ac); font-weight: 600; font-style: italic; padding: 0 2px; font-size: 13.2px; }
     .paint-chip-group { display: inline-flex; align-items: center; }
     .paint-chip-group > .paint-chip--x { border-top-right-radius: 0; border-bottom-right-radius: 0; }
     .paint-chip-group > .paint-chip--in { border-radius: 0; margin-left: -1px; }
     .paint-chip-group > .paint-chip--in:last-child { border-top-right-radius: 9px; border-bottom-right-radius: 9px; }
     .paint-dest-ind { display: inline-flex; align-items: center; gap: 3px; flex: 0 0 auto; opacity: .85; }
-    .paint-dest-ind .paint-arrow { color: var(--text-dim, #9aa0ac); font-size: 12px; }
+    .paint-dest-ind .paint-arrow { color: var(--text-dim, #9aa0ac); font-size: 13.2px; }
     .paintings-fixed .paint-grid .zone-reqs .paint-dest-ind { flex: 0 1 auto; min-width: 0; }
-    .paintings-fixed .paint-grid .zone-name-sub { font-size: 12px; }
+    .paintings-fixed .paint-grid .zone-name-sub { font-size: 13.2px; }
     /* 2 columns, filled top-to-bottom: 5 rows (Normal) / 8 rows (Extra). */
     .paintings-fixed .zones-container.paint-grid {
       display: grid;
@@ -1977,6 +1977,46 @@
       box-shadow: 0 0 0 1px rgba(255, 215, 0, 0.6) inset;
     }
   </style>
+  <style>
+    /* ── Paintings: +10% text, centered In World Info, no scrolling ── */
+    .paintings-fixed { overflow-y: hidden !important; }
+    .paintings-fixed .col-title { font-size: 1.1em; }
+    .paintings-fixed .paint-grid .zone-name { font-size: 1.1em; }
+    .paintings-fixed.paint-irl .paint-grid .zone-row { align-items: center; text-align: center; }
+    .paintings-fixed.paint-irl .paint-grid .zone-row-top { justify-content: center; }
+    .paintings-fixed.paint-irl .paint-grid .zone-reqs { justify-content: center; }
+    .paintings-fixed.paint-irl .paint-grid .zone-name--stacked { display: flex; flex-direction: column; align-items: center; text-align: center; }
+    .paintings-fixed.paint-irl .paint-grid .paint-chip-row { justify-content: center; margin-left: 0; }
+    .paintings-fixed.paint-irl .paint-grid .paint-note-chips { justify-content: center; text-align: center; margin-top: 0; }
+
+    /* ── Abridged Paintings while the + picker is open ── */
+    body > .kingdom-col.paintings-fixed { transition: width .45s cubic-bezier(.2,.8,.2,1), min-height .35s ease, box-shadow .35s; }
+    .paintings-fixed .paint-chip-row, .paintings-fixed .paint-note-chips, .paintings-fixed .zone-name-sub,
+    .paintings-fixed .paint-find-wrap, .paintings-fixed .zone-irl-connection-icon, .paintings-fixed .zone-irl-connection-label,
+    .paintings-fixed .paint-dest-ind--swap {
+      transition: opacity .3s ease, max-height .45s ease, margin .35s ease, padding .35s ease, border-width .35s ease, transform .35s ease;
+      max-height: 400px;
+    }
+    .paintings-fixed.paint-abridged { z-index: 100001 !important; }
+    .paintings-fixed.paint-abridged .paint-chip-row, .paintings-fixed.paint-abridged .paint-note-chips,
+    .paintings-fixed.paint-abridged .zone-name-sub, .paintings-fixed.paint-abridged .paint-find-wrap,
+    .paintings-fixed.paint-abridged .zone-irl-connection-icon, .paintings-fixed.paint-abridged .zone-irl-connection-label,
+    .paintings-fixed.paint-abridged .paint-dest-ind--swap {
+      opacity: 0 !important; max-height: 0 !important; margin: 0 !important; padding-top: 0 !important; padding-bottom: 0 !important;
+      border-width: 0 !important; overflow: hidden !important; pointer-events: none; transform: translateY(-6px) scale(.9);
+    }
+    .paintings-fixed.paint-abridged .paint-line-break { display: none !important; }
+    .paintings-fixed.paint-abridged .paint-grid { grid-template-columns: 1fr !important; grid-template-rows: none !important; grid-auto-flow: row !important; }
+    .paintings-fixed.paint-abridged .paint-grid .zone-row { min-height: 0 !important; height: auto !important; padding: 1px 4px; align-items: flex-start; text-align: left; }
+    .paintings-fixed.paint-abridged .paint-grid .zone-reqs { justify-content: flex-start; flex-wrap: nowrap; }
+    .paintings-fixed.paint-abridged .paint-grid .zone-reqs > .zone-name { order: 2 !important; display: block; }
+    .paintings-fixed.paint-abridged .paint-grid .zone-reqs > .paint-dest-ind { order: 3 !important; margin-left: auto !important; }
+    .paintings-fixed.paint-abridged .paint-chip.paint-chip--dest { font-size: 13px; min-height: 22px; padding: 1px 8px 1px 5px; }
+    .paintings-fixed.paint-abridged .paint-chip--dest .paint-chip-icon { width: 16px; height: 16px; }
+    /* The + picker leaves room on the right for the abridged Paintings panel */
+    body:has(.paintings-fixed.paint-abridged) > .req-picker-overlay { padding-right: 300px; box-sizing: border-box; }
+    body:has(.paintings-fixed.paint-abridged) > .req-picker-overlay .req-picker-popup { width: calc(100vw - 320px) !important; max-width: calc(100vw - 320px) !important; }
+  </style>
 </head>
 <body class="notes-page">
   <div class="notes-page-header">
@@ -3713,7 +3753,7 @@
       if (fullState.settings.show_painting_notes) {
         // Lives on <body>, outside #lz-content, so the notes layout
         // (columns/scroll/transform) can never push it around.
-        document.body.appendChild(buildPaintingNotesColumn());
+        { const _pc = buildPaintingNotesColumn(); if (document.querySelector('body > .req-picker-overlay')) _pc.classList.add('paint-abridged'); document.body.appendChild(_pc); }
       }
       for (const [kingdom, data] of Object.entries(fullState.loading_zones)) {
         const settingKey = KINGDOM_VISIBILITY_SETTINGS[kingdom];
@@ -3745,7 +3785,8 @@
       imp('bottom', 'auto');
       const wide4 = col.classList.contains('paint-cols4');
       const findOpen = col.classList.contains('paint-find-open');
-      const panelW = wide4 ? 840 : 620;
+      const abr = col.classList.contains('paint-abridged');
+      const panelW = abr ? 270 : (wide4 ? 840 : 620);
       imp('width', 'min(' + panelW + 'px, calc(100vw - 32px))');
       imp('max-width', 'calc(100vw - 32px)');
       imp('height', 'auto');
@@ -3755,6 +3796,22 @@
       fitPaintingsGrid(col);
     }
     window.addEventListener('resize', positionPaintingsColumn);
+    // Abridge the Paintings panel while a full-screen + picker is open.
+    (function () {
+      let last = null;
+      const sync = () => {
+        const col = document.querySelector('body > .kingdom-col.paintings-fixed');
+        const open = !!document.querySelector('body > .req-picker-overlay');
+        if (!col || open === last && col.classList.contains('paint-abridged') === open) return;
+        last = open;
+        col.classList.toggle('paint-abridged', open);
+        positionPaintingsColumn();
+        setTimeout(positionPaintingsColumn, 480);
+      };
+      new MutationObserver(sync).observe(document.body, { childList: true });
+    })();
+    window.addEventListener('load', () => setTimeout(positionPaintingsColumn, 300));
+
 
     // Shrinks the Paintings list just enough that the panel fits on screen
     // without a scrollbar (e.g. Extra Paintings' 8 rows, or with the Find
@@ -3764,7 +3821,8 @@
       col.style.setProperty('min-height', '0px', 'important');
       fitPaintingsGridInner(col);
       const area = col.querySelector('.paint-find-area');
-      const findShown = !!(area && area.style.display !== 'none');
+      const findShown = !col.classList.contains('paint-abridged') && !!(area && area.style.display !== 'none');
+      if (col.classList.contains('paint-abridged')) { col.style.setProperty('min-height', '0px', 'important'); return; }
       if (!findShown) {
         const top = parseFloat(col.style.top) || 0;
         col.style.setProperty('min-height', Math.max(160, window.innerHeight - top - 12) + 'px', 'important');
@@ -3776,7 +3834,7 @@
       const wrap = col.querySelector('.paint-find-wrap');
       const area = wrap && wrap.querySelector('.paint-find-area');
       const scaler = area && area.querySelector('.paint-find-scaler');
-      const findShown = !!(area && scaler && area.style.display !== 'none');
+      const findShown = !col.classList.contains('paint-abridged') && !!(area && scaler && area.style.display !== 'none');
       const maxH = parseFloat(col.style.maxHeight) || (window.innerHeight - 90);
 
       // The Paintings list keeps its normal size. It is only ever shrunk if
@@ -3784,11 +3842,11 @@
       grid.style.zoom = '1';
       if (findShown) { area.style.height = '0px'; area.style.width = '100%'; }
       let s = 1;
-      for (let i = 0; i < 6 && col.scrollHeight - col.clientHeight > 0; i++) {
+      for (let i = 0; i < 12 && col.scrollHeight - col.clientHeight > 0; i++) {
         const over = col.scrollHeight - col.clientHeight;
         const h = grid.offsetHeight * s;
         if (h <= 1) break;
-        s = Math.max(paintingIrlInfoActive() ? 0.8 : 0.3, s * Math.max(0.3, (h - over - 1) / h));
+        s = Math.max(0.35, s * Math.max(0.3, (h - over - 1) / h));
         grid.style.zoom = String(s);
       }
       if (!findShown) return;
