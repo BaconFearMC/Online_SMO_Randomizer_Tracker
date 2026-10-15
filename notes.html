@@ -101,7 +101,8 @@
     /* Even spacing: indicator on its own line in Extra mode, notes pinned to the cell bottom */
     .paintings-fixed.paint-cols4.paint-irl .paint-dest-ind { flex: 0 0 auto; margin-left: 2px !important; }
     .paintings-fixed .paint-grid .paint-note-chips { margin-top: auto; }
-    .paintings-fixed .paint-grid .zone-row { padding-bottom: 4px; }
+    .paintings-fixed .paint-grid .zone-row { padding-bottom: 6px; }
+    .paintings-fixed .kingdom-col-header { padding-top: 6px; padding-bottom: 6px; }
     /* The header must span the whole cell (it was shrink-wrapping to its content, so the forced line break did nothing) */
     .paintings-fixed .paint-grid .zone-row-top,
     .paintings-fixed .paint-grid .zone-reqs { display: flex; width: 100%; box-sizing: border-box; }
@@ -3756,7 +3757,7 @@
       if (fullState.settings.show_painting_notes) {
         // Lives on <body>, outside #lz-content, so the notes layout
         // (columns/scroll/transform) can never push it around.
-        { const _pc = buildPaintingNotesColumn(); if (document.querySelector('body > .req-picker-overlay')) _pc.classList.add('paint-abridged'); document.body.appendChild(_pc); }
+        { const _pc = buildPaintingNotesColumn(); if (document.querySelector('body > .req-picker-overlay:not(.req-picker-overlay--kingdom-only)')) _pc.classList.add('paint-abridged'); document.body.appendChild(_pc); }
       }
       for (const [kingdom, data] of Object.entries(fullState.loading_zones)) {
         const settingKey = KINGDOM_VISIBILITY_SETTINGS[kingdom];
@@ -3779,7 +3780,7 @@
       if (!col) return;
       const wrap = document.querySelector('.lz-scroll-wrap');
       const r = (wrap || content).getBoundingClientRect();
-      const top = Math.max(0, r.top) + 8;
+      const top = Math.max(0, r.top) + 2;
       const imp = (k, v) => col.style.setProperty(k, v, 'important');
       imp('position', 'fixed');
       imp('top', top + 'px');
@@ -3795,7 +3796,7 @@
       imp('height', 'auto');
       imp('margin', '0');
       imp('transform', 'none');
-      imp('max-height', Math.max(160, window.innerHeight - top - 12) + 'px');
+      imp('max-height', Math.max(160, window.innerHeight - top - 4) + 'px');
       fitPaintingsGrid(col);
     }
     window.addEventListener('resize', positionPaintingsColumn);
@@ -3804,7 +3805,7 @@
       let last = null;
       const sync = () => {
         const col = document.querySelector('body > .kingdom-col.paintings-fixed');
-        const open = !!document.querySelector('body > .req-picker-overlay');
+        const open = !!document.querySelector('body > .req-picker-overlay:not(.req-picker-overlay--kingdom-only)');
         if (!col || open === last && col.classList.contains('paint-abridged') === open) return;
         last = open;
         col.classList.toggle('paint-abridged', open);
@@ -3825,10 +3826,10 @@
       fitPaintingsGridInner(col);
       const area = col.querySelector('.paint-find-area');
       const findShown = !col.classList.contains('paint-abridged') && !!(area && area.style.display !== 'none');
-      if (col.classList.contains('paint-abridged')) { const fh = Math.max(160, window.innerHeight - (parseFloat(col.style.top) || 0) - 12) + 'px'; col.style.setProperty('height', fh, 'important'); col.style.setProperty('min-height', fh, 'important'); const g = col.querySelector('.paint-grid'); if (g) g.style.zoom = '1'; return; }
+      if (col.classList.contains('paint-abridged')) { const fh = Math.max(160, window.innerHeight - (parseFloat(col.style.top) || 0) - 4) + 'px'; col.style.setProperty('height', fh, 'important'); col.style.setProperty('min-height', fh, 'important'); const g = col.querySelector('.paint-grid'); if (g) g.style.zoom = '1'; return; }
       if (!findShown) {
         const top = parseFloat(col.style.top) || 0;
-        col.style.setProperty('min-height', Math.max(160, window.innerHeight - top - 12) + 'px', 'important');
+        col.style.setProperty('min-height', Math.max(160, window.innerHeight - top - 4) + 'px', 'important');
       }
     }
     function fitPaintingsGridInner(col) {
@@ -5284,7 +5285,7 @@
       document.querySelectorAll('.req-picker-overlay').forEach(p => p.remove());
 
       const overlay = document.createElement('div');
-      overlay.className = 'req-picker-overlay';
+      overlay.className = 'req-picker-overlay req-picker-overlay--kingdom-only';
       const popup = document.createElement('div');
       popup.className = 'req-picker-popup req-picker-popup--scroll';
       popup.addEventListener('click', (e) => e.stopPropagation());
