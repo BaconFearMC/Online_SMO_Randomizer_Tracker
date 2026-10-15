@@ -44,7 +44,7 @@
        below it (min-height is set from JS, only while Find is closed). */
     body > .kingdom-col.paintings-fixed { display: flex; flex-direction: column; }
     .paintings-fixed > .kingdom-col-header, .paintings-fixed > .paint-find-wrap { flex: 0 0 auto; }
-    .paintings-fixed > .zones-container.paint-grid { flex: 0 0 auto; align-content: start; }
+    .paintings-fixed > .zones-container.paint-grid { flex: 1 0 auto; align-content: stretch; }
     .paintings-fixed .paint-grid .zone-row { display: flex; flex-direction: column; }
     /* Paintings notes: read-only (filled only by the + button); show "Nothing yet..." while empty. */
     .paintings-fixed .paint-grid textarea.zone-note {
@@ -94,6 +94,14 @@
     .paintings-fixed .paint-grid textarea.zone-note { display: none !important; }
     .paint-note-chips { display: flex; flex-wrap: wrap; gap: 4px; padding: 3px 4px; border: 1px solid var(--border, #444); border-radius: 6px; background: rgba(255,255,255,.04); box-sizing: border-box; max-width: 100%; }
     .paint-chip--note { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.25); color: var(--text, #e6e6ee); white-space: normal; overflow-wrap: anywhere; }
+    /* Destination chip (→ Kingdom): larger than the other chips */
+    .paint-chip.paint-chip--dest { font-size: 15px; min-height: 28px; padding: 3px 12px 3px 8px; gap: 6px; border-radius: 14px; border-width: 2px; }
+    .paint-chip--dest .paint-chip-icon { width: 22px; height: 22px; }
+    .paint-dest-ind .paint-arrow { font-size: 16px; font-weight: 700; }
+    /* Even spacing: indicator on its own line in Extra mode, notes pinned to the cell bottom */
+    .paintings-fixed.paint-cols4.paint-irl .paint-dest-ind { flex: 1 0 100%; margin-left: 0; }
+    .paintings-fixed .paint-grid .paint-note-chips { margin-top: auto; }
+    .paintings-fixed .paint-grid .zone-row { padding-bottom: 4px; }
     /* Chips */
     .paint-chip-row { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin: 2px 0 4px 2px; }
     .paint-chip {
@@ -3749,7 +3757,7 @@
       fitPaintingsGridInner(col);
       const area = col.querySelector('.paint-find-area');
       const findShown = !!(area && area.style.display !== 'none');
-      if (false && !findShown) {
+      if (!findShown) {
         const top = parseFloat(col.style.top) || 0;
         col.style.setProperty('min-height', Math.max(160, window.innerHeight - top - 12) + 'px', 'important');
       }
@@ -3959,7 +3967,17 @@
           const destKey = APC.getPaintingDestination(fullState, kingdom);
           if (irlInfo) {
             // Expanded (IRL Info) node: subtle indicator of where this Painting leads.
-            reqsWrap.appendChild(paintDestIndicator(kingdom));
+            const swapGrp = paintIncomingGroup(kingdom);
+            if (swapGrp) {
+              // 5 special Kingdoms with a Kingdom leading to them: the Reachable
+              // chip sits by the name and the destination chip moves down.
+              const holder = document.createElement('span');
+              holder.className = 'paint-dest-ind paint-dest-ind--swap';
+              holder.appendChild(swapGrp);
+              reqsWrap.appendChild(holder);
+            } else {
+              reqsWrap.appendChild(paintDestIndicator(kingdom));
+            }
           }
           if (destKey && !irlInfo) {
             const item = APC.findItem('kingdoms', destKey);
@@ -4060,8 +4078,7 @@
               y.textContent = 'from ' + irlInfo.from;
               chipRow.appendChild(y);
             }
-            const grp = paintIncomingGroup(kingdom);
-            if (grp) chipRow.appendChild(grp);
+            if (paintIncomingGroup(kingdom)) chipRow.appendChild(paintDestIndicator(kingdom));
           };
           paintChipUpdaters.push(updateChipRow);
           updateChipRow();
@@ -4325,9 +4342,9 @@
         holder.className = 'kc-paint';
         const upd = () => {
           holder.innerHTML = '';
-          holder.appendChild(paintDestIndicator(kingdom));
           const g = paintIncomingGroup(kingdom);
           if (g) holder.appendChild(g);
+          holder.appendChild(paintDestIndicator(kingdom));
         };
         upd();
         header.appendChild(holder);
