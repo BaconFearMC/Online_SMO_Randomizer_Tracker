@@ -57,6 +57,12 @@
     .paintings-fixed:not(.paint-cols4) .paint-grid .zone-row-top,
     .paintings-fixed:not(.paint-cols4) .paint-grid .zone-reqs { flex-wrap: nowrap; }
     .paintings-fixed:not(.paint-cols4) .paint-grid .zone-reqs .zone-name { flex: 0 0 auto; max-width: none; overflow: visible; white-space: nowrap; }
+    /* Extra Paintings: text never wraps inside itself; items drop to the next line whole */
+    .paintings-fixed.paint-cols4 .paint-grid .zone-reqs .zone-name,
+    .paintings-fixed.paint-cols4 .paint-grid .zone-name-main,
+    .paintings-fixed.paint-cols4 .paint-grid .zone-name-sub { white-space: nowrap; overflow: visible; text-overflow: clip; max-width: none; }
+    .paintings-fixed.paint-cols4 .paint-grid .paint-chip { white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; display: inline-block; }
+    .paintings-fixed.paint-cols4 .paint-grid .paint-chip-group { max-width: 100%; flex-wrap: nowrap; }
     /* Extra Paintings (4x4): cells are at least square-ish and grow with their content */
     .paintings-fixed.paint-cols4 .paint-grid { grid-template-rows: repeat(4, minmax(128px, auto)); }
     .paintings-fixed.paint-cols4 .paint-grid .zone-row { height: auto; min-height: 128px; overflow: visible; }
@@ -3595,7 +3601,7 @@
       imp('bottom', 'auto');
       const wide4 = col.classList.contains('paint-cols4');
       const findOpen = col.classList.contains('paint-find-open');
-      const panelW = wide4 ? 680 : 620;
+      const panelW = wide4 ? 800 : 620;
       imp('width', 'min(' + panelW + 'px, calc(100vw - 32px))');
       imp('max-width', 'calc(100vw - 32px)');
       imp('height', 'auto');
@@ -3638,7 +3644,7 @@
         const over = col.scrollHeight - col.clientHeight;
         const h = grid.offsetHeight * s;
         if (h <= 1) break;
-        s = Math.max(0.3, s * Math.max(0.3, (h - over - 1) / h));
+        s = Math.max(paintingIrlInfoActive() ? 1 : 0.3, s * Math.max(0.3, (h - over - 1) / h));
         grid.style.zoom = String(s);
       }
       if (!findShown) return;
