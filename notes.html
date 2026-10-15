@@ -86,7 +86,7 @@
     .paintings-fixed.paint-irl .paint-chip { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
     .paintings-fixed.paint-irl .paint-chip-group { flex-wrap: wrap; row-gap: 3px; }
     .paintings-fixed.paint-irl .paint-chip-group > .paint-chip--x { border-radius: 10px 0 0 10px; }
-    .paintings-fixed.paint-irl .paint-chip--none { white-space: nowrap; font-size: 12px; }
+    .paintings-fixed.paint-irl .paint-chip--none { white-space: nowrap; font-size: 11px; }
     .kc-paint { flex-wrap: wrap; }
     .paintings-fixed.paint-irl .paint-chip-row > * { flex: 0 1 auto; }
     .paintings-fixed.paint-irl .paint-chip--y { flex-shrink: 0; }
@@ -95,12 +95,12 @@
     .paint-note-chips { display: flex; flex-wrap: wrap; gap: 4px; padding: 3px 4px; border: 1px solid var(--border, #444); border-radius: 6px; background: rgba(255,255,255,.04); box-sizing: border-box; max-width: 100%; }
     .paint-chip--note { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.25); color: var(--text, #e6e6ee); white-space: normal; overflow-wrap: anywhere; }
     /* Destination chip (→ Kingdom): larger than the other chips */
-    .paint-chip.paint-chip--dest { font-size: 16.5px; min-height: 30px; padding: 3px 12px 3px 8px; gap: 6px; border-radius: 14px; border-width: 2px; }
-    .paint-chip--dest .paint-chip-icon { width: 24px; height: 24px; }
-    .paint-dest-ind .paint-arrow { font-size: 17.5px; font-weight: 700; }
+    .paint-chip.paint-chip--dest { font-size: 15px; min-height: 28px; padding: 3px 12px 3px 8px; gap: 6px; border-radius: 14px; border-width: 2px; }
+    .paint-chip--dest .paint-chip-icon { width: 22px; height: 22px; }
+    .paint-dest-ind .paint-arrow { font-size: 16px; font-weight: 700; }
     /* Even spacing: indicator on its own line in Extra mode, notes pinned to the cell bottom */
     .paintings-fixed.paint-cols4.paint-irl .paint-dest-ind { flex: 0 0 auto; margin-left: 2px !important; }
-    .paintings-fixed .paint-grid .paint-note-chips { margin-top: 6px; }
+    .paintings-fixed .paint-grid .paint-note-chips { margin-top: auto; }
     .paintings-fixed .paint-grid .zone-row { padding-bottom: 4px; }
     /* The header must span the whole cell (it was shrink-wrapping to its content, so the forced line break did nothing) */
     .paintings-fixed .paint-grid .zone-row-top,
@@ -110,70 +110,26 @@
     .paintings-fixed.paint-irl .paint-grid .zone-reqs > .paint-dest-ind { order: 2; margin-left: 4px !important; }
     .paintings-fixed.paint-irl .paint-grid .zone-reqs > .paint-line-break { order: 3; flex: 0 0 100%; width: 100%; height: 0; }
     .paintings-fixed.paint-irl .paint-grid .zone-reqs > .zone-name { order: 4; }
-    /* Centered under the icon */
-    .paintings-fixed.paint-irl .paint-grid .zone-reqs { justify-content: center; }
-    .paintings-fixed.paint-irl .paint-grid .zone-reqs > .zone-name { flex: 0 0 100%; align-items: center; text-align: center; }
-    .paintings-fixed.paint-irl .paint-grid .zone-name-main,
-    .paintings-fixed.paint-irl .paint-grid .zone-name-sub { text-align: center; }
-    .paintings-fixed.paint-irl .paint-chip-row { justify-content: center; }
-    .paintings-fixed.paint-irl .paint-note-chips { justify-content: center; }
-    /* Collapsible extras (so the abridged view can animate them in and out) */
-    .paintings-fixed.paint-irl .paint-grid .zone-name-sub,
-    .paintings-fixed.paint-irl .paint-chip-row,
-    .paintings-fixed.paint-irl .paint-note-chips,
-    .paintings-fixed .paint-find-wrap {
-      max-height: 240px; opacity: 1; overflow: hidden;
-      transition: max-height .35s ease, opacity .25s ease, margin .3s ease, padding .3s ease, border-width .3s ease;
-    }
-    body > .kingdom-col.paintings-fixed { transition: width .38s cubic-bezier(.2,.8,.2,1); }
-    /* ABRIDGED: main + menu is open - panel sits on the right above the menu and
-       shows only Kingdom -> destination */
-    body > .kingdom-col.paintings-fixed.paint-abridged { z-index: 30000 !important; animation: paintSlideIn .4s cubic-bezier(.2,.8,.2,1); }
-    @keyframes paintSlideIn { from { transform: translateX(36px); opacity: .0; } to { transform: none; opacity: 1; } }
-    .paintings-fixed.paint-abridged .paint-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; grid-template-rows: none !important; grid-auto-flow: row !important; align-content: start; gap: 4px 8px; }
-    .paintings-fixed.paint-abridged .paint-grid .zone-row { min-height: 0 !important; height: auto; padding: 2px 4px; }
-    .paintings-fixed.paint-abridged .paint-grid .zone-name-sub,
-    .paintings-fixed.paint-abridged .paint-note-chips,
-    .paintings-fixed.paint-abridged .paint-find-wrap {
-      max-height: 0 !important; opacity: 0; margin-top: 0 !important; margin-bottom: 0 !important;
-      padding-top: 0 !important; padding-bottom: 0 !important; border-width: 0 !important; pointer-events: none;
-    }
-    .paintings-fixed.paint-abridged .paint-find-wrap { display: none; }
-    .paintings-fixed.paint-abridged .paint-grid .zone-reqs { flex-wrap: nowrap; justify-content: flex-start; }
-    .paintings-fixed.paint-abridged .paint-grid .zone-reqs > .paint-line-break { display: none; }
-    .paintings-fixed.paint-abridged .paint-grid .zone-reqs > .zone-name { order: 3; flex: 0 1 auto; align-items: flex-start; text-align: left; }
-    .paintings-fixed.paint-abridged .paint-grid .zone-reqs > .paint-dest-ind { order: 4; margin-left: auto !important; }
-    .paintings-fixed.paint-abridged .paint-grid .paint-dest-ind--swap { display: none; }
-    .paintings-fixed.paint-abridged .paint-chip--none { visibility: hidden; }
-    .paintings-fixed.paint-abridged .paint-chip-row > :not(.paint-dest-ind) { display: none; }
-    .paintings-fixed.paint-abridged .paint-chip-row { max-height: 40px; margin: 0; }
-    .paintings-fixed.paint-abridged .paint-chip-row:not(:has(.paint-chip--dest)) { max-height: 0 !important; margin: 0 !important; }
-    .paintings-fixed.paint-abridged .paint-dest-ind { flex-wrap: nowrap !important; }
-    .paintings-fixed.paint-abridged .paint-chip.paint-chip--dest { white-space: nowrap; overflow: visible; }
-    .paintings-fixed.paint-abridged .paint-chip-row { justify-content: flex-end; }
-    .paintings-fixed.paint-abridged .paint-chip.paint-chip--dest { font-size: 13px; min-height: 22px; padding: 1px 8px 1px 5px; }
-    .paintings-fixed.paint-abridged .paint-chip--dest .paint-chip-icon { width: 16px; height: 16px; }
     /* Chips */
     .paint-chip-row { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin: 2px 0 4px 2px; }
     .paint-chip {
       display: inline-flex; align-items: center; gap: 3px; padding: 3px 8px; min-height: 20px; box-sizing: border-box;
-      border-radius: 10px; font-size: 13.2px; font-weight: 700; line-height: 1.2; white-space: normal;
+      border-radius: 10px; font-size: 12px; font-weight: 700; line-height: 1.2; white-space: normal;
       border: 1px solid transparent; max-width: 100%;
     }
     .paint-chip--x { background: rgba(74,163,255,.16); border-color: rgba(74,163,255,.55); color: #8ec5ff; }   /* Reachable ... */
     .paint-chip--y { background: rgba(240,170,50,.16); border-color: rgba(240,170,50,.55); color: #f3c26b; }   /* from ... */
     .paint-chip--in { background: rgba(255,255,255,.07); border-color: var(--chip-c, #888); color: var(--chip-c, #ddd); }
     .paint-chip--dest { background: rgba(255,255,255,.07); border-color: var(--chip-c, #888); color: var(--chip-c, #ddd); cursor: pointer; }
-    .paint-chip--none { background: transparent; border-color: transparent; color: var(--text-dim, #9aa0ac); font-weight: 600; font-style: italic; padding: 0 2px; font-size: 13.2px; }
+    .paint-chip--none { background: transparent; border-color: transparent; color: var(--text-dim, #9aa0ac); font-weight: 600; font-style: italic; padding: 0 2px; font-size: 12px; }
     .paint-chip-group { display: inline-flex; align-items: center; }
     .paint-chip-group > .paint-chip--x { border-top-right-radius: 0; border-bottom-right-radius: 0; }
     .paint-chip-group > .paint-chip--in { border-radius: 0; margin-left: -1px; }
     .paint-chip-group > .paint-chip--in:last-child { border-top-right-radius: 9px; border-bottom-right-radius: 9px; }
     .paint-dest-ind { display: inline-flex; align-items: center; gap: 3px; flex: 0 0 auto; opacity: .85; }
-    .paint-dest-ind .paint-arrow { color: var(--text-dim, #9aa0ac); font-size: 13.2px; }
+    .paint-dest-ind .paint-arrow { color: var(--text-dim, #9aa0ac); font-size: 12px; }
     .paintings-fixed .paint-grid .zone-reqs .paint-dest-ind { flex: 0 1 auto; min-width: 0; }
-    .paintings-fixed .paint-grid { font-size: 110%; }
-    .paintings-fixed .paint-grid .zone-name-sub { font-size: 13.2px; }
+    .paintings-fixed .paint-grid .zone-name-sub { font-size: 12px; }
     /* 2 columns, filled top-to-bottom: 5 rows (Normal) / 8 rows (Extra). */
     .paintings-fixed .zones-container.paint-grid {
       display: grid;
@@ -3789,9 +3745,8 @@
       imp('bottom', 'auto');
       const wide4 = col.classList.contains('paint-cols4');
       const findOpen = col.classList.contains('paint-find-open');
-      col.classList.toggle('paint-abridged', !!window.__paintAbridged);
-      const panelW = window.__paintAbridged ? 340 : (wide4 ? 840 : 620);
-      imp('width', Math.min(panelW, window.innerWidth - 32) + 'px');
+      const panelW = wide4 ? 840 : 620;
+      imp('width', 'min(' + panelW + 'px, calc(100vw - 32px))');
       imp('max-width', 'calc(100vw - 32px)');
       imp('height', 'auto');
       imp('margin', '0');
@@ -3800,29 +3755,6 @@
       fitPaintingsGrid(col);
     }
     window.addEventListener('resize', positionPaintingsColumn);
-
-    // While a + menu on the main view is open, the Paintings panel switches to an
-    // abridged version (Kingdom -> destination) and stays on top at the right edge.
-    (function () {
-      const OVERLAY_SEL = '.req-picker-overlay, .req-find-popup-overlay';
-      const mainOverlays = () => [...document.querySelectorAll(OVERLAY_SEL)].filter(o => !o.closest('.paintings-fixed'));
-      document.addEventListener('click', (e) => {
-        if (e.target.closest && e.target.closest('body > .kingdom-col.paintings-fixed .zone-req-add')) window.__paintOwnPicker = true;
-      }, true);
-      let t = null;
-      const sync = () => {
-        const open = mainOverlays().length > 0;
-        if (!open) window.__paintOwnPicker = false;
-        const want = open && !window.__paintOwnPicker;
-        if (want !== !!window.__paintAbridged) {
-          window.__paintAbridged = want;
-          positionPaintingsColumn();
-          clearTimeout(t);
-          t = setTimeout(positionPaintingsColumn, 420);
-        }
-      };
-      new MutationObserver(sync).observe(document.body, { childList: true, subtree: true });
-    })();
 
     // Shrinks the Paintings list just enough that the panel fits on screen
     // without a scrollbar (e.g. Extra Paintings' 8 rows, or with the Find
@@ -3833,7 +3765,7 @@
       fitPaintingsGridInner(col);
       const area = col.querySelector('.paint-find-area');
       const findShown = !!(area && area.style.display !== 'none');
-      if (!findShown && !window.__paintAbridged) {
+      if (!findShown) {
         const top = parseFloat(col.style.top) || 0;
         col.style.setProperty('min-height', Math.max(160, window.innerHeight - top - 12) + 'px', 'important');
       }
@@ -3856,7 +3788,7 @@
         const over = col.scrollHeight - col.clientHeight;
         const h = grid.offsetHeight * s;
         if (h <= 1) break;
-        s = Math.max(0.4, s * Math.max(0.3, (h - over - 1) / h));
+        s = Math.max(paintingIrlInfoActive() ? 0.8 : 0.3, s * Math.max(0.3, (h - over - 1) / h));
         grid.style.zoom = String(s);
       }
       if (!findShown) return;
