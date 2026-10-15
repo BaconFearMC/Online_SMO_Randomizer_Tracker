@@ -44,9 +44,15 @@
        below it (min-height is set from JS, only while Find is closed). */
     body > .kingdom-col.paintings-fixed { display: flex; flex-direction: column; }
     .paintings-fixed > .kingdom-col-header, .paintings-fixed > .paint-find-wrap { flex: 0 0 auto; }
-    .paintings-fixed > .zones-container.paint-grid { flex: 1 0 auto; align-content: stretch; }
+    .paintings-fixed > .zones-container.paint-grid { flex: 0 0 auto; align-content: start; }
     .paintings-fixed .paint-grid .zone-row { display: flex; flex-direction: column; }
-    .paintings-fixed .paint-grid .zone-row > textarea.zone-note { flex: 1 1 auto; }
+    /* Paintings notes: small, read-only (filled only by the + button). Hidden while empty. */
+    .paintings-fixed .paint-grid textarea.zone-note {
+      flex: 0 0 auto; resize: none; cursor: default; overflow: hidden;
+      max-height: 2.6em; font-size: 12px; line-height: 1.25; padding: 2px 6px;
+      pointer-events: none; user-select: none;
+    }
+    .paintings-fixed .paint-grid textarea.zone-note:placeholder-shown { display: none; }
     /* Chips */
     .paint-chip-row { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin: 2px 0 4px 2px; }
     .paint-chip {
@@ -3601,7 +3607,7 @@
       fitPaintingsGridInner(col);
       const area = col.querySelector('.paint-find-area');
       const findShown = !!(area && area.style.display !== 'none');
-      if (!findShown) {
+      if (false && !findShown) {
         const top = parseFloat(col.style.top) || 0;
         col.style.setProperty('min-height', Math.max(160, window.innerHeight - top - 12) + 'px', 'important');
       }
@@ -3957,6 +3963,8 @@
         noteArea.value = fullState.painting_notes[kingdom] || '';
         noteArea.placeholder = 'Note…';
         noteArea.rows = 1;
+        noteArea.readOnly = true;
+        noteArea.tabIndex = -1;
         noteArea.addEventListener('input', () => {
           fullState.painting_notes[kingdom] = noteArea.value;
           saveFullState();
