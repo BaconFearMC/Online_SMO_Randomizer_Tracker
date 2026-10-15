@@ -3869,7 +3869,19 @@
         s = Math.max(0.35, s * Math.max(0.3, (h - over - 1) / h));
         grid.style.zoom = String(s);
       }
-      if (!findShown) return;
+      if (!findShown) {
+        // Find closed: scale the list UP (or down) so it fills the panel's
+        // whole height - no dead space, no scrollbar. Measured with the
+        // grid un-stretched and the panel at its natural height.
+        grid.style.flex = '0 0 auto';
+        const fits = (z) => { grid.style.zoom = String(z); return col.scrollHeight - col.clientHeight <= 0.5; };
+        let lo = 0.35, hi = 1.7;
+        if (fits(hi)) lo = hi;
+        else for (let i = 0; i < 12; i++) { const mid = (lo + hi) / 2; if (fits(mid)) lo = mid; else hi = mid; }
+        grid.style.zoom = String(Math.floor(lo * 100) / 100);
+        grid.style.flex = '';
+        return;
+      }
 
       // The Find menu gets whatever vertical space is left under the list.
       // It is drawn at scale k and laid out (width = panel width / k) so it
