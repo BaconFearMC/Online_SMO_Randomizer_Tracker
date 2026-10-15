@@ -105,6 +105,11 @@
     /* The header must span the whole cell (it was shrink-wrapping to its content, so the forced line break did nothing) */
     .paintings-fixed .paint-grid .zone-row-top,
     .paintings-fixed .paint-grid .zone-reqs { display: flex; width: 100%; box-sizing: border-box; }
+    /* Layout: [+][icon] [indicator] on the first line, Kingdom name + location text below the icon */
+    .paintings-fixed.paint-irl .paint-grid .zone-reqs { align-items: center; }
+    .paintings-fixed.paint-irl .paint-grid .zone-reqs > .paint-dest-ind { order: 2; margin-left: 4px !important; }
+    .paintings-fixed.paint-irl .paint-grid .zone-reqs > .paint-line-break { order: 3; flex: 0 0 100%; width: 100%; height: 0; }
+    .paintings-fixed.paint-irl .paint-grid .zone-reqs > .zone-name { order: 4; }
     /* Chips */
     .paint-chip-row { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin: 2px 0 4px 2px; }
     .paint-chip {
@@ -3970,10 +3975,10 @@
           const destKey = APC.getPaintingDestination(fullState, kingdom);
           if (irlInfo) {
             // Expanded (IRL Info) node: subtle indicator of where this Painting leads.
-            if (fullState.settings.extra_paintings) {
-              // Extra mode: force the indicator onto its own line in every cell so they all match.
+            {
+              // Line 1: [+] [icon] [indicator]; line 2: name + In World Info text (via CSS order).
               const lineBreak = document.createElement('span');
-              lineBreak.style.cssText = 'flex:0 0 100%;height:0;width:100%;';
+              lineBreak.className = 'paint-line-break';
               reqsWrap.appendChild(lineBreak);
             }
             const swapGrp = paintIncomingGroup(kingdom);
