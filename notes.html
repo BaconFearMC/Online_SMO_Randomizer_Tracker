@@ -27,7 +27,7 @@
       top: 80px;
       right: 16px !important;
       left: auto !important;
-      width: min(460px, calc(100vw - 32px)) !important;
+      width: min(560px, calc(100vw - 32px)) !important;
       max-width: calc(100vw - 32px) !important;
       height: auto !important;
       flex: none !important;
@@ -48,23 +48,25 @@
     .paintings-fixed .paint-grid .zone-row { display: flex; flex-direction: column; }
     .paintings-fixed .paint-grid .zone-row > textarea.zone-note { flex: 1 1 auto; }
     /* Chips */
-    .paint-chip-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: 1px 0 2px 2px; }
+    .paint-chip-row { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin: 2px 0 4px 2px; }
     .paint-chip {
-      display: inline-flex; align-items: center; gap: 3px; padding: 0 7px; height: 18px;
-      border-radius: 9px; font-size: .68em; font-weight: 700; line-height: 1; white-space: nowrap;
-      border: 1px solid transparent; max-width: 100%; overflow: hidden; text-overflow: ellipsis;
+      display: inline-flex; align-items: center; gap: 3px; padding: 3px 8px; min-height: 20px; box-sizing: border-box;
+      border-radius: 10px; font-size: 12px; font-weight: 700; line-height: 1.2; white-space: normal;
+      border: 1px solid transparent; max-width: 100%;
     }
     .paint-chip--x { background: rgba(74,163,255,.16); border-color: rgba(74,163,255,.55); color: #8ec5ff; }   /* Reachable ... */
     .paint-chip--y { background: rgba(240,170,50,.16); border-color: rgba(240,170,50,.55); color: #f3c26b; }   /* from ... */
     .paint-chip--in { background: rgba(255,255,255,.07); border-color: var(--chip-c, #888); color: var(--chip-c, #ddd); }
     .paint-chip--dest { background: rgba(255,255,255,.07); border-color: var(--chip-c, #888); color: var(--chip-c, #ddd); cursor: pointer; }
-    .paint-chip--none { background: transparent; border-color: transparent; color: var(--text-dim, #9aa0ac); font-weight: 600; font-style: italic; padding: 0 2px; }
+    .paint-chip--none { background: transparent; border-color: transparent; color: var(--text-dim, #9aa0ac); font-weight: 600; font-style: italic; padding: 0 2px; font-size: 12px; }
     .paint-chip-group { display: inline-flex; align-items: center; }
     .paint-chip-group > .paint-chip--x { border-top-right-radius: 0; border-bottom-right-radius: 0; }
     .paint-chip-group > .paint-chip--in { border-radius: 0; margin-left: -1px; }
     .paint-chip-group > .paint-chip--in:last-child { border-top-right-radius: 9px; border-bottom-right-radius: 9px; }
     .paint-dest-ind { display: inline-flex; align-items: center; gap: 3px; flex: 0 0 auto; opacity: .85; }
-    .paint-dest-ind .paint-arrow { color: var(--text-dim, #9aa0ac); font-size: .75em; }
+    .paint-dest-ind .paint-arrow { color: var(--text-dim, #9aa0ac); font-size: 12px; }
+    .paintings-fixed .paint-grid .zone-reqs .paint-dest-ind { flex: 0 1 auto; min-width: 0; }
+    .paintings-fixed .paint-grid .zone-name-sub { font-size: 12px; }
     /* 2 columns, filled top-to-bottom: 5 rows (Normal) / 8 rows (Extra). */
     .paintings-fixed .zones-container.paint-grid {
       display: grid;
@@ -3579,7 +3581,7 @@
       imp('bottom', 'auto');
       const wide4 = col.classList.contains('paint-cols4');
       const findOpen = col.classList.contains('paint-find-open');
-      const panelW = wide4 ? 640 : 460;
+      const panelW = wide4 ? 980 : 560;
       imp('width', 'min(' + panelW + 'px, calc(100vw - 32px))');
       imp('max-width', 'calc(100vw - 32px)');
       imp('height', 'auto');
@@ -3703,8 +3705,8 @@
       zonesRoot.className = 'zones-container paint-grid';
       // Normal Paintings: 5 tall x 2 wide. Extra Paintings: 4 tall x 4 wide.
       // (16 Paintings are laid out 4 x 4 - still filled in order, column by column.)
-      zonesRoot.style.setProperty('--paint-rows', fullState.settings.extra_paintings ? 6 : 5);
-      zonesRoot.style.setProperty('--paint-cols', fullState.settings.extra_paintings ? 3 : 2);
+      zonesRoot.style.setProperty('--paint-rows', fullState.settings.extra_paintings ? 4 : 5);
+      zonesRoot.style.setProperty('--paint-cols', fullState.settings.extra_paintings ? 4 : 2);
       col.classList.toggle('paint-cols4', !!fullState.settings.extra_paintings);
 
       const irlActive = paintingIrlInfoActive();
