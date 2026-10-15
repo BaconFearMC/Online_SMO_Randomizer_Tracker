@@ -27,7 +27,7 @@
       top: 80px;
       right: 16px !important;
       left: auto !important;
-      width: min(460px, calc(100vw - 32px)) !important;
+      width: min(620px, calc(100vw - 32px)) !important;
       max-width: calc(100vw - 32px) !important;
       height: auto !important;
       flex: none !important;
@@ -53,9 +53,13 @@
       pointer-events: none; user-select: none;
     }
     .paintings-fixed .paint-grid textarea.zone-note::placeholder { color: var(--text-dim, #9aa0ac); font-style: italic; font-size: 14px; opacity: .9; }
-    /* Extra Paintings (4x4): every cell is a square */
-    .paintings-fixed.paint-cols4 .paint-grid { grid-template-rows: repeat(4, 128px); }
-    .paintings-fixed.paint-cols4 .paint-grid .zone-row { height: 128px; min-height: 0; overflow-x: hidden; overflow-y: auto; scrollbar-width: none; }
+    /* Normal mode: keep icon + colored names on one line (no wrapping) */
+    .paintings-fixed:not(.paint-cols4) .paint-grid .zone-row-top,
+    .paintings-fixed:not(.paint-cols4) .paint-grid .zone-reqs { flex-wrap: nowrap; }
+    .paintings-fixed:not(.paint-cols4) .paint-grid .zone-reqs .zone-name { flex: 0 0 auto; max-width: none; overflow: visible; white-space: nowrap; }
+    /* Extra Paintings (4x4): cells are at least square-ish and grow with their content */
+    .paintings-fixed.paint-cols4 .paint-grid { grid-template-rows: repeat(4, minmax(128px, auto)); }
+    .paintings-fixed.paint-cols4 .paint-grid .zone-row { height: auto; min-height: 128px; overflow: visible; }
     .paintings-fixed .paint-grid textarea.zone-note { flex: 0 0 auto; height: 2.5em !important; max-height: 2.5em; font-size: 13px; }
     /* Chips */
     .paint-chip-row { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin: 2px 0 4px 2px; }
@@ -3591,7 +3595,7 @@
       imp('bottom', 'auto');
       const wide4 = col.classList.contains('paint-cols4');
       const findOpen = col.classList.contains('paint-find-open');
-      const panelW = wide4 ? 560 : 460;
+      const panelW = wide4 ? 680 : 620;
       imp('width', 'min(' + panelW + 'px, calc(100vw - 32px))');
       imp('max-width', 'calc(100vw - 32px)');
       imp('height', 'auto');
