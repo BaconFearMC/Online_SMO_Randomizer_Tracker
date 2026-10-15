@@ -2021,6 +2021,21 @@
     body:has(.paintings-fixed.paint-abridged) > .req-picker-overlay { padding-right: 340px; box-sizing: border-box; }
     body:has(.paintings-fixed.paint-abridged) > .req-picker-overlay .req-picker-popup { width: calc(100vw - 360px) !important; max-width: calc(100vw - 360px) !important; }
   </style>
+  <style>
+    /* ── Paintings (In World Info): less dead space, bigger text ── */
+    /* empty note box is just a second "Nothing yet..." row: don't spend a whole row on it */
+    .paintings-fixed .paint-note-chips:has(> .paint-chip--none:only-child) { display: none; }
+    .paintings-fixed:not(.paint-abridged) .paint-find-btn { height: 38px; }
+    .paintings-fixed:not(.paint-abridged) .paint-find-wrap { padding-bottom: 4px; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .zone-row { padding: 1px 2px 2px; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-chip-row { margin: 0 0 2px 2px; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .zone-name-main { font-size: 1.2em; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .zone-name-sub { font-size: 14px; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-chip { font-size: 13.5px; min-height: 22px; padding: 2px 9px; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-chip--none { font-size: 13.5px; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .zone-req-icon--kingdom { width: 38px; height: 38px; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .zone-req-add { width: 24px; height: 24px; font-size: 16px; }
+  </style>
 </head>
 <body class="notes-page">
   <div class="notes-page-header">
