@@ -102,6 +102,9 @@
     .paintings-fixed.paint-cols4.paint-irl .paint-dest-ind { flex: 0 0 auto; margin-left: 2px !important; }
     .paintings-fixed .paint-grid .paint-note-chips { margin-top: auto; }
     .paintings-fixed .paint-grid .zone-row { padding-bottom: 4px; }
+    /* The header must span the whole cell (it was shrink-wrapping to its content, so the forced line break did nothing) */
+    .paintings-fixed .paint-grid .zone-row-top,
+    .paintings-fixed .paint-grid .zone-reqs { display: flex; width: 100%; box-sizing: border-box; }
     /* Chips */
     .paint-chip-row { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin: 2px 0 4px 2px; }
     .paint-chip {
