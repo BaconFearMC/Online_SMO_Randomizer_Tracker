@@ -2091,6 +2091,20 @@
     .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-chip--dest .paint-chip-icon { width: 22px; height: 22px; }
     .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-dest-ind .paint-arrow { font-size: 18px; }
   </style>
+  <style>
+    /* ── Extra + In World Info cell v3: [icon/name]  [+] on top, chips use the full cell width below ── */
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .zone-row { grid-template-columns: auto minmax(0, 1fr); column-gap: 8px; row-gap: 0; padding: 8px 10px 9px; align-content: center; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .zone-req-add { position: static; grid-column: 2; grid-row: 1; justify-self: end; align-self: start; width: 26px; height: 26px; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-src { grid-column: 1; grid-row: 1; padding-left: 0; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-dest-ind { grid-column: 1 / -1; grid-row: 2; justify-self: start; align-self: start; margin: 5px 0 0 !important; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-chip-row { grid-column: 1 / -1; grid-row: 3; margin: 5px 0 0 !important; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-note-chips { grid-column: 1 / -1; grid-row: 4; margin: 4px 0 0 !important; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-chip { overflow-wrap: normal; word-break: normal; white-space: normal; }
+    /* A Painting that leads somewhere: show where it goes, drop the (irrelevant) "from" chip */
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .zone-row:has(.paint-dest-ind .paint-chip--dest) .paint-chip-row { display: none; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .zone-row:has(.paint-dest-ind .paint-chip--dest) .paint-note-chips .paint-chip--note::before { content: "\2192  "; font-weight: 800; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-note-chips .paint-chip--note { font-size: 14px; line-height: 1.25; }
+  </style>
 </head>
 <body class="notes-page">
   <div class="notes-page-header">
