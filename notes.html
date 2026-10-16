@@ -2073,8 +2073,23 @@
     .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-chip--dest { font-size: 15px; }
     .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .zone-req-icon--kingdom { width: 42px; height: 42px; }
     /* Normal Paintings: keep dest icon + name inside the row */
-    .paintings-fixed:not(.paint-irl):not(.paint-abridged) .paint-grid .zone-reqs { flex-wrap: wrap; min-width: 0; }
-    .paintings-fixed:not(.paint-irl):not(.paint-abridged) .paint-grid .zone-row { overflow: hidden; }
+    .paintings-fixed:not(.paint-irl):not(.paint-abridged) .paint-grid .zone-reqs { flex-wrap: nowrap !important; min-width: 0; align-items: center; }
+    .paintings-fixed:not(.paint-irl):not(.paint-abridged) .paint-grid .zone-reqs > * { flex-shrink: 0; }
+    .paintings-fixed:not(.paint-irl):not(.paint-abridged) .paint-grid .zone-reqs > .zone-name,
+    .paintings-fixed:not(.paint-irl):not(.paint-abridged) .paint-grid .zone-reqs > .zone-dest-name { flex-shrink: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  </style>
+  <style>
+    /* Extra + In World Info cell: icon/name stack on the left, destination + "from" chips on the right */
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .zone-row { display: grid !important; grid-template-columns: auto minmax(0, 1fr); column-gap: 8px; row-gap: 4px; align-content: center; align-items: center; position: relative; padding: 8px 8px 8px 10px; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .zone-row-top, .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .zone-reqs { display: contents !important; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .zone-req-add { position: absolute; top: 5px; left: 5px; z-index: 2; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-src { grid-column: 1; grid-row: 1 / span 3; align-self: center; padding-left: 6px; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-dest-ind { grid-column: 2; grid-row: 1; margin: 0 !important; justify-self: start; align-self: end; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-chip-row { grid-column: 2; grid-row: 2; align-self: start; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-note-chips { grid-column: 1 / -1; grid-row: 4; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-chip.paint-chip--dest { font-size: 16.5px; min-height: 28px; padding: 3px 11px 3px 7px; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-chip--dest .paint-chip-icon { width: 22px; height: 22px; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-dest-ind .paint-arrow { font-size: 18px; }
   </style>
 </head>
 <body class="notes-page">
@@ -3924,7 +3939,7 @@
         // grid un-stretched and the panel at its natural height.
         grid.style.flex = '0 0 auto';
         const fits = (z) => { grid.style.zoom = String(z); return col.scrollHeight - col.clientHeight <= 0.5; };
-        let lo = 0.35, hi = col.classList.contains('paint-irl') ? 1.9 : 1.1;
+        let lo = 0.35, hi = col.classList.contains('paint-irl') ? 1.9 : 1;
         if (fits(hi)) lo = hi;
         else for (let i = 0; i < 12; i++) { const mid = (lo + hi) / 2; if (fits(mid)) lo = mid; else hi = mid; }
         grid.style.zoom = String(Math.floor(lo * 100) / 100);
