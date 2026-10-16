@@ -2064,6 +2064,18 @@
     .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-note-chips { margin-top: 0; }
     .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-chip--note { background: rgba(255,255,255,.06); border-radius: 8px; font-weight: 600; }
   </style>
+  <style>
+    /* Extra + In World Info: bigger text, content centered vertically in each card (no top-heavy empty space) */
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .zone-row { justify-content: center; padding: 8px 10px; gap: 6px; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .zone-name-main { font-size: 1.3em; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .zone-name-sub { font-size: 15px; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-chip { font-size: 14.5px; padding: 3px 10px; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-chip--dest { font-size: 15px; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .zone-req-icon--kingdom { width: 42px; height: 42px; }
+    /* Normal Paintings: keep dest icon + name inside the row */
+    .paintings-fixed:not(.paint-irl):not(.paint-abridged) .paint-grid .zone-reqs { flex-wrap: wrap; min-width: 0; }
+    .paintings-fixed:not(.paint-irl):not(.paint-abridged) .paint-grid .zone-row { overflow: hidden; }
+  </style>
 </head>
 <body class="notes-page">
   <div class="notes-page-header">
@@ -3842,7 +3854,7 @@
       const wide4 = col.classList.contains('paint-cols4');
       const findOpen = col.classList.contains('paint-find-open');
       const abr = col.classList.contains('paint-abridged');
-      const panelW = abr ? 250 : (wide4 ? 740 : 540);
+      const panelW = abr ? 250 : (wide4 ? 780 : 620);
       imp('width', 'min(' + panelW + 'px, calc(100vw - 32px))');
       imp('max-width', 'calc(100vw - 32px)');
       imp('height', 'auto');
@@ -3912,7 +3924,7 @@
         // grid un-stretched and the panel at its natural height.
         grid.style.flex = '0 0 auto';
         const fits = (z) => { grid.style.zoom = String(z); return col.scrollHeight - col.clientHeight <= 0.5; };
-        let lo = 0.35, hi = 1.7;
+        let lo = 0.35, hi = col.classList.contains('paint-irl') ? 1.9 : 1.1;
         if (fits(hi)) lo = hi;
         else for (let i = 0; i < 12; i++) { const mid = (lo + hi) / 2; if (fits(mid)) lo = mid; else hi = mid; }
         grid.style.zoom = String(Math.floor(lo * 100) / 100);
