@@ -2151,6 +2151,10 @@
     .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .zone-row.paint-has-dest .zone-name-sub { white-space: normal !important; text-align: center; overflow: visible; }
     .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .zone-row.paint-has-dest .paint-dest-conn { grid-column: 1 / -1; grid-row: 2; justify-self: center; }
   </style>
+  <style>
+    /* unmarked card reads "Cap  FROM Alcove": the location moves out of the name stack into the FROM section */
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .zone-row:not(.paint-has-dest) .paint-src .zone-name-sub { display: none; }
+  </style>
 </head>
 <body class="notes-page">
   <div class="notes-page-header">
@@ -4354,7 +4358,7 @@
               yl.textContent = 'from';
               const yv = document.createElement('span');
               yv.className = 'paint-from-loc';
-              yv.textContent = irlInfo.from;
+              yv.textContent = irlInfo.subtext;
               y.appendChild(yl);
               y.appendChild(yv);
               chipRow.appendChild(y);
