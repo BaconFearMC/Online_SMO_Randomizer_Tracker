@@ -2117,6 +2117,20 @@
     .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-dest-conn { grid-column: 1 / -1; grid-row: 3; display: inline-flex; align-items: center; gap: 5px; margin-top: 5px; font-size: 13.5px; font-weight: 700; color: #8ec5ff; }
     .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-dest-conn img { width: 22px; height: 22px; object-fit: contain; flex: none; }
   </style>
+  <style>
+    /* ── v4: no dead space. Icon stack left; "from" text fills the right; + tucked in the corner ── */
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .zone-row { grid-template-columns: auto minmax(0, 1fr); column-gap: 10px; padding: 8px 10px; align-content: center; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .zone-req-add { position: absolute !important; top: 4px; right: 4px; width: 22px; height: 22px; grid-column: auto; grid-row: auto; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-chip-row { grid-column: 2; grid-row: 1; align-self: center; margin: 0 !important; padding-right: 4px; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-chip-row .paint-chip--y { background: none; border: none; padding: 0; min-height: 0; border-radius: 0; font-size: 16px; line-height: 1.25; color: #f3c26b; white-space: normal; text-align: left; font-weight: 800; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .zone-row:not(.paint-has-dest) .paint-dest-ind--swap { grid-column: 1 / -1; grid-row: 2; margin-top: 6px !important; }
+    /* destination cells: source -> destination fill the whole card */
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .zone-row.paint-has-dest { grid-template-columns: auto 1fr; column-gap: 12px; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-dest-block { grid-column: 2; grid-row: 1; justify-self: stretch; justify-content: flex-start; gap: 10px; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-dest-block .paint-src { flex: 0 1 auto; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-dest-conn { grid-row: 2; justify-self: start; font-size: 14.5px; margin-top: 6px; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-note-chips { grid-row: 3; }
+  </style>
 </head>
 <body class="notes-page">
   <div class="notes-page-header">
@@ -4208,7 +4222,7 @@
               stack.appendChild(dname);
               blk.appendChild(stack);
               reqsWrap.appendChild(blk);
-              if (dInfo && dInfo.icon) {
+              if (dInfo && dInfo.icon && dInfo.conn) {
                 const conn = document.createElement('span');
                 conn.className = 'paint-dest-conn';
                 const ci = document.createElement('img');
