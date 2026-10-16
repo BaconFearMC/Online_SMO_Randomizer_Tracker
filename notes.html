@@ -2105,6 +2105,18 @@
     .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .zone-row:has(.paint-dest-ind .paint-chip--dest) .paint-note-chips .paint-chip--note::before { content: "\2192  "; font-weight: 800; }
     .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-note-chips .paint-chip--note { font-size: 14px; line-height: 1.25; }
   </style>
+  <style>
+    /* Marked Painting: lighter card, destination shown as a mini cell */
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .zone-row.paint-has-dest { background: rgba(255,255,255,.11); border-color: rgba(255,255,255,.26); }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .zone-row.paint-has-dest .zone-req-add { position: absolute; top: 5px; right: 5px; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .zone-row.paint-has-dest .paint-dest-ind:not(.paint-dest-ind--swap) { display: none; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .zone-row.paint-has-dest .paint-note-chips .paint-chip--note::before { content: none; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-dest-block { grid-column: 2; grid-row: 1; display: inline-flex; align-items: center; gap: 6px; justify-self: start; align-self: center; min-width: 0; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-dest-block-arrow { font-size: 22px; font-weight: 800; color: var(--text-dim, #9aa0ac); }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-src--dest { grid-column: auto; grid-row: auto; padding-left: 0; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-dest-conn { grid-column: 1 / -1; grid-row: 3; display: inline-flex; align-items: center; gap: 5px; margin-top: 5px; font-size: 13.5px; font-weight: 700; color: #8ec5ff; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-dest-conn img { width: 22px; height: 22px; object-fit: contain; flex: none; }
+  </style>
 </head>
 <body class="notes-page">
   <div class="notes-page-header">
@@ -4086,6 +4098,7 @@
           refreshPaintChips();
           refreshMainPaintChips();
           reqsWrap.innerHTML = '';
+          row.classList.toggle('paint-has-dest', !!(irlInfo && APC.getPaintingDestination(fullState, kingdom)));
           const addBtn = document.createElement('button');
           addBtn.type = 'button';
           addBtn.className = 'zone-req-add';
@@ -4165,6 +4178,45 @@
               reqsWrap.appendChild(holder);
             } else {
               reqsWrap.appendChild(paintDestIndicator(kingdom));
+            }
+            // Destination shown like a mini version of its own cell:
+            // arrow, icon, name, where you arrive, plus the Reachable icon.
+            const dItem = destKey ? APC.findItem('kingdoms', destKey) : null;
+            const dInfo = destKey ? PAINTING_IRL_INFO[destKey] : null;
+            if (dItem) {
+              const blk = document.createElement('span');
+              blk.className = 'paint-dest-block';
+              const ar = document.createElement('span');
+              ar.className = 'paint-dest-block-arrow';
+              ar.textContent = '\u2192';
+              blk.appendChild(ar);
+              const stack = document.createElement('span');
+              stack.className = 'paint-src paint-src--dest';
+              const dimg = document.createElement('img');
+              dimg.className = 'zone-req-icon zone-req-icon--kingdom';
+              dimg.src = dItem.src; dimg.alt = dItem.name;
+              dimg.title = TIPS.leadsTo(dItem.name) + ' (click to clear)';
+              if (dItem.color) dimg.style.setProperty('--kingdom-color', dItem.color);
+              dimg.addEventListener('click', (e) => { e.stopPropagation(); bounce(dimg); const h = paintingClearHandlers[kingdom]; if (h) h(); });
+              stack.appendChild(dimg);
+              const dname = document.createElement('span');
+              dname.className = 'zone-name zone-name--stacked';
+              if (dItem.color) dname.style.color = dItem.color;
+              const dm = document.createElement('span'); dm.className = 'zone-name-main'; dm.textContent = dItem.name;
+              dname.appendChild(dm);
+              if (dInfo) { const ds = document.createElement('span'); ds.className = 'zone-name-sub'; ds.textContent = dInfo.from; dname.appendChild(ds); }
+              stack.appendChild(dname);
+              blk.appendChild(stack);
+              reqsWrap.appendChild(blk);
+              if (dInfo && dInfo.icon) {
+                const conn = document.createElement('span');
+                conn.className = 'paint-dest-conn';
+                const ci = document.createElement('img');
+                ci.src = 'assets/notes/' + dInfo.icon; ci.alt = dInfo.conn || ''; ci.title = dInfo.conn || '';
+                conn.appendChild(ci);
+                if (dInfo.conn) { const cl = document.createElement('span'); cl.textContent = dInfo.conn; conn.appendChild(cl); }
+                reqsWrap.appendChild(conn);
+              }
             }
           }
           if (destKey && !irlInfo) {
@@ -4298,7 +4350,9 @@
         noteChips.className = 'paint-note-chips';
         const renderNoteChips = () => {
           noteChips.innerHTML = '';
-          const lines = (noteArea.value || '').split(/\n+/).map(t => t.trim()).filter(Boolean);
+          const _dk = irlInfo ? APC.getPaintingDestination(fullState, kingdom) : null;
+          const _auto = _dk && PAINTING_IRL_INFO[_dk] ? paintingIrlNoteText(_dk, PAINTING_IRL_INFO[_dk]) : null;
+          const lines = (noteArea.value || '').split(/\n+/).map(t => t.trim()).filter(Boolean).filter(l => l !== _auto);
           if (!lines.length) {
             const n = document.createElement('span');
             n.className = 'paint-chip paint-chip--none';
