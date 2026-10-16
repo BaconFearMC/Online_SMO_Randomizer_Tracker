@@ -2155,6 +2155,16 @@
     /* unmarked card reads "Cap  FROM Alcove": the location moves out of the name stack into the FROM section */
     .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .zone-row:not(.paint-has-dest) .paint-src .zone-name-sub { display: none; }
   </style>
+  <style>
+    /* Reachable chip: connection icon replaces the word "Reachable", one line per chip */
+    .pc-conn-icon { display: none; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .pc-conn-icon { display: inline-block; width: 20px; height: 20px; object-fit: contain; flex: none; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .pc-conn-pre { display: none; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-chip-group { flex-wrap: wrap; row-gap: 4px; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-chip-group .paint-chip { white-space: nowrap; font-size: 13.5px; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-chip-group > .paint-chip--x { border-radius: 8px; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-chip-group > .paint-chip--in { border-radius: 8px; margin-left: 0; }
+  </style>
 </head>
 <body class="notes-page">
   <div class="notes-page-header">
@@ -3028,7 +3038,18 @@
       group.className = 'paint-chip-group';
       const x = document.createElement('span');
       x.className = 'paint-chip paint-chip--x';
-      x.textContent = info.conn;
+      if (info.icon) {
+        const xi = document.createElement('img');
+        xi.className = 'pc-conn-icon';
+        xi.src = 'assets/notes/' + info.icon; xi.alt = '';
+        x.appendChild(xi);
+      }
+      const mm = /^(Reachable )(.*)$/.exec(info.conn);
+      if (mm) {
+        const pre = document.createElement('span'); pre.className = 'pc-conn-pre'; pre.textContent = mm[1];
+        x.appendChild(pre); x.appendChild(document.createTextNode(mm[2]));
+      } else x.appendChild(document.createTextNode(info.conn));
+      x.title = info.conn;
       group.appendChild(x);
       incoming.forEach(k => {
         const it = APC.findItem('kingdoms', k);
