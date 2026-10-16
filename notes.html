@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Loading Zone Notes</title>
+  <title>Loading Zone Notes [v3]</title>
   <link rel="stylesheet" href="style.css">
   <link rel="icon" href="assets/SMO-ColoredGlobe.png">
   <style>
@@ -2226,6 +2226,16 @@
     .paintings-fixed.paint-abridged .paint-grid .zone-reqs .zone-req-icon, .paintings-fixed.paint-abridged .paint-grid .paint-dest-block .zone-req-icon { width: var(--abr-icon, 26px) !important; height: var(--abr-icon, 26px) !important; min-width: 0 !important; min-height: 0 !important; max-width: var(--abr-icon, 26px) !important; max-height: var(--abr-icon, 26px) !important; }
     .paintings-fixed.paint-abridged .paint-grid .paint-dest-block { margin-left: auto; }
     .paintings-fixed.paint-abridged .paint-grid .paint-dest-block .paint-src { flex: none !important; width: auto; }
+  </style>
+  <style>
+    /* side panel: the destination shows as icon only; its (invisible) name/sub text was still taking up the row's width */
+    .paintings-fixed.paint-abridged .paint-grid .zone-reqs .paint-dest-block .paint-src > .zone-name,
+    .paintings-fixed.paint-abridged .paint-grid .zone-reqs .paint-dest-block .zone-name-main,
+    .paintings-fixed.paint-abridged .paint-grid .zone-reqs .paint-dest-block .zone-name-sub { display: none !important; width: 0 !important; }
+    .paintings-fixed.paint-abridged .paint-grid .zone-name-sub { display: none !important; }
+    .paintings-fixed.paint-abridged .paint-grid .zone-reqs .paint-dest-block { flex: 0 0 auto !important; gap: 4px; margin-left: auto; }
+    .paintings-fixed.paint-abridged .paint-grid .zone-reqs .paint-dest-block .paint-src { gap: 0 !important; }
+    .paintings-fixed.paint-abridged .paint-grid .zone-reqs > .paint-src { overflow: hidden; }
   </style>
 </head>
 <body class="notes-page">
