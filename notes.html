@@ -2217,6 +2217,16 @@
     .paintings-fixed.paint-abridged .paint-grid .paint-dest-ind .paint-chip-icon { width: 14px; height: 14px; }
     .paintings-fixed.paint-abridged .paint-grid .paint-dest-ind .paint-arrow { font-size: 13px; }
   </style>
+  <style>
+    /* side panel: a marked row is [+][icon][Name]  ->  [dest icon]; names left-aligned, no duplicate chip */
+    .paintings-fixed.paint-abridged .paint-grid .zone-row.paint-has-dest .paint-dest-ind { display: none !important; }
+    .paintings-fixed.paint-abridged .paint-grid .paint-src, .paintings-fixed.paint-abridged .paint-grid .paint-src > .zone-name, .paintings-fixed.paint-abridged .paint-grid .zone-name-main { text-align: left !important; }
+    .paintings-fixed.paint-abridged .paint-grid .paint-src { display: flex !important; flex-direction: row !important; align-items: center; justify-content: flex-start; gap: 6px; }
+    .paintings-fixed.paint-abridged .paint-grid .paint-src > .zone-name { display: block !important; flex: 1 1 auto; min-width: 0; margin: 0 !important; }
+    .paintings-fixed.paint-abridged .paint-grid .zone-reqs .zone-req-icon, .paintings-fixed.paint-abridged .paint-grid .paint-dest-block .zone-req-icon { width: var(--abr-icon, 26px) !important; height: var(--abr-icon, 26px) !important; min-width: 0 !important; min-height: 0 !important; max-width: var(--abr-icon, 26px) !important; max-height: var(--abr-icon, 26px) !important; }
+    .paintings-fixed.paint-abridged .paint-grid .paint-dest-block { margin-left: auto; }
+    .paintings-fixed.paint-abridged .paint-grid .paint-dest-block .paint-src { flex: none !important; width: auto; }
+  </style>
 </head>
 <body class="notes-page">
   <div class="notes-page-header">
