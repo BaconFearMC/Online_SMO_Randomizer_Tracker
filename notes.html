@@ -2175,6 +2175,13 @@
     .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .pc-conn-pre { display: inline; }
     .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-chip-group .paint-chip--x { font-size: 13px; }
   </style>
+  <style>
+    /* Reachable / incoming row: belongs to the TARGET panel (e.g. Cloud: "Snow  Reachable with Moon Rock") */
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-incoming-row { grid-column: 1 / -1; grid-row: 2; margin-top: 6px; min-width: 0; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .zone-row { min-width: 0; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-chip-row, .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-from-loc { min-width: 0; overflow-wrap: anywhere; }
+    .paintings-fixed.paint-abridged .paint-incoming-row { display: none !important; }
+  </style>
 </head>
 <body class="notes-page">
   <div class="notes-page-header">
@@ -4034,7 +4041,8 @@
         // whole height - no dead space, no scrollbar. Measured with the
         // grid un-stretched and the panel at its natural height.
         grid.style.flex = '0 0 auto';
-        const fits = (z) => { grid.style.zoom = String(z); return col.scrollHeight - col.clientHeight <= 0.5; };
+        const rowsEls = Array.from(grid.querySelectorAll('.zone-row'));
+        const fits = (z) => { grid.style.zoom = String(z); return col.scrollHeight - col.clientHeight <= 0.5 && !rowsEls.some(r => r.scrollWidth > r.clientWidth + 1); };
         let lo = 0.35, hi = col.classList.contains('paint-irl') ? 1.9 : 1;
         if (fits(hi)) lo = hi;
         else for (let i = 0; i < 12; i++) { const mid = (lo + hi) / 2; if (fits(mid)) lo = mid; else hi = mid; }
@@ -4238,17 +4246,7 @@
               // Line 1: [+] [icon] [indicator]; line 2: name + In World Info text (via CSS order).
 
             }
-            const swapGrp = paintIncomingGroup(kingdom);
-            if (swapGrp) {
-              // 5 special Kingdoms with a Kingdom leading to them: the Reachable
-              // chip sits by the name and the destination chip moves down.
-              const holder = document.createElement('span');
-              holder.className = 'paint-dest-ind paint-dest-ind--swap';
-              holder.appendChild(swapGrp);
-              reqsWrap.appendChild(holder);
-            } else {
-              reqsWrap.appendChild(paintDestIndicator(kingdom));
-            }
+            reqsWrap.appendChild(paintDestIndicator(kingdom));
             // Destination shown like a mini version of its own cell:
             // arrow, icon, name, where you arrive, plus the Reachable icon.
             const dItem = destKey ? APC.findItem('kingdoms', destKey) : null;
@@ -4278,15 +4276,6 @@
               stack.appendChild(dname);
               blk.appendChild(stack);
               reqsWrap.appendChild(blk);
-              if (dInfo && dInfo.icon && dInfo.conn) {
-                const conn = document.createElement('span');
-                conn.className = 'paint-dest-conn';
-                const ci = document.createElement('img');
-                ci.src = 'assets/notes/' + dInfo.icon; ci.alt = dInfo.conn || ''; ci.title = dInfo.conn || ''; ci.onerror = () => ci.remove();
-                conn.appendChild(ci);
-                if (dInfo.conn) { const cl = document.createElement('span'); cl.textContent = dInfo.conn; conn.appendChild(cl); }
-                reqsWrap.appendChild(conn);
-              }
             }
           }
           if (destKey && !irlInfo) {
@@ -4379,6 +4368,8 @@
         // attached to the Reachable chip.
         const chipRow = document.createElement('div');
         chipRow.className = 'paint-chip-row';
+        const incRow = document.createElement('div');
+        incRow.className = 'paint-incoming-row';
         if (irlInfo) {
           const updateChipRow = () => {
             chipRow.innerHTML = '';
@@ -4395,11 +4386,15 @@
               y.appendChild(yv);
               chipRow.appendChild(y);
             }
-            if (paintIncomingGroup(kingdom)) chipRow.appendChild(paintDestIndicator(kingdom));
+            incRow.innerHTML = '';
+            const ig = paintIncomingGroup(kingdom);
+            if (ig) incRow.appendChild(ig);
+            incRow.style.display = ig ? '' : 'none';
           };
           paintChipUpdaters.push(updateChipRow);
           updateChipRow();
           row.appendChild(chipRow);
+          row.appendChild(incRow);
         }
         renderDestChip();
 
