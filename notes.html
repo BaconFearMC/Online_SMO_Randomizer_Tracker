@@ -2011,6 +2011,7 @@
     .paintings-fixed.paint-abridged .zone-req-icon { width: 30px !important; height: 30px !important; }
     .paintings-fixed.paint-abridged .paint-grid .zone-name { font-size: 17px !important; }
     .paintings-fixed.paint-abridged .zone-req-add { transform: scale(1.1); }
+    .paintings-fixed.paint-abridged .kingdom-col-header { padding-top: 4px !important; padding-bottom: 4px !important; margin: 0 !important; }
     .paintings-fixed.paint-abridged .paint-grid .zone-row { min-height: 0 !important; height: auto !important; padding: 1px 4px; align-items: flex-start; text-align: left; }
     .paintings-fixed.paint-abridged .paint-grid .zone-reqs { justify-content: flex-start; flex-wrap: nowrap; }
     .paintings-fixed.paint-abridged .paint-grid .zone-reqs > .zone-name { order: 2 !important; display: block; }
@@ -3802,7 +3803,7 @@
         const pop = document.querySelector('body > .req-picker-overlay .req-picker-popup');
         const pr = pop && pop.getBoundingClientRect();
         top = 6;
-        abrH = pr && pr.height > 100 ? pr.top + pr.height - top : window.innerHeight - top - 12;
+        top = 6; abrH = window.innerHeight - top - 6;
         col.dataset.abrH = String(abrH);
       }
       const imp = (k, v) => col.style.setProperty(k, v, 'important');
