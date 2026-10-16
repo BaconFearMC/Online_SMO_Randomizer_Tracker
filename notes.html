@@ -2019,8 +2019,8 @@
     .paintings-fixed.paint-abridged .paint-chip.paint-chip--dest { font-size: 13px; min-height: 22px; padding: 1px 8px 1px 5px; }
     .paintings-fixed.paint-abridged .paint-chip--dest .paint-chip-icon { width: 16px; height: 16px; }
     /* The + picker leaves room on the right for the abridged Paintings panel */
-    body:has(.paintings-fixed.paint-abridged) > .req-picker-overlay { padding-right: 262px; box-sizing: border-box; }
-    body:has(.paintings-fixed.paint-abridged) > .req-picker-overlay .req-picker-popup { width: calc(100vw - 290px) !important; max-width: calc(100vw - 290px) !important; }
+    body:has(.paintings-fixed.paint-abridged) > .req-picker-overlay:not(.req-picker-overlay--kingdom-only):not(.req-picker-overlay--sale) { padding-right: 262px; box-sizing: border-box; }
+    body:has(.paintings-fixed.paint-abridged) > .req-picker-overlay:not(.req-picker-overlay--kingdom-only):not(.req-picker-overlay--sale) .req-picker-popup { width: calc(100vw - 290px) !important; max-width: calc(100vw - 290px) !important; }
   </style>
   <style>
     /* ── Paintings (In World Info): less dead space, bigger text ── */
@@ -2036,6 +2036,33 @@
     .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-chip--none { font-size: 13.5px; }
     .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .zone-req-icon--kingdom { width: 38px; height: 38px; }
     .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .zone-req-add { width: 24px; height: 24px; font-size: 16px; }
+  </style>
+  <style>
+    /* side panel sits behind the "Which Kingdom...?" picker stacked on top of the + menu */
+    body:has(> .req-picker-overlay--kingdom-only) > .paintings-fixed.paint-abridged { z-index: 1 !important; }
+
+    /* ── Side panel Paintings: clean single-line rows ── */
+    .paintings-fixed.paint-abridged .paint-grid .zone-reqs { flex-wrap: nowrap !important; gap: 6px; align-items: center; }
+    .paintings-fixed.paint-abridged .paint-src { flex: 1 1 auto; min-width: 0; overflow: hidden; }
+    .paintings-fixed.paint-abridged .paint-src .zone-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; margin: 0; }
+    .paintings-fixed.paint-abridged .paint-dest-ind { flex: 0 1 auto !important; min-width: 0; max-width: 58%; flex-wrap: nowrap !important; overflow: hidden; white-space: nowrap; margin-left: auto !important; }
+    .paintings-fixed.paint-abridged .paint-dest-ind .paint-chip { white-space: nowrap !important; overflow: hidden; }
+    .paintings-fixed.paint-abridged .paint-dest-ind--swap { display: none !important; }
+    .paint-dest-ind .paint-chip--none { display: none; }
+
+    /* ── Full Paintings menu: card cells, no wrapping indicator, tighter ── */
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid { gap: 6px !important; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .zone-row {
+      display: flex; flex-direction: column; gap: 4px; padding: 6px 8px 7px;
+      background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.09); border-radius: 10px;
+    }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .zone-reqs { flex-wrap: nowrap; gap: 6px; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-src { flex: 0 1 auto; min-width: 0; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-dest-ind { flex: 0 1 auto; min-width: 0; flex-wrap: nowrap; margin-left: auto !important; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-chip--dest { white-space: nowrap; min-width: 0; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-chip-row { margin: 0; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-note-chips { margin-top: 0; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-chip--note { background: rgba(255,255,255,.06); border-radius: 8px; font-weight: 600; }
   </style>
 </head>
 <body class="notes-page">
@@ -3773,7 +3800,7 @@
       if (fullState.settings.show_painting_notes) {
         // Lives on <body>, outside #lz-content, so the notes layout
         // (columns/scroll/transform) can never push it around.
-        { const _pc = buildPaintingNotesColumn(); if (document.querySelector('body > .req-picker-overlay:not(.req-picker-overlay--kingdom-only)')) _pc.classList.add('paint-abridged'); document.body.appendChild(_pc); }
+        { const _pc = buildPaintingNotesColumn(); if (document.querySelector('body > .req-picker-overlay:not(.req-picker-overlay--kingdom-only):not(.req-picker-overlay--sale)')) _pc.classList.add('paint-abridged'); document.body.appendChild(_pc); }
       }
       for (const [kingdom, data] of Object.entries(fullState.loading_zones)) {
         const settingKey = KINGDOM_VISIBILITY_SETTINGS[kingdom];
@@ -3815,7 +3842,7 @@
       const wide4 = col.classList.contains('paint-cols4');
       const findOpen = col.classList.contains('paint-find-open');
       const abr = col.classList.contains('paint-abridged');
-      const panelW = abr ? 250 : (wide4 ? 840 : 620);
+      const panelW = abr ? 250 : (wide4 ? 740 : 540);
       imp('width', 'min(' + panelW + 'px, calc(100vw - 32px))');
       imp('max-width', 'calc(100vw - 32px)');
       imp('height', 'auto');
@@ -3830,7 +3857,7 @@
       let last = null;
       const sync = () => {
         const col = document.querySelector('body > .kingdom-col.paintings-fixed');
-        const open = !!document.querySelector('body > .req-picker-overlay:not(.req-picker-overlay--kingdom-only)');
+        const open = !!document.querySelector('body > .req-picker-overlay:not(.req-picker-overlay--kingdom-only):not(.req-picker-overlay--sale)');
         if (!col || open === last && col.classList.contains('paint-abridged') === open) return;
         last = open;
         col.classList.toggle('paint-abridged', open);
@@ -5319,7 +5346,7 @@
     // `excludeKey`: the Painting's own kingdom is never a valid destination for
     // itself (e.g. Cascade's + button never offers "Cascade").
     function openKingdomOnlyPicker(currentKey, onPick, excludeKey) {
-      document.querySelectorAll('.req-picker-overlay:not(.paint-find-area .req-picker-overlay)').forEach(p => p.remove());
+      document.querySelectorAll('.req-picker-overlay--kingdom-only').forEach(p => p.remove());
 
       const overlay = document.createElement('div');
       overlay.className = 'req-picker-overlay req-picker-overlay--kingdom-only';
