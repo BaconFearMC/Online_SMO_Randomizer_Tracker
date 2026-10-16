@@ -2187,6 +2187,24 @@
     .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-chip-row .paint-chip, .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-from-loc, .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-from-label, .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .zone-name-main, .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .zone-name-sub { overflow-wrap: normal !important; word-break: normal !important; hyphens: none; }
     .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-chip-row { padding-right: 10px; }
   </style>
+  <style>
+    /* ── Side panel (+ menu): every row is one line that fits its own height, nothing overlaps ── */
+    .paintings-fixed.paint-abridged .paint-grid .zone-row { overflow: hidden !important; padding: 0 6px !important; display: flex; align-items: center; }
+    .paintings-fixed.paint-abridged .paint-grid .zone-row-top { width: 100%; min-width: 0; }
+    .paintings-fixed.paint-abridged .paint-grid .zone-reqs { display: flex !important; flex-wrap: nowrap !important; align-items: center; gap: 5px !important; width: 100%; min-width: 0; overflow: hidden; }
+    .paintings-fixed.paint-abridged .paint-grid .zone-reqs > * { flex-shrink: 0; order: 0 !important; }
+    .paintings-fixed.paint-abridged .paint-grid .zone-reqs > .zone-name { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; order: 0 !important; }
+    .paintings-fixed.paint-abridged .paint-grid .zone-reqs > .paint-src { flex: 1 1 auto; min-width: 0; order: 0 !important; }
+    .paintings-fixed.paint-abridged .paint-grid .zone-reqs > .paint-dest-ind { order: 0 !important; }
+    .paintings-fixed.paint-abridged .paint-grid .zone-req-icon { width: var(--abr-icon, 26px) !important; height: var(--abr-icon, 26px) !important; flex: none; }
+    .paintings-fixed.paint-abridged .paint-grid .zone-req-add { width: calc(var(--abr-icon, 26px) * .8) !important; height: calc(var(--abr-icon, 26px) * .8) !important; font-size: 14px; padding: 0; flex: none; transform: none; }
+    .paintings-fixed.paint-abridged .paint-grid .zone-name { font-size: min(17px, calc(var(--abr-icon, 26px) * .62)) !important; line-height: 1; }
+    .paintings-fixed.paint-abridged .paint-grid .zone-dest-name { display: none !important; }
+    .paintings-fixed.paint-abridged .paint-grid .zone-dest-arrow, .paintings-fixed.paint-abridged .paint-grid .paint-dest-block-arrow { font-size: 14px; line-height: 1; }
+    .paintings-fixed.paint-abridged .paint-grid .paint-dest-block { display: inline-flex; align-items: center; gap: 4px; flex: none; }
+    .paintings-fixed.paint-abridged .paint-grid .paint-dest-block .zone-name-main { display: none; }
+    .paintings-fixed.paint-abridged .paint-grid .paint-dest-block .paint-src { flex: none; }
+  </style>
 </head>
 <body class="notes-page">
   <div class="notes-page-header">
@@ -4013,7 +4031,11 @@
       fitPaintingsGridInner(col);
       const area = col.querySelector('.paint-find-area');
       const findShown = !col.classList.contains('paint-abridged') && !!(area && area.style.display !== 'none');
-      if (col.classList.contains('paint-abridged')) { const fh = (parseFloat(col.dataset.abrH) || Math.max(160, window.innerHeight - (parseFloat(col.style.top) || 0) - 4)) + 'px'; col.style.setProperty('height', fh, 'important'); col.style.setProperty('min-height', fh, 'important'); const g = col.querySelector('.paint-grid'); if (g) g.style.zoom = '1'; return; }
+      if (col.classList.contains('paint-abridged')) { const fh = (parseFloat(col.dataset.abrH) || Math.max(160, window.innerHeight - (parseFloat(col.style.top) || 0) - 4)) + 'px'; col.style.setProperty('height', fh, 'important'); col.style.setProperty('min-height', fh, 'important'); const g = col.querySelector('.paint-grid'); if (g) g.style.zoom = '1';
+        { const hd = col.querySelector('.kingdom-col-header'); const n = Math.max(1, col.querySelectorAll('.paint-grid .zone-row').length);
+          const rh = (parseFloat(fh) - (hd ? hd.offsetHeight : 30) - 16) / n;
+          col.style.setProperty('--abr-icon', Math.max(16, Math.min(34, Math.floor(rh - 4))) + 'px'); }
+        return; }
       if (!findShown) {
         const top = parseFloat(col.style.top) || 0;
         col.style.setProperty('min-height', Math.max(160, window.innerHeight - top - 4) + 'px', 'important');
