@@ -2179,8 +2179,13 @@
     /* Reachable / incoming row: belongs to the TARGET panel (e.g. Cloud: "Snow  Reachable with Moon Rock") */
     .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-incoming-row { grid-column: 1 / -1; grid-row: 2; margin-top: 6px; min-width: 0; }
     .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .zone-row { min-width: 0; }
-    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-chip-row, .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-from-loc { min-width: 0; overflow-wrap: anywhere; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-chip-row, .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-from-loc { min-width: 0; overflow-wrap: normal; word-break: normal; hyphens: none; }
     .paintings-fixed.paint-abridged .paint-incoming-row { display: none !important; }
+  </style>
+  <style>
+    /* whole words only; the auto-fit shrinks instead of breaking a word */
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-chip-row .paint-chip, .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-from-loc, .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-from-label, .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .zone-name-main, .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .zone-name-sub { overflow-wrap: normal !important; word-break: normal !important; hyphens: none; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-chip-row { padding-right: 10px; }
   </style>
 </head>
 <body class="notes-page">
