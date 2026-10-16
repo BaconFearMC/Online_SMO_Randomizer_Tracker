@@ -2165,6 +2165,16 @@
     .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-chip-group > .paint-chip--x { border-radius: 8px; }
     .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-chip-group > .paint-chip--in { border-radius: 8px; margin-left: 0; }
   </style>
+  <style>
+    /* 2-way display: "[Sand]  [icon] Reachable with Pylon" - the Kingdom that leads here first, then how it's reached */
+    .paint-chip-group > .paint-chip--in { order: 0; margin-left: 0; border-radius: 9px 0 0 9px; }
+    .paint-chip-group > .paint-chip--in:last-of-type { border-radius: 9px 0 0 9px; }
+    .paint-chip-group > .paint-chip--x { order: 1; margin-left: -1px; border-radius: 0 9px 9px 0; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-chip-group { gap: 6px; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-chip-group > .paint-chip--in, .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-chip-group > .paint-chip--x { border-radius: 8px; margin-left: 0; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .pc-conn-pre { display: inline; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-chip-group .paint-chip--x { font-size: 13px; }
+  </style>
 </head>
 <body class="notes-page">
   <div class="notes-page-header">
@@ -2766,7 +2776,7 @@
     // Cascade, never under Snow.
     // Toggleable via Notes Settings > "Two-Way Painting Find"
     // (settings.painting_two_way_find, default on) - see paintingReachEdges.
-    const PAINTING_TWO_WAY_KINGDOMS = ['Cap', 'Lost', 'Cloud', 'Darkside', 'Moon'];
+    const PAINTING_TWO_WAY_KINGDOMS = ['Cap', 'Lost', 'Cloud', 'Darkside', 'Moon', 'Seaside', 'Wooded'];
 
     // Every Painting-destination edge currently marked (state.painting_destinations),
     // expanded with the two-way reciprocal edges described above - unless the
@@ -2968,12 +2978,12 @@
       'Cascade':    { subtext: 'Waterfall Basin',          from: 'Island in the Sky',            conn: null,                  icon: 'paintingcheckpoint.png' },
       'Sand':       { subtext: 'Lone Pillar',              from: 'Southwestern Floating Island', conn: null,                  icon: 'paintingcheckpoint.png' },
       'Lake':       { subtext: 'Pond',                     from: 'Viewing Balcony',              conn: null,                  icon: 'paintingcheckpoint.png' },
-      'Wooded':     { subtext: 'Charging Station',         from: 'Iron Cage',                    conn: null,                  icon: 'paintingglydon.png' },
+      'Wooded':     { subtext: 'Charging Station',         from: 'Iron Cage',                    conn: 'Reachable with Glydon', icon: 'paintingglydon.png' },
       'Cloud':      { subtext: 'Odyssey',                  from: 'Moon Rock',                    conn: 'Reachable with Moon Rock',  icon: 'paintingmoonrock.png' },
       'Lost':       { subtext: 'Swamp Hill',               from: 'Rocky Mountain Summit',        conn: 'Reachable with Walljump', icon: 'paintingwalljump.png' },
       'Metro':      { subtext: 'Odyssey',                  from: 'Isolated Rooftop',             conn: null,                  icon: 'paintingcheckpoint.png' },
       'Snow':       { subtext: 'Cliffside',                from: 'Snow Dram',                    conn: null,                  icon: 'paintingcheckpoint.png' },
-      'Seaside':    { subtext: 'Glass Palace',             from: 'Diving Platform',              conn: null,                  icon: 'paintingcheckpoint.png' },
+      'Seaside':    { subtext: 'Glass Palace',             from: 'Diving Platform',              conn: 'Reachable with Gushen', icon: 'paintinggushen.png' },
       'Luncheon':   { subtext: '2D Island',                from: 'Floating Island',              conn: null,                  icon: 'paintingcheckpoint.png' },
       'Ruined':     { subtext: 'Chest',                    from: 'Arena',                        conn: null,                  icon: 'paintingcheckpoint.png' },
       "Bowser's":   { subtext: 'Main Courtyard',           from: 'Island in the Sky',            conn: null,                  icon: 'paintingcheckpoint.png' },
@@ -3041,7 +3051,7 @@
       if (info.icon) {
         const xi = document.createElement('img');
         xi.className = 'pc-conn-icon';
-        xi.src = 'assets/notes/' + info.icon; xi.alt = '';
+        xi.src = 'assets/notes/' + info.icon; xi.alt = ''; xi.onerror = () => xi.remove();
         x.appendChild(xi);
       }
       const mm = /^(Reachable )(.*)$/.exec(info.conn);
@@ -3055,7 +3065,8 @@
         const it = APC.findItem('kingdoms', k);
         const c = document.createElement('span');
         c.className = 'paint-chip paint-chip--in';
-        c.textContent = it ? it.name : k;
+        if (it && it.src) { const ii = document.createElement('img'); ii.src = it.src; ii.alt = ''; ii.className = 'paint-chip-icon'; c.appendChild(ii); }
+        c.appendChild(document.createTextNode(it ? it.name : k));
         if (it && it.color) c.style.setProperty('--chip-c', it.color);
         c.title = (it ? it.name : k) + ' leads here';
         group.appendChild(c);
@@ -4271,7 +4282,7 @@
                 const conn = document.createElement('span');
                 conn.className = 'paint-dest-conn';
                 const ci = document.createElement('img');
-                ci.src = 'assets/notes/' + dInfo.icon; ci.alt = dInfo.conn || ''; ci.title = dInfo.conn || '';
+                ci.src = 'assets/notes/' + dInfo.icon; ci.alt = dInfo.conn || ''; ci.title = dInfo.conn || ''; ci.onerror = () => ci.remove();
                 conn.appendChild(ci);
                 if (dInfo.conn) { const cl = document.createElement('span'); cl.textContent = dInfo.conn; conn.appendChild(cl); }
                 reqsWrap.appendChild(conn);
