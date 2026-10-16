@@ -2018,8 +2018,8 @@
     .paintings-fixed.paint-abridged .paint-chip.paint-chip--dest { font-size: 13px; min-height: 22px; padding: 1px 8px 1px 5px; }
     .paintings-fixed.paint-abridged .paint-chip--dest .paint-chip-icon { width: 16px; height: 16px; }
     /* The + picker leaves room on the right for the abridged Paintings panel */
-    body:has(.paintings-fixed.paint-abridged) > .req-picker-overlay { padding-right: 340px; box-sizing: border-box; }
-    body:has(.paintings-fixed.paint-abridged) > .req-picker-overlay .req-picker-popup { width: calc(100vw - 360px) !important; max-width: calc(100vw - 360px) !important; }
+    body:has(.paintings-fixed.paint-abridged) > .req-picker-overlay { padding-right: 262px; box-sizing: border-box; }
+    body:has(.paintings-fixed.paint-abridged) > .req-picker-overlay .req-picker-popup { width: calc(100vw - 290px) !important; max-width: calc(100vw - 290px) !important; }
   </style>
   <style>
     /* ── Paintings (In World Info): less dead space, bigger text ── */
@@ -3801,8 +3801,8 @@
       if (col.classList.contains('paint-abridged')) {
         const pop = document.querySelector('body > .req-picker-overlay .req-picker-popup');
         const pr = pop && pop.getBoundingClientRect();
-        top = pr && pr.height > 100 ? Math.max(4, pr.top) : 12;
-        abrH = pr && pr.height > 100 ? pr.height : window.innerHeight - top - 12;
+        top = 6;
+        abrH = pr && pr.height > 100 ? pr.top + pr.height - top : window.innerHeight - top - 12;
         col.dataset.abrH = String(abrH);
       }
       const imp = (k, v) => col.style.setProperty(k, v, 'important');
@@ -3814,7 +3814,7 @@
       const wide4 = col.classList.contains('paint-cols4');
       const findOpen = col.classList.contains('paint-find-open');
       const abr = col.classList.contains('paint-abridged');
-      const panelW = abr ? 310 : (wide4 ? 840 : 620);
+      const panelW = abr ? 250 : (wide4 ? 840 : 620);
       imp('width', 'min(' + panelW + 'px, calc(100vw - 32px))');
       imp('max-width', 'calc(100vw - 32px)');
       imp('height', 'auto');
@@ -5318,7 +5318,7 @@
     // `excludeKey`: the Painting's own kingdom is never a valid destination for
     // itself (e.g. Cascade's + button never offers "Cascade").
     function openKingdomOnlyPicker(currentKey, onPick, excludeKey) {
-      document.querySelectorAll('.req-picker-overlay').forEach(p => p.remove());
+      document.querySelectorAll('.req-picker-overlay:not(.paint-find-area .req-picker-overlay)').forEach(p => p.remove());
 
       const overlay = document.createElement('div');
       overlay.className = 'req-picker-overlay req-picker-overlay--kingdom-only';
@@ -5419,7 +5419,7 @@
       .filter(Boolean);
 
     function openMultimoonPicker(zs, onChange) {
-      document.querySelectorAll('.req-picker-overlay').forEach(p => p.remove());
+      document.querySelectorAll('.req-picker-overlay:not(.paint-find-area .req-picker-overlay)').forEach(p => p.remove());
       if (!Array.isArray(zs.multimoons)) zs.multimoons = [];
 
       const overlay = document.createElement('div');
@@ -6388,7 +6388,7 @@
       if (findOnly && opts.host) {
         opts.host.querySelectorAll('.req-picker-overlay').forEach(p => p.remove());
       } else {
-        document.querySelectorAll('.req-picker-overlay').forEach(p => p.remove());
+        document.querySelectorAll('.req-picker-overlay:not(.paint-find-area .req-picker-overlay)').forEach(p => p.remove());
       }
 
       const overlay = document.createElement('div');
