@@ -2205,6 +2205,18 @@
     .paintings-fixed.paint-abridged .paint-grid .paint-dest-block .zone-name-main { display: none; }
     .paintings-fixed.paint-abridged .paint-grid .paint-dest-block .paint-src { flex: none; }
   </style>
+  <style>
+    /* side panel safety net: nothing can spill out of the panel or its rows */
+    .paintings-fixed.paint-abridged { overflow: hidden !important; max-width: 100vw; box-sizing: border-box; }
+    .paintings-fixed.paint-abridged .paint-grid { overflow: hidden; width: 100%; box-sizing: border-box; }
+    .paintings-fixed.paint-abridged .paint-grid .zone-row, .paintings-fixed.paint-abridged .paint-grid .zone-row-top, .paintings-fixed.paint-abridged .paint-grid .zone-reqs { max-width: 100%; box-sizing: border-box; }
+    .paintings-fixed.paint-abridged .paint-grid .zone-reqs * { max-height: 100%; }
+    .paintings-fixed.paint-abridged .paint-grid .paint-dest-block .zone-name { display: none !important; }
+    .paintings-fixed.paint-abridged .paint-grid .paint-dest-ind { max-width: 45%; overflow: hidden; }
+    .paintings-fixed.paint-abridged .paint-grid .paint-dest-ind .paint-chip { font-size: 12px; min-height: 0; padding: 0 6px 0 3px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+    .paintings-fixed.paint-abridged .paint-grid .paint-dest-ind .paint-chip-icon { width: 14px; height: 14px; }
+    .paintings-fixed.paint-abridged .paint-grid .paint-dest-ind .paint-arrow { font-size: 13px; }
+  </style>
 </head>
 <body class="notes-page">
   <div class="notes-page-header">
