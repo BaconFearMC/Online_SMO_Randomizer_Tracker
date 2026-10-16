@@ -2131,6 +2131,26 @@
     .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-dest-conn { grid-row: 2; justify-self: start; font-size: 14.5px; margin-top: 6px; }
     .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-note-chips { grid-row: 3; }
   </style>
+  <style>
+    /* panel header icon was clipped at the left edge */
+    .paintings-fixed .kingdom-col-header { padding-left: 12px !important; overflow: visible !important; }
+    .paintings-fixed .kingdom-col-header img { flex: none; width: 22px; height: 22px; max-width: none; margin: 0 6px 0 0; transform: none; object-fit: contain; }
+
+    /* "from <place>" is its own labelled section, split off from the icon / destination by a divider */
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-chip-row { border-left: 2px solid rgba(243,194,107,.35); padding-left: 10px; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-chip-row .paint-chip--y { flex-direction: column; align-items: flex-start; gap: 1px; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-from-label { font-size: 11.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-dim, #9aa0ac); }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .paint-from-loc { font-size: 16px; font-weight: 800; color: #f3c26b; line-height: 1.2; }
+
+    /* marked cards: [source] -> [destination], each half wraps instead of overflowing */
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .zone-row.paint-has-dest { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); column-gap: 8px; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .zone-row.paint-has-dest .paint-src { grid-column: 1; grid-row: 1; justify-self: center; min-width: 0; max-width: 100%; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .zone-row.paint-has-dest .paint-dest-block { display: contents; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .zone-row.paint-has-dest .paint-dest-block-arrow { grid-column: 2; grid-row: 1; align-self: center; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .zone-row.paint-has-dest .paint-dest-block .paint-src { grid-column: 3; grid-row: 1; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .zone-row.paint-has-dest .zone-name-sub { white-space: normal !important; text-align: center; overflow: visible; }
+    .paintings-fixed.paint-irl:not(.paint-abridged) .paint-grid .zone-row.paint-has-dest .paint-dest-conn { grid-column: 1 / -1; grid-row: 2; justify-self: center; }
+  </style>
 </head>
 <body class="notes-page">
   <div class="notes-page-header">
@@ -4329,7 +4349,14 @@
             if (irlInfo.from) {
               const y = document.createElement('span');
               y.className = 'paint-chip paint-chip--y';
-              y.textContent = 'from ' + irlInfo.from;
+              const yl = document.createElement('span');
+              yl.className = 'paint-from-label';
+              yl.textContent = 'from';
+              const yv = document.createElement('span');
+              yv.className = 'paint-from-loc';
+              yv.textContent = irlInfo.from;
+              y.appendChild(yl);
+              y.appendChild(yv);
               chipRow.appendChild(y);
             }
             if (paintIncomingGroup(kingdom)) chipRow.appendChild(paintDestIndicator(kingdom));
