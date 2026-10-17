@@ -3,44 +3,103 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Tracker Mirror</title>
+<title>Streamer's Screen</title>
 <style>
-  :root { --dot: 16px; --dot-color: #ff3b5c; --letterbox: #0b0b10; }
-  html, body { margin: 0; height: 100%; overflow: hidden; background: var(--letterbox); font-family: system-ui, "Segoe UI", sans-serif; }
-  #stage { position: absolute; left: 0; top: 0; transform-origin: 0 0; visibility: hidden; background: #111; }
+  :root { --dot: 16px; --dot-color: #ff3b5c; --accent: #b46bff; --accent2: #ff5fa2; --pad: 14px; --bar: 46px; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; font-family: "Segoe UI", system-ui, sans-serif; color: #ecebf7; }
+  body { background: radial-gradient(120% 120% at 20% 0%, #1d1538 0%, #0c0a18 60%); }
+  body.transparent { background: transparent; }
+
+  /* ---------- frame ---------- */
+  #shell { position: absolute; inset: 0; padding: var(--pad); display: flex; flex-direction: column; }
+  #bar { height: var(--bar); flex: none; display: flex; align-items: center; gap: 10px; padding: 0 4px 12px; }
+  #live { display: inline-flex; align-items: center; gap: 7px; padding: 5px 11px 5px 9px; border-radius: 999px;
+    font: 800 11px/1 inherit; letter-spacing: .14em; background: rgba(255,59,92,.14); color: #ff7b94; border: 1px solid rgba(255,59,92,.35); }
+  #live i { width: 7px; height: 7px; border-radius: 50%; background: #ff3b5c; box-shadow: 0 0 10px #ff3b5c; animation: pulse 1.4s ease-in-out infinite; }
+  #live.off { color: #8a88a3; background: rgba(255,255,255,.05); border-color: rgba(255,255,255,.1); }
+  #live.off i { background: #6a6884; box-shadow: none; animation: none; }
+  #title { font-weight: 650; font-size: 14px; letter-spacing: .01em; opacity: .9; }
+  #title small { font-weight: 500; opacity: .5; margin-left: 6px; }
+  #look { margin-left: auto; display: flex; align-items: center; gap: 8px; min-width: 0; max-width: 62%;
+    padding: 6px 12px; border-radius: 10px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.08); font-size: 12.5px; }
+  #look b { font-weight: 700; font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); flex: none; }
+  #look span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: opacity .15s; }
+  #look.idle span { opacity: .4; }
+
+  #viewport { position: relative; flex: 1; min-height: 0; border-radius: 14px; padding: 2px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2) 55%, #4b3b8f); box-shadow: 0 10px 40px rgba(0,0,0,.55), 0 0 40px rgba(180,107,255,.18); }
+  #inner { position: absolute; inset: 2px; border-radius: 12px; overflow: hidden; background: #08070f; }
+
+  #stage { position: absolute; left: 0; top: 0; transform-origin: 0 0; visibility: hidden; background: #111;
+    filter: saturate(.92) brightness(.96); }
   #frame { border: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
   #fx { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
 
-  #cursor { position: absolute; left: 0; top: 0; width: 0; height: 0; opacity: 0; transition: opacity .3s; will-change: transform; }
+  /* soft vignette so it reads as "a view of their screen", not the tracker itself */
+  #inner::after { content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: 12px;
+    box-shadow: inset 0 0 60px rgba(8,7,15,.55); }
+
+  /* ---------- spotlight on what they're pointing at ---------- */
+  #spot { position: absolute; left: 0; top: 0; width: 0; height: 0; border-radius: 6px; opacity: 0; pointer-events: none;
+    border: 2px solid var(--accent2); box-shadow: 0 0 0 3px rgba(255,95,162,.18), 0 0 22px rgba(255,95,162,.55);
+    transition: left .1s ease-out, top .1s ease-out, width .1s ease-out, height .1s ease-out, opacity .15s; }
+  #spot.show { opacity: 1; }
+
+  /* ---------- cursor ---------- */
+  #cursor { position: absolute; left: 0; top: 0; width: 0; height: 0; opacity: 0; transition: opacity .3s; will-change: transform; pointer-events: none; z-index: 5; }
   #cursor.show { opacity: 1; }
-  #cursor i { position: absolute; left: calc(var(--dot) / -2); top: calc(var(--dot) / -2);
-    width: var(--dot); height: var(--dot); border-radius: 50%; background: var(--dot-color);
-    box-shadow: 0 0 0 2px rgba(255,255,255,.95), 0 2px 10px rgba(0,0,0,.55);
+  #cursor i { position: absolute; left: calc(var(--dot) / -2); top: calc(var(--dot) / -2); width: var(--dot); height: var(--dot);
+    border-radius: 50%; background: var(--dot-color); box-shadow: 0 0 0 2px rgba(255,255,255,.95), 0 2px 10px rgba(0,0,0,.6);
     transition: transform .09s ease-out; }
   #cursor.down i { transform: scale(.7); }
-
   .ripple { position: absolute; width: var(--dot); height: var(--dot); margin: calc(var(--dot) / -2) 0 0 calc(var(--dot) / -2);
-    border-radius: 50%; border: 3px solid var(--rc, #fff); box-sizing: border-box;
-    animation: ripple .55s ease-out forwards; }
-  @keyframes ripple { from { transform: scale(.8); opacity: .95; } to { transform: scale(3.4); opacity: 0; } }
+    border-radius: 50%; border: 3px solid var(--rc, #fff); animation: ripple .55s ease-out forwards; }
 
-  #status { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
-    color: #cfd0dc; text-align: center; background: rgba(11,11,16,.88); transition: opacity .35s; }
+  /* ---------- click toast ---------- */
+  #toast { position: absolute; left: 50%; bottom: 18px; z-index: 6; transform: translate(-50%, 14px); opacity: 0; pointer-events: none;
+    display: flex; align-items: center; gap: 8px; max-width: 80%; padding: 8px 15px; border-radius: 999px;
+    background: rgba(14,11,28,.88); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,.14);
+    box-shadow: 0 8px 26px rgba(0,0,0,.5); font-size: 13px; transition: opacity .2s, transform .2s; }
+  #toast.show { opacity: 1; transform: translate(-50%, 0); }
+  #toast b { font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--accent2); flex: none; }
+  #toast span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* ---------- waiting screen ---------- */
+  #status { position: absolute; inset: 0; z-index: 8; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+    text-align: center; background: rgba(8,7,15,.9); transition: opacity .35s; padding: 20px; }
   #status.hide { opacity: 0; pointer-events: none; }
-  #status .ring { width: 34px; height: 34px; border-radius: 50%; border: 3px solid rgba(255,255,255,.15); border-top-color: #ff3b5c; animation: spin 1s linear infinite; }
-  #status h1 { margin: 0; font-size: 18px; font-weight: 650; }
-  #status p { margin: 0; font-size: 13px; opacity: .65; max-width: 420px; line-height: 1.5; }
+  #status .ring { width: 34px; height: 34px; border-radius: 50%; border: 3px solid rgba(255,255,255,.12); border-top-color: var(--accent2); animation: spin 1s linear infinite; }
+  #status h1 { margin: 0; font-size: 17px; font-weight: 650; }
+  #status p { margin: 0; font-size: 12.5px; opacity: .6; max-width: 400px; line-height: 1.5; }
+
+  body.noui #bar, body.noui #status { display: none; }
+  body.noui #viewport { flex: 1; }
+
+  @keyframes pulse { 50% { opacity: .35; transform: scale(.8); } }
+  @keyframes ripple { from { transform: scale(.8); opacity: .95; } to { transform: scale(3.4); opacity: 0; } }
   @keyframes spin { to { transform: rotate(360deg); } }
-  body.noui #status { display: none; }
 </style>
 </head>
 <body>
-<div id="stage"><iframe id="frame" title="mirror"></iframe><div id="fx"></div></div>
-<div id="cursor"><i></i></div>
-<div id="status">
-  <div class="ring"></div>
-  <h1 id="st-title">Waiting for the tracker…</h1>
-  <p id="st-sub">Open your tracker page (with tracker-broadcast.js added) in the same browser, or point both at the same relay.</p>
+<div id="shell">
+  <div id="bar">
+    <div id="live" class="off"><i></i>LIVE</div>
+    <div id="title">Streamer's screen<small>mirror</small></div>
+    <div id="look" class="idle"><b>Looking at</b><span id="look-t">—</span></div>
+  </div>
+  <div id="viewport">
+    <div id="inner">
+      <div id="stage"><iframe id="frame" title="mirror"></iframe><div id="fx"></div><div id="spot"></div></div>
+      <div id="cursor"><i></i></div>
+      <div id="toast"><b>Clicked</b><span id="toast-t"></span></div>
+      <div id="status">
+        <div class="ring"></div>
+        <h1 id="st-title">Waiting for the streamer…</h1>
+        <p>Open the tracker with the mirror script in the same browser, or point both at the same relay.</p>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -49,41 +108,55 @@
   var Q = new URLSearchParams(location.search);
   var ROOM = Q.get('room') || 'tracker';
   var WS = Q.get('ws') || '';
-  var FIT = Q.get('fit') || 'contain';              // contain | width
-  var IDLE = parseFloat(Q.get('idle') || '0');      // hide dot after N idle seconds (0 = never)
+  var IDLE = parseFloat(Q.get('idle') || '0');
+  var PAD = 14, BAR = 46;                                   // keep in sync with --pad / --bar
   var root = document.documentElement.style;
-  if (Q.get('dot')) root.setProperty('--dot-color', Q.get('dot').charAt(0) === '#' ? Q.get('dot') : '#' + Q.get('dot'));
+  function col(v) { return v.charAt(0) === '#' ? v : '#' + v; }
+  if (Q.get('dot')) root.setProperty('--dot-color', col(Q.get('dot')));
+  if (Q.get('accent')) root.setProperty('--accent2', col(Q.get('accent')));
   if (Q.get('size')) root.setProperty('--dot', parseFloat(Q.get('size')) + 'px');
-  if (Q.get('bg')) { var bg = Q.get('bg'); if (bg === 'transparent') { root.setProperty('--letterbox', 'transparent'); } else root.setProperty('--letterbox', bg.charAt(0) === '#' ? bg : '#' + bg); }
-  if (Q.get('ui') === '0') document.body.classList.add('noui');
+  if (Q.get('bg') === 'transparent') document.body.classList.add('transparent');
+  if (Q.get('ui') === '0') { document.body.classList.add('noui'); root.setProperty('--bar', '0px'); BAR = 0; }
 
-  var stage = document.getElementById('stage'), frame = document.getElementById('frame');
-  var fx = document.getElementById('fx'), cursor = document.getElementById('cursor');
-  var status = document.getElementById('status');
+  var $ = function (id) { return document.getElementById(id); };
+  var stage = $('stage'), frame = $('frame'), fx = $('fx'), cursor = $('cursor'), inner = $('inner');
+  var status = $('status'), spot = $('spot'), toast = $('toast'), live = $('live');
   var vw = 1920, vh = 1080, scale = 1, ox = 0, oy = 0;
   var ready = false, pending = null, doc = null;
-  var hoverPath = null, isDown = false;
-  var cx = 0, cy = 0, tx = 0, ty = 0, haveMouse = false, idleTimer = 0, lastMsg = 0, gotSnap = false;
+  var hoverPath = null, isDown = false, gotSnap = false, lastMsg = 0;
+  var cx = 0, cy = 0, tx = 0, ty = 0, haveMouse = false, idleTimer = 0, toastTimer = 0, resizeTimer = 0;
   var cssCache = new Map();
 
-  /* ---------- iframe ---------- */
   frame.srcdoc = '<!doctype html><html><head></head><body></body></html>';
   frame.addEventListener('load', function () {
     doc = frame.contentDocument; ready = true;
     if (pending) { var m = pending; pending = null; onSnap(m); }
   });
 
-  /* ---------- layout ---------- */
+  /* ---------- layout: stage keeps the tracker's exact aspect ratio ---------- */
   function layout() {
-    var W = innerWidth, H = innerHeight;
-    scale = FIT === 'width' ? W / vw : Math.min(W / vw, H / vh);
-    ox = (W - vw * scale) / 2; oy = FIT === 'width' ? 0 : (H - vh * scale) / 2;
+    var W = inner.clientWidth, H = inner.clientHeight;
+    scale = Math.min(W / vw, H / vh);
+    ox = (W - vw * scale) / 2; oy = (H - vh * scale) / 2;
     stage.style.width = vw + 'px'; stage.style.height = vh + 'px';
     stage.style.transform = 'translate(' + ox + 'px,' + oy + 'px) scale(' + scale + ')';
   }
   addEventListener('resize', layout);
 
-  /* ---------- CSS handling: make :hover / :active driven by classes ---------- */
+  // popup windows resize themselves so there are never letterbox bars
+  function fitWindow() {
+    if (!window.opener || window.opener.closed) return;
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function () {
+      var W = Math.max(innerWidth, 480), sw = W - PAD * 2;
+      var H = BAR + PAD * 2 + Math.round(sw * vh / vw);
+      if (Math.abs(H - innerHeight) > 3) {
+        try { resizeTo(W + (outerWidth - innerWidth), H + (outerHeight - innerHeight)); } catch (e) {}
+      }
+    }, 250);
+  }
+
+  /* ---------- css: drive :hover / :active from classes ---------- */
   function rewrite(css, href) {
     css = css.replace(/:hover/g, '.bc-hover').replace(/:active/g, '.bc-active');
     if (href) css = css.replace(/url\((['"]?)(?!data:|https?:|\/\/|#)([^'")]+)\1\)/g, function (m, q, rel) {
@@ -114,25 +187,53 @@
   /* ---------- snapshot ---------- */
   function setAttrs(el, attrs) {
     Array.prototype.slice.call(el.attributes).forEach(function (a) { if (!(a.name in attrs)) el.removeAttribute(a.name); });
-    for (var k in attrs) { if (el.getAttribute(k) !== attrs[k]) el.setAttribute(k, attrs[k]); }
+    for (var k in attrs) if (el.getAttribute(k) !== attrs[k]) el.setAttribute(k, attrs[k]);
   }
   function nodeAt(path) {
-    var el = doc.body;
-    for (var i = 0; i < path.length && el; i++) el = el.children[path[i]];
+    var el = doc && doc.body;
+    for (var i = 0; el && i < path.length; i++) el = el.children[path[i]];
     return el || null;
+  }
+  function labelOf(el) {
+    for (var n = el, d = 0; n && n !== doc.body && d < 5; n = n.parentElement, d++) {
+      var t = n.getAttribute('aria-label') || n.getAttribute('alt') || n.getAttribute('title') ||
+        (n.tagName === 'TEXTAREA' || n.tagName === 'INPUT' ? '' : (n.innerText || '').trim().split('\n')[0]);
+      t = (t || '').replace(/\s+/g, ' ').trim();
+      if (t) return t.length > 46 ? t.slice(0, 45) + '…' : t;
+    }
+    return el && el.tagName ? el.tagName.toLowerCase() : '';
+  }
+  function updateHoverUI() {
+    var el = hoverPath && nodeAt(hoverPath);
+    var look = $('look'), lt = $('look-t');
+    if (!el || el === doc.body) { spot.classList.remove('show'); look.classList.add('idle'); return; }
+    var r = el.getBoundingClientRect();
+    var big = r.width * r.height > vw * vh * 0.5;
+    if (r.width < 2 || r.height < 2 || big) spot.classList.remove('show');
+    else {
+      spot.style.left = (r.left - 3) + 'px'; spot.style.top = (r.top - 3) + 'px';
+      spot.style.width = (r.width + 6) + 'px'; spot.style.height = (r.height + 6) + 'px';
+      spot.style.borderWidth = (2 / scale) + 'px';
+      spot.classList.add('show');
+    }
+    var txt = labelOf(el);
+    lt.textContent = txt || '—'; look.classList.toggle('idle', !txt);
   }
   function applyHover() {
     if (!doc) return;
     doc.querySelectorAll('.bc-hover,.bc-active').forEach(function (e) { e.classList.remove('bc-hover', 'bc-active'); });
-    if (!hoverPath) return;
-    var el = doc.body;
-    function mark(e) { e.classList.add('bc-hover'); if (isDown) e.classList.add('bc-active'); }
-    mark(el);
-    for (var i = 0; i < hoverPath.length; i++) { el = el && el.children[hoverPath[i]]; if (!el) break; mark(el); }
+    if (hoverPath) {
+      var el = doc.body;
+      var mark = function (e) { e.classList.add('bc-hover'); if (isDown) e.classList.add('bc-active'); };
+      mark(el);
+      for (var i = 0; i < hoverPath.length; i++) { el = el && el.children[hoverPath[i]]; if (!el) break; mark(el); }
+    }
+    updateHoverUI();
   }
   function onSnap(m) {
     if (!ready) { pending = m; return; }
-    vw = m.vw; vh = m.vh; layout();
+    var resized = m.vw !== vw || m.vh !== vh;
+    vw = m.vw; vh = m.vh; layout(); if (resized) fitWindow();
     if (m.head) buildHead(m.head, m.base);
     setAttrs(doc.documentElement, m.htmlAttrs);
     setAttrs(doc.body, m.bodyAttrs);
@@ -146,28 +247,30 @@
     if (!gotSnap) { gotSnap = true; stage.style.visibility = 'visible'; }
   }
 
-  /* ---------- cursor ---------- */
-  function wakeCursor() {
+  /* ---------- cursor, ripple, toast ---------- */
+  function wake() {
     cursor.classList.add('show');
     if (IDLE > 0) { clearTimeout(idleTimer); idleTimer = setTimeout(function () { cursor.classList.remove('show'); }, IDLE * 1000); }
   }
-  function loop() {
+  (function loop() {
     cx += (tx - cx) * 0.55; cy += (ty - cy) * 0.55;
     cursor.style.transform = 'translate(' + (ox + cx * scale).toFixed(1) + 'px,' + (oy + cy * scale).toFixed(1) + 'px)';
     requestAnimationFrame(loop);
-  }
-  requestAnimationFrame(loop);
-
-  function ripple(x, y, button) {
+  })();
+  function ripple(x, y, b) {
     var r = document.createElement('div');
     r.className = 'ripple';
-    r.style.left = x + 'px'; r.style.top = y + 'px';
-    r.style.setProperty('--rc', button === 2 ? '#5cc8ff' : button === 1 ? '#ffd23d' : '#ffffff');
-    fx.appendChild(r);
-    setTimeout(function () { r.remove(); }, 650);
+    r.style.left = (ox + x * scale) + 'px'; r.style.top = (oy + y * scale) + 'px';
+    r.style.setProperty('--rc', b === 2 ? '#5cc8ff' : b === 1 ? '#ffd23d' : '#ffffff');
+    inner.appendChild(r); setTimeout(function () { r.remove(); }, 650);
   }
-  // ripple lives inside the stage (scales with it); keep it visually constant-size
-  fx.style.pointerEvents = 'none';
+  function showToast() {
+    var el = hoverPath && nodeAt(hoverPath);
+    var t = el && el !== doc.body ? labelOf(el) : '';
+    if (!t) return;
+    $('toast-t').textContent = t; toast.classList.add('show');
+    clearTimeout(toastTimer); toastTimer = setTimeout(function () { toast.classList.remove('show'); }, 1800);
+  }
 
   /* ---------- messages ---------- */
   function onMsg(m) {
@@ -175,35 +278,31 @@
     lastMsg = Date.now(); setLive(true);
     switch (m.t) {
       case 'snap': onSnap(m); break;
-      case 'hb': if (m.vw && (m.vw !== vw || m.vh !== vh)) { vw = m.vw; vh = m.vh; layout(); } break;
+      case 'hb': if (m.vw && (m.vw !== vw || m.vh !== vh)) { vw = m.vw; vh = m.vh; layout(); fitWindow(); } break;
       case 'm':
         if (m.out) { cursor.classList.remove('show'); break; }
         tx = m.x; ty = m.y;
         if (!haveMouse) { cx = tx; cy = ty; haveMouse = true; }
         if (!!m.d !== isDown) { isDown = !!m.d; cursor.classList.toggle('down', isDown); applyHover(); }
-        wakeCursor(); break;
+        wake(); break;
       case 'h': hoverPath = m.p; applyHover(); break;
-      case 'c': ripple(m.x, m.y, m.b); break;
+      case 'c': ripple(m.x, m.y, m.b); showToast(); break;
       case 's':
         if (!doc) break;
         if (m.p === null) frame.contentWindow.scrollTo(m.left, m.top);
         else { var el = nodeAt(m.p); if (el) { el.scrollTop = m.top; el.scrollLeft = m.left; } }
-        break;
+        updateHoverUI(); break;
     }
   }
-
-  /* ---------- status overlay ---------- */
   function setLive(on) {
     status.classList.toggle('hide', on);
-    if (!on) {
-      document.getElementById('st-title').textContent = gotSnap ? 'Tracker disconnected' : 'Waiting for the tracker…';
-    }
+    live.classList.toggle('off', !on);
+    if (!on) $('st-title').textContent = gotSnap ? 'Streamer disconnected' : 'Waiting for the streamer…';
   }
   setInterval(function () { if (Date.now() - lastMsg > 6000) setLive(false); }, 1500);
 
   /* ---------- transport ---------- */
-  var channel = new BroadcastChannel('tracker-mirror:' + ROOM);
-  var ws = null;
+  var channel = new BroadcastChannel('tracker-mirror:' + ROOM), ws = null;
   function hello() {
     channel.postMessage({ t: 'hello' });
     if (ws && ws.readyState === 1) ws.send(JSON.stringify({ t: 'hello' }));
