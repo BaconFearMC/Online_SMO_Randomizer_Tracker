@@ -77,6 +77,7 @@
     var a = body.querySelectorAll('*'), b = clone.querySelectorAll('*');
     for (var i = 0; i < a.length; i++) {
       var s = a[i], c = b[i], tag = s.tagName;
+      if (s.hasAttribute('data-bc-ui')) c.style.visibility = 'hidden';
       if (tag === 'SCRIPT') { c.textContent = ''; c.removeAttribute('src'); continue; }
       if (tag === 'TEXTAREA') c.textContent = s.value;
       else if (tag === 'INPUT') {
@@ -200,10 +201,27 @@
     pill.innerHTML = '<span class="tm-dot"></span><span class="tm-label"></span>' +
       '<button data-a="toggle"></button><button data-a="pop">Pop-out</button><button data-a="copy">Copy OBS link</button>';
     var label = pill.querySelector('.tm-label'), tog = pill.querySelector('[data-a=toggle]');
+    var pillOn = store('tm_pill') !== '0';
+    var hdr = document.getElementById('notes-page-settings');
+    var hbtn = null;
+    if (hdr && hdr.parentNode) {                       // toggle sits right next to the gear
+      hbtn = document.createElement('button');
+      hbtn.className = 'ctrl-btn'; hbtn.id = 'tm-header-toggle'; hbtn.setAttribute('data-bc-ui', '');
+      hbtn.style.cssText = 'font-size:.78em;padding:3px 8px';
+      hbtn.title = 'Show or hide the Mirroring controls';
+      hbtn.addEventListener('click', function () { pillOn = !pillOn; store('tm_pill', pillOn ? '1' : '0'); paint(); });
+      hdr.parentNode.insertBefore(hbtn, hdr);
+    }
     function paint() {
       pill.classList.toggle('on', live);
       label.textContent = live ? 'Mirroring' : 'Paused';
       tog.textContent = live ? 'Pause' : 'Start';
+      pill.style.display = pillOn ? '' : 'none';
+      if (hbtn) hbtn.textContent = '\ud83d\udce1 Mirror: ' + (pillOn ? 'Shown' : 'Hidden');
+    }
+    function viewerSize(W) {        // same maths as the viewer: 14px frame padding, 46px title bar
+      var sw = W - 28;
+      return [W, Math.round(46 + 14 + sw * window.innerHeight / window.innerWidth + 14)];
     }
     function viewerURL() {
       var u = new URL('obs-viewer.html', SELF && SELF.src ? SELF.src : location.href);
@@ -214,11 +232,11 @@
     pill.addEventListener('click', function (e) {
       var a = e.target.getAttribute && e.target.getAttribute('data-a');
       if (a === 'toggle') { live = !live; store('tm_live', live ? '1' : '0'); paint(); if (live) snap(true); }
-      if (a === 'pop') window.open(viewerURL(), 'tracker-mirror', 'popup,width=960,height=540');
+      if (a === 'pop') { var sz = viewerSize(960); window.open(viewerURL(), 'tracker-mirror', 'popup,width=' + sz[0] + ',height=' + sz[1]); }
       if (a === 'copy') {
         var url = viewerURL();
         (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject()).then(function () {
-          e.target.textContent = 'Copied!'; setTimeout(function () { e.target.textContent = 'Copy OBS link'; }, 1200);
+          var z = viewerSize(1280); e.target.textContent = 'Copied \u00b7 source ' + z[0] + '\u00d7' + z[1]; setTimeout(function () { e.target.textContent = 'Copy OBS link'; }, 3500);
         }, function () { prompt('OBS browser source URL:', url); });
       }
     });
