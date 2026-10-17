@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Loading Zone Notes [v3]</title>
+  <title>Loading Zone Notes [v4]</title>
   <link rel="stylesheet" href="style.css">
   <link rel="icon" href="assets/SMO-ColoredGlobe.png">
   <style>
@@ -2237,6 +2237,28 @@
     .paintings-fixed.paint-abridged .paint-grid .zone-reqs .paint-dest-block .paint-src { gap: 0 !important; }
     .paintings-fixed.paint-abridged .paint-grid .zone-reqs > .paint-src { overflow: hidden; }
   </style>
+  <style>
+    /* marked Painting: the + is gone (click the destination icon to clear) */
+    .paintings-fixed .zone-row { position: relative; }
+    .paintings-fixed .paint-grid .zone-row.paint-has-dest .zone-req-add { display: none !important; }
+
+    @keyframes paintMarkPop { 0% { transform: scale(.2) rotate(-28deg); opacity: 0; filter: brightness(2.2) blur(3px); }
+      55% { transform: scale(1.28) rotate(7deg); opacity: 1; filter: brightness(1.7) blur(0); }
+      80% { transform: scale(.94) rotate(-2deg); filter: none; } 100% { transform: none; opacity: 1; filter: none; } }
+    @keyframes paintMarkArrow { 0% { transform: translateX(-18px) scaleX(.2); opacity: 0; } 60% { transform: translateX(3px) scaleX(1.2); opacity: 1; } 100% { transform: none; opacity: 1; } }
+    @keyframes paintMarkRing { 0% { box-shadow: 0 0 0 0 rgba(120,200,255,.8), inset 0 0 26px 2px rgba(120,200,255,.5); }
+      100% { box-shadow: 0 0 0 16px rgba(120,200,255,0), inset 0 0 26px 2px rgba(120,200,255,0); } }
+    @keyframes paintAddGhost { 0% { transform: scale(1) rotate(0); opacity: 1; } 100% { transform: scale(0) rotate(200deg); opacity: 0; } }
+    @keyframes paintAddPop { 0% { transform: scale(0) rotate(-200deg); opacity: 0; } 70% { transform: scale(1.25) rotate(8deg); opacity: 1; } 100% { transform: none; opacity: 1; } }
+    .paint-marked-anim { animation: paintMarkRing .85s ease-out; }
+    .paint-marked-anim .paint-dest-block, .paint-marked-anim .zone-dest-arrow ~ .zone-req-icon { animation: paintMarkPop .7s cubic-bezier(.2,.9,.3,1.2) both; }
+    .paint-marked-anim .zone-dest-arrow, .paint-marked-anim .paint-dest-block-arrow { animation: paintMarkArrow .55s ease-out both; }
+    .paint-add-ghost { animation: paintAddGhost .55s cubic-bezier(.5,0,.8,.4) forwards; }
+    .paint-add-pop { animation: paintAddPop .5s cubic-bezier(.2,.9,.3,1.2) both; }
+
+    /* + menu closed: panel is already back by the time the menu is gone; only the tail of the animation shows */
+    .paintings-fixed.paint-tail, .paintings-fixed.paint-tail * { transition-duration: .2s !important; transition-delay: 0s !important; }
+  </style>
 </head>
 <body class="notes-page">
   <div class="notes-page-header">
@@ -4039,17 +4061,27 @@
     window.addEventListener('resize', positionPaintingsColumn);
     // Abridge the Paintings panel while a full-screen + picker is open.
     (function () {
-      let last = null;
+      let last = null, tailTimer = 0;
       const sync = () => {
         const col = document.querySelector('body > .kingdom-col.paintings-fixed');
-        const open = !!document.querySelector('body > .req-picker-overlay:not(.req-picker-overlay--kingdom-only):not(.req-picker-overlay--sale)');
-        if (!col || open === last && col.classList.contains('paint-abridged') === open) return;
+        const ov = document.querySelector('body > .req-picker-overlay:not(.req-picker-overlay--kingdom-only):not(.req-picker-overlay--sale)');
+        if (ov && ov.classList.contains('active')) ov.dataset.wasActive = '1';
+        // open = menu present and not on its way out
+        const open = !!ov && !(ov.dataset.wasActive && !ov.classList.contains('active'));
+        if (!col || (open === last && col.classList.contains('paint-abridged') === open)) return;
+        const closing = last === true && !open;
         last = open;
+        if (closing) {
+          // already expanded by the time the menu is gone: just a short tail of the animation
+          col.classList.add('paint-tail');
+          clearTimeout(tailTimer);
+          tailTimer = setTimeout(() => col.classList.remove('paint-tail'), 320);
+        } else col.classList.remove('paint-tail');
         col.classList.toggle('paint-abridged', open);
         positionPaintingsColumn();
-        setTimeout(positionPaintingsColumn, 120); setTimeout(positionPaintingsColumn, 480);
+        setTimeout(positionPaintingsColumn, 120); setTimeout(positionPaintingsColumn, closing ? 260 : 480);
       };
-      new MutationObserver(sync).observe(document.body, { childList: true });
+      new MutationObserver(sync).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
     })();
     window.addEventListener('load', () => setTimeout(positionPaintingsColumn, 300));
 
@@ -4234,8 +4266,28 @@
         function renderDestChip() {
           refreshPaintChips();
           refreshMainPaintChips();
+          const _was = row.dataset.marked;
+          const _now = !!APC.getPaintingDestination(fullState, kingdom);
+          let _ghost = null;
+          { const oa = reqsWrap.querySelector('.zone-req-add');
+            if (oa && _was === '0' && _now) _ghost = { l: oa.offsetLeft, t: oa.offsetTop, w: oa.offsetWidth, h: oa.offsetHeight, el: oa.cloneNode(true) }; }
           reqsWrap.innerHTML = '';
-          row.classList.toggle('paint-has-dest', !!(irlInfo && APC.getPaintingDestination(fullState, kingdom)));
+          row.classList.toggle('paint-has-dest', _now);
+          queueMicrotask(() => {
+            row.dataset.marked = _now ? '1' : '0';
+            if (_was === '0' && _now) {
+              row.classList.remove('paint-marked-anim'); void row.offsetWidth; row.classList.add('paint-marked-anim');
+              setTimeout(() => row.classList.remove('paint-marked-anim'), 1000);
+              if (_ghost) {
+                const g = _ghost.el; g.classList.add('paint-add-ghost');
+                g.style.cssText = 'position:absolute;left:' + _ghost.l + 'px;top:' + _ghost.t + 'px;width:' + _ghost.w + 'px;height:' + _ghost.h + 'px;margin:0;pointer-events:none;z-index:5;';
+                row.appendChild(g); setTimeout(() => g.remove(), 650);
+              }
+            } else if (_was === '1' && !_now) {
+              const nb = reqsWrap.querySelector('.zone-req-add');
+              if (nb) { nb.classList.add('paint-add-pop'); setTimeout(() => nb.classList.remove('paint-add-pop'), 600); }
+            }
+          });
           const addBtn = document.createElement('button');
           addBtn.type = 'button';
           addBtn.className = 'zone-req-add';
