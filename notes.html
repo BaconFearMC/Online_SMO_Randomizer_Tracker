@@ -2264,6 +2264,18 @@
     .paintings-fixed.paint-ghost * { pointer-events: none !important; }
     .paintings-fixed.paint-side { z-index: 100001 !important; overflow: hidden !important; box-sizing: border-box; max-width: calc(100vw - 32px); }
     .paintings-fixed.paint-side.paint-side--out { opacity: 0; pointer-events: none !important; transition: opacity .22s ease !important; }
+
+    /* Side panel icons: border + padding stay INSIDE the icon box (border-box), so the
+       coloured frame is never taller than its row and never clipped top/bottom/left. */
+    .paintings-fixed.paint-abridged .paint-grid .zone-req-icon,
+    .paintings-fixed.paint-abridged .paint-grid .zone-req-icon--kingdom {
+      box-sizing: border-box !important; padding: 2px !important; margin: 0 !important;
+      object-fit: contain; max-height: none !important; overflow: visible;
+    }
+    .paintings-fixed.paint-abridged .paint-grid .zone-row { padding-top: 2px !important; padding-bottom: 2px !important; }
+    .paintings-fixed.paint-abridged .paint-grid .zone-reqs { overflow: visible !important; padding-left: 1px; }
+    .paintings-fixed.paint-abridged .paint-grid .zone-reqs .zone-req-icon,
+    .paintings-fixed.paint-abridged .paint-grid .paint-dest-block .zone-req-icon { max-height: var(--abr-icon, 26px) !important; }
     /* + menu closed: panel is already back by the time the menu is gone; only the tail of the animation shows */
     .paintings-fixed.paint-tail, .paintings-fixed.paint-tail * { transition-duration: .2s !important; transition-delay: 0s !important; }
   </style>
@@ -4135,7 +4147,7 @@
       if (col.classList.contains('paint-abridged')) { const fh = (parseFloat(col.dataset.abrH) || Math.max(160, window.innerHeight - (parseFloat(col.style.top) || 0) - 4)) + 'px'; col.style.setProperty('height', fh, 'important'); col.style.setProperty('min-height', fh, 'important'); const g = col.querySelector('.paint-grid'); if (g) g.style.zoom = '1';
         { const hd = col.querySelector('.kingdom-col-header'); const n = Math.max(1, col.querySelectorAll('.paint-grid .zone-row').length);
           const rh = (parseFloat(fh) - (hd ? hd.offsetHeight : 30) - 16) / n;
-          col.style.setProperty('--abr-icon', Math.max(16, Math.min(34, Math.floor(rh - 4))) + 'px'); }
+          col.style.setProperty('--abr-icon', Math.max(16, Math.min(34, Math.floor(rh - 8))) + 'px'); }
         return; }
       if (!findShown) {
         const top = parseFloat(col.style.top) || 0;
