@@ -12,7 +12,8 @@
   body.transparent { background: transparent; }
 
   /* ---------- frame ---------- */
-  #shell { position: absolute; inset: 0; padding: var(--pad); display: flex; flex-direction: column; }
+  #shell { position: absolute; left: 50%; top: 50%; width: min(100vw, 100vh); height: min(100vw, 100vh); transform: translate(-50%, -50%);
+    padding: var(--pad); display: flex; flex-direction: column; }
   #bar { height: var(--bar); flex: none; display: flex; align-items: center; gap: 10px; padding: 0 4px 12px; }
   #live { display: inline-flex; align-items: center; gap: 7px; padding: 5px 11px 5px 9px; border-radius: 999px;
     font: 800 11px/1 inherit; letter-spacing: .14em; background: rgba(255,59,92,.14); color: #ff7b94; border: 1px solid rgba(255,59,92,.35); }
@@ -148,13 +149,13 @@
     if (!window.opener || window.opener.closed) return;
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(function () {
-      var W = Math.max(innerWidth, 480), sw = W - PAD * 2;
-      var H = BAR + PAD * 2 + Math.round(sw * vh / vw);
-      if (Math.abs(H - innerHeight) > 3) {
-        try { resizeTo(W + (outerWidth - innerWidth), H + (outerHeight - innerHeight)); } catch (e) {}
+      var S = Math.max(Math.min(innerWidth, innerHeight), 480);   // always a square window
+      if (Math.abs(innerWidth - S) > 2 || Math.abs(innerHeight - S) > 2) {
+        try { resizeTo(S + (outerWidth - innerWidth), S + (outerHeight - innerHeight)); } catch (e) {}
       }
     }, 250);
   }
+  addEventListener('resize', fitWindow);
 
   /* ---------- css: drive :hover / :active from classes ---------- */
   function rewrite(css, href) {
@@ -316,7 +317,7 @@
     ws.onclose = function () { setTimeout(connectWS, 2000); };
     ws.onerror = function () { try { ws.close(); } catch (e) {} };
   }
-  connectWS(); layout(); hello();
+  connectWS(); layout(); hello(); fitWindow();
   setInterval(function () { if (!gotSnap) hello(); }, 2000);
 })();
 </script>

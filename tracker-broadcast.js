@@ -132,7 +132,7 @@
   ['input', 'change', 'transitionend', 'animationend'].forEach(function (ev) {
     document.addEventListener(ev, function () { schedule(); }, true);
   });
-  window.addEventListener('resize', function () { schedule(true); });
+  window.addEventListener('resize', function () { schedule(true); if (window.__tmPaint) window.__tmPaint(); });
 
   /* ---------- mouse, hover, clicks, scroll ---------- */
   var mx = -1, my = -1, down = false, raf = 0, hoverKey = '~';
@@ -214,15 +214,13 @@
     }
     function paint() {
       pill.classList.toggle('on', live);
-      label.textContent = live ? 'Mirroring' : 'Paused';
+      var ratio = window.innerWidth / window.innerHeight;
+      label.textContent = !live ? 'Paused' : (Math.abs(ratio - 1) > 0.04 ? 'Mirroring \u00b7 resize window to square' : 'Mirroring');
       tog.textContent = live ? 'Pause' : 'Start';
       pill.style.display = pillOn ? '' : 'none';
       if (hbtn) hbtn.textContent = '\ud83d\udce1 Mirror: ' + (pillOn ? 'Shown' : 'Hidden');
     }
-    function viewerSize(W) {        // same maths as the viewer: 14px frame padding, 46px title bar
-      var sw = W - 28;
-      return [W, Math.round(46 + 14 + sw * window.innerHeight / window.innerWidth + 14)];
-    }
+    function viewerSize(W) { return [W, W]; }      // the viewer is always square
     function viewerURL() {
       var u = new URL('obs-viewer.html', SELF && SELF.src ? SELF.src : location.href);
       u.searchParams.set('room', ROOM);
@@ -236,9 +234,13 @@
       if (a === 'copy') {
         var url = viewerURL();
         (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject()).then(function () {
-          var z = viewerSize(1280); e.target.textContent = 'Copied \u00b7 source ' + z[0] + '\u00d7' + z[1]; setTimeout(function () { e.target.textContent = 'Copy OBS link'; }, 3500);
+          var z = viewerSize(1280); e.target.textContent = 'Copied \u00b7 source ' + z[0] + '\u00d7' + z[1] + ' (square)'; setTimeout(function () { e.target.textContent = 'Copy OBS link'; }, 3500);
         }, function () { prompt('OBS browser source URL:', url); });
       }
+    });
+    window.__tmPaint = paint;
+    window.addEventListener('storage', function (e) {      // flipped from Settings in the main tracker
+      if (e.key === 'tm_pill') { pillOn = e.newValue !== '0'; paint(); }
     });
     paint();
     document.documentElement.appendChild(css);
