@@ -2256,6 +2256,14 @@
     .paint-add-ghost { animation: paintAddGhost .55s cubic-bezier(.5,0,.8,.4) forwards; }
     .paint-add-pop { animation: paintAddPop .5s cubic-bezier(.2,.9,.3,1.2) both; }
 
+
+    /* ── Main / Side painting panels ── */
+    body > .kingdom-col.paintings-fixed { transition: width .45s cubic-bezier(.2,.8,.2,1), height .45s cubic-bezier(.2,.8,.2,1), min-height .45s cubic-bezier(.2,.8,.2,1), max-height .45s cubic-bezier(.2,.8,.2,1), opacity .3s ease, box-shadow .35s; }
+    .paintings-fixed:not(.paint-side) { opacity: 1; }
+    .paintings-fixed.paint-ghost { opacity: .14; pointer-events: none !important; z-index: 1 !important; transition: opacity .25s ease !important; }
+    .paintings-fixed.paint-ghost * { pointer-events: none !important; }
+    .paintings-fixed.paint-side { z-index: 100001 !important; overflow: hidden !important; box-sizing: border-box; max-width: calc(100vw - 32px); }
+    .paintings-fixed.paint-side.paint-side--out { opacity: 0; pointer-events: none !important; transition: opacity .22s ease !important; }
     /* + menu closed: panel is already back by the time the menu is gone; only the tail of the animation shows */
     .paintings-fixed.paint-tail, .paintings-fixed.paint-tail * { transition-duration: .2s !important; transition-delay: 0s !important; }
   </style>
@@ -3671,7 +3679,7 @@
       // .kingdom-col/.kingdom-col-header markup). Kingdoms with no text in
       // any of their notes are still shown (as already-"done"/empty), so
       // every Kingdom appears in the grid up front rather than popping in.
-      const cols = Array.from(document.querySelectorAll('body > .kingdom-col.paintings-fixed, #lz-content > .kingdom-col'));
+      const cols = Array.from(document.querySelectorAll('body > .kingdom-col.paintings-fixed:not(.paint-side), #lz-content > .kingdom-col'));
       const kingdoms = cols.map((col) => {
         const nameEl = col.querySelector('.kingdom-col-header .col-title');
         const iconEl = col.querySelector('.kingdom-col-header img');
@@ -4007,7 +4015,11 @@
       if (fullState.settings.show_painting_notes) {
         // Lives on <body>, outside #lz-content, so the notes layout
         // (columns/scroll/transform) can never push it around.
-        { const _pc = buildPaintingNotesColumn(); if (document.querySelector('body > .req-picker-overlay:not(.req-picker-overlay--kingdom-only):not(.req-picker-overlay--sale)')) _pc.classList.add('paint-abridged'); document.body.appendChild(_pc); }
+        { const _pc = buildPaintingNotesColumn();
+          const _open = !!plusMenuOverlay();
+          if (_open) _pc.classList.add('paint-ghost');
+          document.body.appendChild(_pc);
+          if (_open) { const _sd = buildPaintingNotesColumn(); _sd.classList.add('paint-side', 'paint-abridged'); document.body.appendChild(_sd); } }
       }
       for (const [kingdom, data] of Object.entries(fullState.loading_zones)) {
         const settingKey = KINGDOM_VISIBILITY_SETTINGS[kingdom];
@@ -4022,12 +4034,18 @@
     // Paintings column is pinned to the top-right of the notes area and
     // stays there while the rest scrolls. Top/right/size are measured off
     // the scroll area so it sits right below the page header + toolbar.
+    function plusMenuOverlay() {
+      // The main "+" menu only (not Shop-sale / kingdom-only / subarea / one-way popups).
+      return document.querySelector('body > .req-picker-overlay:not(.req-picker-overlay--kingdom-only):not(.req-picker-overlay--sale):not(.req-picker-overlay--subarea):not(.req-picker-overlay--oneway)');
+    }
     function positionPaintingsColumn() {
       const content = document.getElementById('lz-content');
-      const col = document.querySelector('body > .kingdom-col.paintings-fixed');
+      const cols = Array.from(document.querySelectorAll('body > .kingdom-col.paintings-fixed'));
       if (!content) return;
-      content.classList.toggle('has-paintings-fixed', !!col);
-      if (!col) return;
+      content.classList.toggle('has-paintings-fixed', cols.length > 0);
+      cols.forEach(positionOnePaintingsColumn);
+    }
+    function positionOnePaintingsColumn(col) {
       const wrap = document.querySelector('.lz-scroll-wrap');
       const r = (wrap || content).getBoundingClientRect();
       let top = Math.max(0, r.top) + 2;
@@ -4057,29 +4075,48 @@
       imp('transform', 'none');
       imp('max-height', abrH ? abrH + 'px' : Math.max(160, window.innerHeight - top - 4) + 'px');
       fitPaintingsGrid(col);
+      // Overflow guard for the side panel: if rows still don't fit, shrink them until they do.
+      if (col.classList.contains('paint-abridged')) {
+        let ic = parseFloat(col.style.getPropertyValue('--abr-icon')) || 26;
+        for (let i = 0; i < 12 && ic > 12 && (col.scrollHeight > col.clientHeight + 1 ||
+             Array.from(col.querySelectorAll('.paint-grid .zone-row')).some(r => r.scrollWidth > r.clientWidth + 1)); i++) {
+          ic -= 2; col.style.setProperty('--abr-icon', ic + 'px');
+        }
+      }
     }
     window.addEventListener('resize', positionPaintingsColumn);
-    // Abridge the Paintings panel while a full-screen + picker is open.
+    // While the + menu is open the Main Paintings panel animates into a Side panel,
+    // and a transparent copy of the Main panel stays in the background. On close the
+    // Side panel fades out while the Main panel fades back in, in time with the menu.
     (function () {
-      let last = null, tailTimer = 0;
+      let outTimer = 0;
       const sync = () => {
-        const col = document.querySelector('body > .kingdom-col.paintings-fixed');
-        const ov = document.querySelector('body > .req-picker-overlay:not(.req-picker-overlay--kingdom-only):not(.req-picker-overlay--sale)');
+        const main = document.querySelector('body > .kingdom-col.paintings-fixed:not(.paint-side)');
+        if (!main) return;
+        const ov = plusMenuOverlay();
         if (ov && ov.classList.contains('active')) ov.dataset.wasActive = '1';
-        // open = menu present and not on its way out
         const open = !!ov && !(ov.dataset.wasActive && !ov.classList.contains('active'));
-        if (!col || (open === last && col.classList.contains('paint-abridged') === open)) return;
-        const closing = last === true && !open;
-        last = open;
-        if (closing) {
-          // already expanded by the time the menu is gone: just a short tail of the animation
-          col.classList.add('paint-tail');
-          clearTimeout(tailTimer);
-          tailTimer = setTimeout(() => col.classList.remove('paint-tail'), 320);
-        } else col.classList.remove('paint-tail');
-        col.classList.toggle('paint-abridged', open);
-        positionPaintingsColumn();
-        setTimeout(positionPaintingsColumn, 120); setTimeout(positionPaintingsColumn, closing ? 260 : 480);
+        let side = document.querySelector('body > .kingdom-col.paint-side');
+        if (open) {
+          clearTimeout(outTimer);
+          if (side && side.classList.contains('paint-side--out')) { side.remove(); side = null; }
+          if (!side) {
+            side = buildPaintingNotesColumn();
+            side.classList.add('paint-side');
+            document.body.appendChild(side);
+            positionPaintingsColumn();            // starts exactly over the Main panel
+            void side.offsetWidth;
+            main.classList.add('paint-ghost');    // Main fades to transparent behind
+            side.classList.add('paint-abridged'); // ...and morphs into the Side panel
+            positionPaintingsColumn();
+            setTimeout(positionPaintingsColumn, 120); setTimeout(positionPaintingsColumn, 480);
+          } else if (!main.classList.contains('paint-ghost')) main.classList.add('paint-ghost');
+        } else if (side && !side.classList.contains('paint-side--out')) {
+          side.classList.add('paint-side--out');  // Side fades out
+          main.classList.remove('paint-ghost');   // Main fades in
+          positionPaintingsColumn();
+          outTimer = setTimeout(() => { side.remove(); positionPaintingsColumn(); }, 260);
+        } else if (!side && main.classList.contains('paint-ghost')) main.classList.remove('paint-ghost');
       };
       new MutationObserver(sync).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
     })();
@@ -7804,6 +7841,9 @@
                 scrollToKingdomAndUncollapse(item.key);
               });
             });
+            // Picking a destination is done with the + menu: close it right
+            // away (the subarea popup above takes over), like Shops do.
+            closePicker();
           }
         });
         return cell;
@@ -8173,6 +8213,39 @@
         positionIndicator(TAB_BTN_BY_KIND[activeKind], TAB_COLORS[activeKind], false);
       };
       window.addEventListener('resize', onResize);
+
+      // Overflow guard: whatever the viewport/side-panel width, the Kingdom
+      // tab (Refights / Shops / Reaching Kingdoms) is zoomed down just enough
+      // to fit inside the popup instead of being clipped at the bottom.
+      let fitBusy = false;
+      function fitPickerContent() {
+        if (fitBusy || !popup.isConnected) return;
+        fitBusy = true;
+        try {
+          [kingdomWrap, capturesWrap].forEach(w => { w.style.zoom = ''; });
+          const w = activeKind === 'kingdom' ? kingdomWrap : null;
+          if (w && w.style.display !== 'none') {
+            let z = 1;
+            for (let i = 0; i < 10; i++) {
+              const over = popup.scrollHeight - popup.clientHeight;
+              if (over <= 1) break;
+              const h = w.getBoundingClientRect().height;
+              if (h < 40) break;
+              z = Math.max(0.4, z * (h - over - 2) / h);
+              w.style.zoom = String(z);
+              if (z <= 0.4) break;
+            }
+          }
+        } finally { fitBusy = false; }
+      }
+      if (!findOnly || !opts.host) {
+        const fitRO = new ResizeObserver(() => requestAnimationFrame(fitPickerContent));
+        fitRO.observe(popup);
+        popup.addEventListener('click', () => requestAnimationFrame(fitPickerContent));
+        search.addEventListener('input', () => requestAnimationFrame(fitPickerContent));
+        window.addEventListener('resize', fitPickerContent);
+        setTimeout(fitPickerContent, 60); setTimeout(fitPickerContent, 500);
+      }
 
       function onKeyDown(e) {
         // If the "for sale" sub-picker OR the Kingdom-arrival subarea picker
