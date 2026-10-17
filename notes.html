@@ -2276,6 +2276,11 @@
     .paintings-fixed.paint-abridged .paint-grid .zone-reqs { overflow: visible !important; padding-left: 1px; }
     .paintings-fixed.paint-abridged .paint-grid .zone-reqs .zone-req-icon,
     .paintings-fixed.paint-abridged .paint-grid .paint-dest-block .zone-req-icon { max-height: var(--abr-icon, 26px) !important; }
+
+    /* Painting destinations: the destination icon is the remove button (the + comes back once cleared). */
+    .paintings-fixed .paint-dest-clear { cursor: pointer; pointer-events: auto !important; transition: filter .15s, outline-color .15s; outline: 2px solid transparent !important; outline-offset: 1px; }
+    .paintings-fixed .paint-dest-clear:hover { filter: brightness(1.15) saturate(.7); outline-color: rgba(255,90,90,.9) !important; }
+    .paintings-fixed.paint-side .paint-grid .paint-dest-block, .paintings-fixed.paint-side .paint-grid .paint-dest-block * { pointer-events: auto; }
     /* + menu closed: panel is already back by the time the menu is gone; only the tail of the animation shows */
     .paintings-fixed.paint-tail, .paintings-fixed.paint-tail * { transition-duration: .2s !important; transition-delay: 0s !important; }
   </style>
@@ -3097,6 +3102,7 @@
     };
 
     // ── Painting destination chips, shared by the Paintings column and the main Kingdom view ──
+    var paintingRenderPeers = {};     // kingdom -> [{row, fn}] one per Paintings panel (main + side) so they stay in sync
     var paintingClearHandlers = {};   // kingdom -> fn that clears that Painting's destination (set by the Paintings column)
     var mainPaintChips = [];          // [{el, fn}] header chip holders on the main Kingdom view
 
@@ -4312,9 +4318,17 @@
           nameLabel.textContent = kingdom;
         }
 
-        function renderDestChip() {
+        const _peerList = (paintingRenderPeers[kingdom] = (paintingRenderPeers[kingdom] || []).filter(p => p.row.isConnected));
+        _peerList.push({ row, fn: () => renderDestChip(true) });
+        function renderDestChip(fromPeer) {
           refreshPaintChips();
           refreshMainPaintChips();
+          if (fromPeer !== true) {
+            // Mirror this change into the other Paintings panel (main <-> side).
+            (paintingRenderPeers[kingdom] || []).forEach(pr => {
+              if (pr.row !== row && pr.row.isConnected) { try { pr.fn(); } catch (e) {} }
+            });
+          }
           const _was = row.dataset.marked;
           const _now = !!APC.getPaintingDestination(fullState, kingdom);
           let _ghost = null;
@@ -4423,7 +4437,8 @@
               const dimg = document.createElement('img');
               dimg.className = 'zone-req-icon zone-req-icon--kingdom';
               dimg.src = dItem.src; dimg.alt = dItem.name;
-              dimg.title = TIPS.leadsTo(dItem.name) + ' (click to clear)';
+              dimg.title = TIPS.leadsTo(dItem.name) + ' (click to remove)';
+              dimg.classList.add('paint-dest-clear');
               if (dItem.color) dimg.style.setProperty('--kingdom-color', dItem.color);
               dimg.addEventListener('click', (e) => { e.stopPropagation(); bounce(dimg); const h = paintingClearHandlers[kingdom]; if (h) h(); });
               stack.appendChild(dimg);
@@ -4453,7 +4468,8 @@
               img.className = 'zone-req-icon zone-req-icon--kingdom';
               img.src = item.src;
               img.alt = item.name;
-              img.title = TIPS.leadsTo(item.name);
+              img.title = TIPS.leadsTo(item.name) + ' (click to remove)';
+              img.classList.add('paint-dest-clear');
               if (item.color) img.style.setProperty('--kingdom-color', item.color);
               img.addEventListener('click', (e) => {
                 e.stopPropagation();
