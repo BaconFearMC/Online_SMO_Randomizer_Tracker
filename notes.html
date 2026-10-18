@@ -1640,6 +1640,7 @@
       flex-direction: column;
       overflow-y: auto;
       pointer-events: auto;
+      contain: layout paint;
     }
     .notes-clear-overlay.active .notes-clear-box {
       transform: translateX(0) scale(1);
@@ -1670,12 +1671,14 @@
     }
     .notes-clear-overall-fill {
       height: 100%;
-      width: 0%;
       border-radius: 999px;
       background: linear-gradient(90deg, #ff9900, #ffd700, #fff59d);
       background-size: 200% 100%;
-      animation: notes-clear-shimmer 1.4s linear infinite;
-      transition: width .25s linear;
+      width: 100%;
+      transform-origin: left center;
+      transform: scaleX(1);
+      transition: transform .2s linear;
+      will-change: transform;
       position: relative;
     }
     @keyframes notes-clear-shimmer {
@@ -1718,7 +1721,7 @@
       border: 1px solid rgba(255,255,255,.06);
       opacity: .55;
       transform: scale(.97);
-      transition: opacity .3s ease, transform .3s ease, border-color .3s ease, background .3s ease;
+      transition: opacity .2s ease, transform .2s ease;
     }
     .notes-clear-kingdom.is-active {
       opacity: 1;
@@ -1752,7 +1755,6 @@
       background:
         radial-gradient(circle, var(--bg-card, #22222c) 62%, transparent 63%),
         conic-gradient(var(--kc, #ffd700) calc(var(--p) * 1%), rgba(255,255,255,.12) 0);
-      transition: background .18s linear;
       position: relative;
       flex-shrink: 0;
     }
@@ -1799,15 +1801,24 @@
       z-index: 3;
       animation: notes-clear-pop .5s cubic-bezier(.3,.1,.3,1) both;
     }
+    /* transform + opacity only: these run on the GPU and never force a repaint */
     @keyframes notes-clear-pop {
-      0%   { transform: scale(1) rotate(0); opacity: 1; filter: none; box-shadow: 0 0 0 0 transparent; }
-      28%  { transform: scale(1.12) rotate(-1.5deg); opacity: 1;
-             box-shadow: 0 0 0 3px var(--pop-c, #ffd700), 0 0 26px 6px var(--pop-c, #ffd700); }
-      55%  { transform: scale(.45) rotate(3deg); opacity: .1; filter: blur(2px) brightness(1.6);
-             box-shadow: 0 0 0 2px var(--pop-c, #ffd700), 0 0 30px 10px var(--pop-c, #ffd700); }
-      80%  { transform: scale(1.06) rotate(0); opacity: 1; filter: none;
-             box-shadow: 0 0 0 0 transparent; }
-      100% { transform: scale(1) rotate(0); opacity: 1; filter: none; box-shadow: 0 0 0 0 transparent; }
+      0%   { transform: scale(1); opacity: 1; }
+      35%  { transform: scale(1.1); opacity: 1; }
+      60%  { transform: scale(.5); opacity: .15; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    /* icons pop out the moment Clear is confirmed */
+    .notes-clear-iconpop {
+      animation: notes-clear-iconpop .38s cubic-bezier(.3,.1,.3,1) both;
+      animation-delay: var(--ipd, 0ms);
+      will-change: transform, opacity;
+      pointer-events: none;
+    }
+    @keyframes notes-clear-iconpop {
+      0%   { transform: scale(1); opacity: 1; }
+      35%  { transform: scale(1.3); opacity: 1; }
+      100% { transform: scale(0); opacity: 0; }
     }
     .notes-clear-burst {
       position: absolute;
@@ -1822,7 +1833,7 @@
       width: 20px; height: 20px;
       border-radius: 50%;
       border: 3px solid var(--pop-c, #ffd700);
-      animation: notes-clear-ring .55s ease-out forwards;
+      animation: notes-clear-ring .45s ease-out forwards;
     }
     .notes-clear-burst i {
       position: absolute;
@@ -1830,8 +1841,7 @@
       width: 8px; height: 8px;
       border-radius: 50%;
       background: var(--pop-c, #ffd700);
-      box-shadow: 0 0 8px var(--pop-c, #ffd700);
-      animation: notes-clear-particle .6s ease-out forwards;
+      animation: notes-clear-particle .5s ease-out forwards;
     }
     @keyframes notes-clear-ring {
       from { transform: scale(.3); opacity: 1; }
@@ -1844,6 +1854,7 @@
     @media (prefers-reduced-motion: reduce) {
       .zone-note.notes-clear-pop { animation-duration: .01s; }
       .notes-clear-burst { display: none; }
+      .notes-clear-iconpop { animation-duration: .01s; }
     }
     .notes-clear-fading {
       transition: opacity .25s ease;
@@ -3610,7 +3621,7 @@
     // Pop-out animation for a single note being cleared: the box swells with a
     // glow in its Kingdom's color, shrinks away (text is wiped at the smallest
     // point), then springs back empty, with a ring + particle burst on top.
-    function popClearNote(el, color) {
+    function popClearNote(el, color, lite) {
       const row = el.closest('.zone-row');
       // A note hidden by its own collapsed zone has nothing to animate -
       // expand it first (same handler as clicking the zone's name).
@@ -3618,22 +3629,25 @@
         const nameEl = row.querySelector('.zone-name');
         if (nameEl) nameEl.click();
       }
-      try { el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (e) {}
+      // Only scroll when the note is actually off-screen, and never smoothly:
+      // smooth scrolling every 200ms is what made slow machines stutter.
+      try {
+        const r = el.getBoundingClientRect();
+        if (r.bottom < 0 || r.top > window.innerHeight) el.scrollIntoView({ block: 'nearest', behavior: 'auto' });
+      } catch (e) {}
 
       el.style.setProperty('--pop-c', color);
-      el.classList.remove('notes-clear-pop');
-      void el.offsetWidth;
       el.classList.add('notes-clear-pop');
       el.addEventListener('animationend', () => el.classList.remove('notes-clear-pop'), { once: true });
 
-      if (row) {
+      if (row && !lite) {
         row.classList.add('notes-clear-row');
         const burst = document.createElement('div');
         burst.className = 'notes-clear-burst';
         burst.style.setProperty('--pop-c', color);
         burst.style.left = (el.offsetLeft + el.offsetWidth / 2) + 'px';
         burst.style.top = (el.offsetTop + el.offsetHeight / 2) + 'px';
-        const n = 9;
+        const n = 4;
         for (let i = 0; i < n; i++) {
           const dot = document.createElement('i');
           const ang = (Math.PI * 2 * i) / n + Math.random() * 0.5;
@@ -3643,7 +3657,7 @@
           burst.appendChild(dot);
         }
         row.appendChild(burst);
-        setTimeout(() => burst.remove(), 650);
+        setTimeout(() => burst.remove(), 520);
       }
 
       // Wipe the text right when the box is at its smallest.
@@ -3733,6 +3747,21 @@
         '</div>';
       document.body.appendChild(overlay);
 
+      // Icons (requirements, destinations, chips) pop out RIGHT NOW with the popup,
+      // not after the countdown. One class per icon, staggered per Kingdom with a
+      // CSS delay - no timers, so it stays cheap on slow machines.
+      (function popIcons() {
+        const SEL = '.zone-req-icon, .zone-req-pair, .zone-req-kingdom-wrap, .zone-darkerside-icon, .zone-sub-icon, .paint-chip, .paint-dest-clear, .pc-conn-icon';
+        kingdoms.forEach((k, ki) => {
+          if (!k.col) return;
+          k.col.querySelectorAll(SEL).forEach((ic) => {
+            if (ic.parentElement && ic.parentElement.closest(SEL)) return; // outer icon only
+            ic.style.setProperty('--ipd', Math.min(ki * 35, 500) + 'ms');
+            ic.classList.add('notes-clear-iconpop');
+          });
+        });
+      })();
+
       const sublabel = overlay.querySelector('.notes-clear-sublabel');
       const overallFill = overlay.querySelector('.notes-clear-overall-fill');
       const overallCount = overlay.querySelector('.notes-clear-overall-count');
@@ -3783,10 +3812,9 @@
       function uncollapseKingdomsOneByOne(onDone) {
         let i = 0;
         function step() {
-          if (i >= kingdoms.length) { onDone(); return; }
+          if (i >= kingdoms.length) { saveFullState(); onDone(); return; }
           const k = kingdoms[i];
           if (k.col) setKingdomColCollapsed(k.col, k.key, false);
-          saveFullState();
           sublabel.textContent = 'Opening ' + k.name + '…';
           i++;
           setTimeout(step, UNCOLLAPSE_STEP_MS);
@@ -3817,13 +3845,17 @@
         ks.card.classList.toggle('is-done', n > 0 && ks.cleared >= n);
       }
 
+      let lite = false, lastFrame = 0, lastUi = 0;
       function tick(now) {
+        // Slow frame detected -> drop the particle bursts for the rest of the run.
+        if (lastFrame && now - lastFrame > 45) lite = true;
+        lastFrame = now;
         const elapsed = now - startTime;
         const due = Math.min(queue.length, Math.floor(elapsed / NOTES_CLEAR_STEP_MS) + 1);
 
         while (nextIdx < due) {
           const { el, ks } = queue[nextIdx];
-          popClearNote(el, ks.def.color);
+          popClearNote(el, ks.def.color, lite);
           ks.cleared++;
           totalCleared++;
           nextIdx++;
@@ -3832,10 +3864,13 @@
         }
 
         const remainingMs = Math.max(0, totalDurationMs - elapsed);
-        overallFill.style.width = (100 * remainingMs / totalDurationMs) + '%';
-        overallCount.textContent = remainingMs > 50
-          ? (remainingMs / 1000).toFixed(1) + 's remaining · ' + totalCleared + '/' + totalNotes
-          : "Time's up!";
+        if (now - lastUi > 120 || remainingMs <= 50) {      // text/bar at ~8fps, not every frame
+          lastUi = now;
+          overallFill.style.transform = 'scaleX(' + (remainingMs / totalDurationMs).toFixed(3) + ')';
+          overallCount.textContent = remainingMs > 50
+            ? (remainingMs / 1000).toFixed(1) + 's remaining · ' + totalCleared + '/' + totalNotes
+            : "Time's up!";
+        }
 
         if (elapsed < totalDurationMs || nextIdx < queue.length) {
           rafId = requestAnimationFrame(tick);
@@ -3844,7 +3879,7 @@
             ks.card.classList.remove('is-active');
             ks.card.classList.toggle('is-done', ks.def.notes.length > 0);
           });
-          overallFill.style.width = '0%';
+          overallFill.style.transform = 'scaleX(0)';
           overallCount.textContent = "Time's up!";
           overallCount.classList.add('notes-clear-times-up');
           // Brief pause so the last pop-out finishes before everything folds up.
@@ -3866,6 +3901,7 @@
         let i = 0;
         function step() {
           if (i >= kingdoms.length) {
+            saveFullState();
             overallCount.textContent = 'Done!';
             setTimeout(() => {
               overlay.classList.remove('active');
@@ -3877,7 +3913,6 @@
           const k = kingdoms[i];
           const ks = kState[i];
           if (k.col) setKingdomColCollapsed(k.col, k.key, true);
-          saveFullState();
           ks.card.classList.remove('is-active', 'is-done');
           ks.card.classList.add('is-collapsed');
           overallCount.textContent = 'Collapsing ' + k.name + '…';
