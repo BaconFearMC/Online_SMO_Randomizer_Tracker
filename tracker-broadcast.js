@@ -1,10 +1,10 @@
-/*  Tracker Mirror - broadcaster
- *  Add ONE line at the end of your tracker page (right after the last </script>):
- *      <script src="tracker-broadcast.js"></script>
- *  Optional attributes:  data-room="myroom"  data-ws="ws://localhost:8787"  data-ui="0"
+/*  Stream Mirror - broadcaster (runs on the NOTES page)
+ *  <script src="tracker-broadcast.js"></script>   right before </body>
  *
- *  It sends: a clean copy of the page (no scripts, no storage), the window size,
- *  the mouse position, hover target, clicks and scroll positions.
+ *  It does NOT copy the page. It sends a tiny "scene": kingdom columns, zone names + icons,
+ *  what you're hovering, your clicks and mouse dot, and whether a + menu is open
+ *  (the viewers then only see "Marking <zone>").
+ *  Optional attributes: data-room="x"  data-ws="ws://localhost:8787"
  */
 (function () {
   'use strict';
@@ -13,20 +13,18 @@
 
   var SELF = document.currentScript;
   var ds = (SELF && SELF.dataset) || {};
-  var store = function (k, v) { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) {} return null; };
+  function store(k, v) { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) {} return null; }
   var ROOM = ds.room || store('tm_room') || 'tracker';
   var WS = ds.ws || store('tm_ws') || '';
   var live = store('tm_live') !== '0';
+  var chipOn = store('tm_pill') !== '0';
   var channel = new BroadcastChannel('tracker-mirror:' + ROOM);
 
   /* ---------- transport ---------- */
   var ws = null, wsOpen = false;
   function connectWS() {
     if (!WS) return;
-    try {
-      var u = new URL(WS); u.searchParams.set('room', ROOM);
-      ws = new WebSocket(u.href);
-    } catch (e) { return; }
+    try { var u = new URL(WS); u.searchParams.set('room', ROOM); ws = new WebSocket(u.href); } catch (e) { return; }
     ws.onopen = function () { wsOpen = true; snap(true); };
     ws.onmessage = function (e) { try { onMessage(JSON.parse(e.data)); } catch (x) {} };
     ws.onclose = function () { wsOpen = false; setTimeout(connectWS, 2000); };
@@ -41,216 +39,142 @@
   channel.onmessage = function (e) { onMessage(e.data); };
 
   /* ---------- helpers ---------- */
-  function pathOf(el) {          // child-index path from <body> to el
-    var p = [];
-    while (el && el !== document.body) {
-      var par = el.parentElement;
-      if (!par) return null;
-      p.push(Array.prototype.indexOf.call(par.children, el));
-      el = par;
-    }
-    return el === document.body ? p.reverse() : null;
+  function clean(s, n) { s = (s || '').replace(/\s+/g, ' ').trim(); return s.length > (n || 40) ? s.slice(0, (n || 40) - 1) + '\u2026' : s; }
+  function r4(n) { return Math.round(n * 10000) / 10000; }
+  function inUI(el) { return el && el.closest && el.closest('[data-bc-ui]'); }
+
+  var lastPlus = { z: '', k: '' };       // which row's + button was pressed last
+  function zoneName(row) {
+    var n = row && (row.querySelector('.zone-name-main') || row.querySelector('.zone-name'));
+    return n ? clean(n.textContent) : '';
   }
-  function attrsOf(el) {
-    var o = {};
-    for (var i = 0; i < el.attributes.length; i++) o[el.attributes[i].name] = el.attributes[i].value;
-    return o;
+  function colTitle(col) {
+    var t = col && (col.querySelector('.col-title') || col.querySelector('.kingdom-col-header'));
+    return t ? clean(t.textContent) : '';
   }
 
-  /* ---------- page snapshot ---------- */
-  var lastBody = '', lastHead = '', timer = 0, lastAt = 0, forced = false;
-
-  function collectHead() {
-    var out = [];
-    var nodes = document.head.querySelectorAll('style, link[rel~="stylesheet"]');
-    for (var i = 0; i < nodes.length; i++) {
-      var n = nodes[i];
-      if (n.tagName === 'STYLE') out.push({ css: n.textContent });
-      else if (n.href) out.push({ href: n.href });
-    }
-    return out;
+  /* ---------- the scene ---------- */
+  var lastScene = '';
+  function buildScene() {
+    var vw = window.innerWidth, vh = window.innerHeight, cols = [];
+    document.querySelectorAll('.kingdom-col').forEach(function (col) {
+      var cr = col.getBoundingClientRect();
+      if (cr.width < 8 || cr.height < 8 || cr.right < 0 || cr.left > vw || cr.bottom < 0 || cr.top > vh) return;
+      var tEl = col.querySelector('.col-title') || col.querySelector('.kingdom-col-header');
+      var rows = [];
+      col.querySelectorAll('.zone-row').forEach(function (row) {
+        var rr = row.getBoundingClientRect();
+        var top = Math.max(rr.top, cr.top, 0), bot = Math.min(rr.bottom, cr.bottom, vh);
+        if (bot - top < 3 || rr.width < 8) return;
+        var nm = row.querySelector('.zone-name-main') || row.querySelector('.zone-name');
+        var icons = [];
+        row.querySelectorAll('.zone-req-icon').forEach(function (im) {
+          var s = im.currentSrc || im.src || '';
+          if (s && icons.length < 3 && (s.indexOf('data:') !== 0 || s.length < 2000)) icons.push(s);
+        });
+        rows.push({
+          n: zoneName(row), c: nm ? getComputedStyle(nm).color : '',
+          r: [r4(Math.max(rr.left, 0) / vw), r4(top / vh), r4(Math.min(rr.width, vw) / vw), r4((bot - top) / vh)],
+          i: icons, d: row.classList.contains('paint-has-dest') ? 1 : 0
+        });
+      });
+      cols.push({
+        k: col.dataset.kingdom || colTitle(col), n: colTitle(col),
+        c: tEl ? getComputedStyle(tEl).color : '',
+        r: [r4(Math.max(cr.left, 0) / vw), r4(Math.max(cr.top, 0) / vh), r4(Math.min(cr.width, vw) / vw), r4(Math.min(cr.height, vh) / vh)],
+        rows: rows
+      });
+    });
+    var ov = document.querySelector('.req-picker-overlay');
+    return {
+      t: 'scene', vw: vw, vh: vh, cols: cols,
+      mark: ov ? { z: lastPlus.z, k: lastPlus.k, p: ov.closest('.paint-find-area') ? 1 : 0 } : null
+    };
   }
-
-  function cloneBody() {
-    var body = document.body;
-    var clone = body.cloneNode(true);
-    var a = body.querySelectorAll('*'), b = clone.querySelectorAll('*');
-    for (var i = 0; i < a.length; i++) {
-      var s = a[i], c = b[i], tag = s.tagName;
-      if (s.hasAttribute('data-bc-ui')) c.style.visibility = 'hidden';
-      if (tag === 'SCRIPT') { c.textContent = ''; c.removeAttribute('src'); continue; }
-      if (tag === 'TEXTAREA') c.textContent = s.value;
-      else if (tag === 'INPUT') {
-        if (s.type === 'checkbox' || s.type === 'radio') { if (s.checked) c.setAttribute('checked', ''); else c.removeAttribute('checked'); }
-        else c.setAttribute('value', s.value);
-      } else if (tag === 'SELECT') {
-        for (var j = 0; j < s.options.length; j++) {
-          if (s.options[j].selected) c.options[j].setAttribute('selected', ''); else c.options[j].removeAttribute('selected');
-        }
-      }
-      if (s.scrollTop || s.scrollLeft) c.setAttribute('data-bc-s', s.scrollTop + ',' + s.scrollLeft);
-    }
-    return clone;
-  }
-
+  var timer = 0, lastAt = 0, forced = false;
   function snap(force) {
     if (!live || !document.body) return;
     lastAt = Date.now();
-    var clone = cloneBody();
-    var bodyHTML = clone.innerHTML;
-    var headItems = collectHead();
-    var headSig = JSON.stringify(headItems);
-    var headChanged = force || headSig !== lastHead;
-    if (!force && !headChanged && bodyHTML === lastBody) return;
-    lastBody = bodyHTML; lastHead = headSig;
-    var cs = getComputedStyle(document.body);
-    send({
-      t: 'snap',
-      vw: window.innerWidth, vh: window.innerHeight,
-      base: document.baseURI,
-      htmlAttrs: attrsOf(document.documentElement),
-      bodyAttrs: attrsOf(document.body),
-      bg: cs.backgroundColor,
-      head: headChanged ? headItems : null,
-      body: bodyHTML,
-      ds: [window.scrollX, window.scrollY]
-    });
-    refreshHover();
+    var sc = buildScene(), sig = JSON.stringify(sc);
+    if (!force && sig === lastScene) return;
+    lastScene = sig;
+    send(sc);
   }
   function schedule(force) {
     forced = forced || !!force;
     if (timer) return;
-    timer = setTimeout(function () { timer = 0; var f = forced; forced = false; snap(f); }, Math.max(0, 100 - (Date.now() - lastAt)));
+    timer = setTimeout(function () { timer = 0; var f = forced; forced = false; snap(f); }, Math.max(0, 90 - (Date.now() - lastAt)));
   }
+  new MutationObserver(function () { schedule(); }).observe(document.documentElement, { subtree: true, childList: true, attributes: true, characterData: true });
+  ['input', 'change', 'transitionend', 'animationend'].forEach(function (ev) { document.addEventListener(ev, function () { schedule(); }, true); });
+  window.addEventListener('resize', function () { schedule(true); });
 
-  var mo = new MutationObserver(function () { schedule(); });
-  function startObserving() {
-    mo.observe(document.body, { subtree: true, childList: true, attributes: true, characterData: true });
-    mo.observe(document.head, { subtree: true, childList: true, characterData: true, attributes: true });
-    mo.observe(document.documentElement, { attributes: true });
-  }
-  ['input', 'change', 'transitionend', 'animationend'].forEach(function (ev) {
-    document.addEventListener(ev, function () { schedule(); }, true);
-  });
-  window.addEventListener('resize', function () { schedule(true); if (window.__tmPaint) window.__tmPaint(); });
-
-  /* ---------- mouse, hover, clicks, scroll ---------- */
+  /* ---------- mouse, hover, clicks ---------- */
   var mx = -1, my = -1, down = false, raf = 0, hoverKey = '~';
 
-  function sendMouse(out) {
-    raf = 0;
-    send({ t: 'm', x: mx, y: my, d: down ? 1 : 0, out: out ? 1 : 0 });
+  function controlLabel(t) {
+    var c = t.closest && t.closest('button, [role=button], img, a, input, select, textarea, label');
+    if (!c) return '';
+    if (c.classList.contains('zone-req-add')) return 'the + button';
+    return clean(c.getAttribute('aria-label') || c.getAttribute('title') || c.getAttribute('alt') || (c.tagName === 'INPUT' || c.tagName === 'TEXTAREA' ? 'a text box' : c.textContent), 32);
+  }
+  function describe(t) {
+    var row = t.closest && t.closest('.zone-row'), col = t.closest && t.closest('.kingdom-col');
+    return { k: col ? (col.dataset.kingdom || colTitle(col)) : '', z: row ? zoneName(row) : '', l: controlLabel(t) };
   }
   function setHover(el) {
-    var p = el && el.closest && !el.closest('[data-bc-ui]') ? pathOf(el) : null;
-    var key = p ? p.join(',') : '';
+    var d = el && !inUI(el) ? describe(el) : { k: '', z: '', l: '' };
+    var key = d.k + '|' + d.z + '|' + d.l;
     if (key === hoverKey) return;
     hoverKey = key;
-    send({ t: 'h', p: p });
+    send({ t: 'h', k: d.k, z: d.z, l: d.l });
   }
-  function refreshHover() {
-    if (mx < 0) return;
-    setHover(document.elementFromPoint(mx, my));
-  }
-  function inUI(e) { return e.target && e.target.closest && e.target.closest('[data-bc-ui]'); }
+  function sendMouse(out) { raf = 0; send({ t: 'm', x: mx, y: my, d: down ? 1 : 0, out: out ? 1 : 0, vw: window.innerWidth, vh: window.innerHeight }); }
 
   document.addEventListener('mousemove', function (e) {
-    mx = e.clientX; my = e.clientY;
-    setHover(e.target);
+    mx = e.clientX; my = e.clientY; setHover(e.target);
     if (!raf) raf = requestAnimationFrame(function () { sendMouse(false); });
   }, true);
   document.addEventListener('mousedown', function (e) {
-    if (inUI(e)) return;
+    if (inUI(e.target)) return;
     mx = e.clientX; my = e.clientY; down = true;
-    send({ t: 'c', x: mx, y: my, b: e.button });
-    sendMouse(false);
+    var add = e.target.closest && e.target.closest('.zone-req-add');
+    if (add) { var d = describe(add); lastPlus = { z: d.z, k: d.k }; }
+    var d2 = describe(e.target);
+    send({ t: 'c', x: mx, y: my, b: e.button, k: d2.k, z: d2.z, l: d2.l });
+    sendMouse(false); schedule();
   }, true);
-  document.addEventListener('mouseup', function (e) {
-    down = false; mx = e.clientX; my = e.clientY; sendMouse(false);
-    schedule();
-  }, true);
-  document.documentElement.addEventListener('mouseleave', function () { sendMouse(true); hoverKey = '~'; });
+  document.addEventListener('mouseup', function (e) { down = false; mx = e.clientX; my = e.clientY; sendMouse(false); schedule(); }, true);
+  document.documentElement.addEventListener('mouseleave', function () { sendMouse(true); hoverKey = '~'; setHover(null); });
+  document.addEventListener('scroll', function () { schedule(); }, true);
 
-  var scrollTimer = 0;
-  document.addEventListener('scroll', function (e) {
-    var tgt = e.target, p;
-    if (tgt === document) send({ t: 's', p: null, top: window.scrollY, left: window.scrollX });
-    else if ((p = pathOf(tgt)) !== null) send({ t: 's', p: p, top: tgt.scrollTop, left: tgt.scrollLeft });
-    clearTimeout(scrollTimer); scrollTimer = setTimeout(refreshHover, 60);
-  }, true);
-
-  /* heartbeat so the viewer knows the tracker is alive */
   setInterval(function () { send({ t: 'hb', vw: window.innerWidth, vh: window.innerHeight }); }, 2000);
 
-  /* ---------- tiny control pill (outside <body>, never mirrored) ---------- */
-  function buildUI() {
-    if (ds.ui === '0') return;
+  /* ---------- tiny status chip (optional, hidden from viewers; toggle lives in Settings > Notes) ---------- */
+  var chip;
+  function paintChip() {
+    if (!chip) return;
+    chip.style.display = chipOn ? '' : 'none';
+    chip.className = live ? 'on' : '';
+    chip.lastChild.textContent = live ? 'Mirroring' : 'Mirror paused';
+  }
+  function buildChip() {
     var css = document.createElement('style');
-    css.textContent =
-      '#tm-pill{position:fixed;left:12px;bottom:12px;z-index:2147483647;display:flex;align-items:center;gap:6px;' +
-      'padding:5px 6px 5px 10px;border-radius:999px;background:rgba(16,16,22,.82);backdrop-filter:blur(8px);' +
-      'border:1px solid rgba(255,255,255,.14);color:#e9e9f2;font:600 12px/1 system-ui,Segoe UI,sans-serif;' +
-      'opacity:.5;transition:opacity .2s;box-shadow:0 4px 18px rgba(0,0,0,.4)}' +
-      '#tm-pill:hover{opacity:1}' +
-      '#tm-pill .tm-dot{width:8px;height:8px;border-radius:50%;background:#555;transition:background .2s,box-shadow .2s}' +
-      '#tm-pill.on .tm-dot{background:#3ddc84;box-shadow:0 0 8px #3ddc84}' +
-      '#tm-pill button{all:unset;cursor:pointer;padding:5px 9px;border-radius:999px;background:rgba(255,255,255,.1);font:600 11px/1 system-ui,sans-serif;color:#e9e9f2}' +
-      '#tm-pill button:hover{background:rgba(255,255,255,.2)}';
-    var pill = document.createElement('div');
-    pill.id = 'tm-pill'; pill.setAttribute('data-bc-ui', '');
-    pill.innerHTML = '<span class="tm-dot"></span><span class="tm-label"></span>' +
-      '<button data-a="toggle"></button><button data-a="pop">Pop-out</button><button data-a="copy">Copy OBS link</button>';
-    var label = pill.querySelector('.tm-label'), tog = pill.querySelector('[data-a=toggle]');
-    var pillOn = store('tm_pill') !== '0';
-    var hdr = document.getElementById('notes-page-settings');
-    var hbtn = null;
-    if (hdr && hdr.parentNode) {                       // toggle sits right next to the gear
-      hbtn = document.createElement('button');
-      hbtn.className = 'ctrl-btn'; hbtn.id = 'tm-header-toggle'; hbtn.setAttribute('data-bc-ui', '');
-      hbtn.style.cssText = 'font-size:.78em;padding:3px 8px';
-      hbtn.title = 'Show or hide the Mirroring controls';
-      hbtn.addEventListener('click', function () { pillOn = !pillOn; store('tm_pill', pillOn ? '1' : '0'); paint(); });
-      hdr.parentNode.insertBefore(hbtn, hdr);
-    }
-    function paint() {
-      pill.classList.toggle('on', live);
-      var ratio = window.innerWidth / window.innerHeight;
-      label.textContent = !live ? 'Paused' : (Math.abs(ratio - 1) > 0.04 ? 'Mirroring \u00b7 resize window to square' : 'Mirroring');
-      tog.textContent = live ? 'Pause' : 'Start';
-      pill.style.display = pillOn ? '' : 'none';
-      if (hbtn) hbtn.textContent = '\ud83d\udce1 Mirror: ' + (pillOn ? 'Shown' : 'Hidden');
-    }
-    function viewerSize(W) { return [W, W]; }      // the viewer is always square
-    function viewerURL() {
-      var u = new URL('obs-viewer.html', SELF && SELF.src ? SELF.src : location.href);
-      u.searchParams.set('room', ROOM);
-      if (WS) u.searchParams.set('ws', WS);
-      return u.href;
-    }
-    pill.addEventListener('click', function (e) {
-      var a = e.target.getAttribute && e.target.getAttribute('data-a');
-      if (a === 'toggle') { live = !live; store('tm_live', live ? '1' : '0'); paint(); if (live) snap(true); }
-      if (a === 'pop') { var sz = viewerSize(960); window.open(viewerURL(), 'tracker-mirror', 'popup,width=' + sz[0] + ',height=' + sz[1]); }
-      if (a === 'copy') {
-        var url = viewerURL();
-        (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject()).then(function () {
-          var z = viewerSize(1280); e.target.textContent = 'Copied \u00b7 source ' + z[0] + '\u00d7' + z[1] + ' (square)'; setTimeout(function () { e.target.textContent = 'Copy OBS link'; }, 3500);
-        }, function () { prompt('OBS browser source URL:', url); });
-      }
-    });
-    window.__tmPaint = paint;
-    window.addEventListener('storage', function (e) {      // flipped from Settings in the main tracker
-      if (e.key === 'tm_pill') { pillOn = e.newValue !== '0'; paint(); }
-    });
-    paint();
-    document.documentElement.appendChild(css);
-    document.documentElement.appendChild(pill);
+    css.textContent = '#tm-chip{position:fixed;left:12px;bottom:12px;z-index:2147483647;display:flex;align-items:center;gap:7px;padding:6px 12px;' +
+      'border-radius:999px;background:rgba(16,16,22,.8);border:1px solid rgba(255,255,255,.14);color:#e9e9f2;font:700 11px/1 system-ui,sans-serif;opacity:.55;pointer-events:none}' +
+      '#tm-chip i{width:8px;height:8px;border-radius:50%;background:#666}#tm-chip.on i{background:#3ddc84;box-shadow:0 0 8px #3ddc84}';
+    chip = document.createElement('div');
+    chip.id = 'tm-chip'; chip.setAttribute('data-bc-ui', '');
+    chip.innerHTML = '<i></i><span></span>';
+    document.documentElement.appendChild(css); document.documentElement.appendChild(chip);
+    paintChip();
   }
+  window.addEventListener('storage', function (e) {      // flipped from Settings in the main tracker
+    if (e.key === 'tm_pill') { chipOn = e.newValue !== '0'; paintChip(); }
+    if (e.key === 'tm_live') { live = e.newValue !== '0'; paintChip(); if (live) snap(true); }
+  });
 
-  function start() {
-    buildUI(); startObserving(); connectWS(); snap(true);
-  }
+  function start() { buildChip(); connectWS(); snap(true); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
-  /* the tracker builds its content with JS: send again once it has settled */
   window.addEventListener('load', function () { setTimeout(function () { snap(true); }, 400); });
 })();
