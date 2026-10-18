@@ -3214,6 +3214,68 @@
       return info.conn ? main + ' (' + info.conn + ')' : main;
     }
 
+    // ?? Painting integrity: auto-text hiding, one destination per Painting, each destination only once ??
+    // True for any line a Painting's + ever auto-writes ("Snow (from Snow Dram)",
+    // "Cap (from Top-Hat Tower) (Reachable from Top-Hat Tower)", ...). Those lines are
+    // internal bookkeeping and must NEVER be shown as a note, whatever the state is.
+    var _paintAutoLines = null;
+    function isPaintingAutoLine(line) {
+      if (!_paintAutoLines) {
+        _paintAutoLines = new Set();
+        Object.keys(PAINTING_IRL_INFO).forEach(k => _paintAutoLines.add(paintingIrlNoteText(k, PAINTING_IRL_INFO[k])));
+      }
+      line = (line || '').trim();
+      if (_paintAutoLines.has(line)) return true;
+      const m = /^(.+?) \(from [^()]+\)(?: \([^()]*\))?$/.exec(line);
+      return !!(m && PAINTING_IRL_INFO[m[1]]);
+    }
+
+    /** Is `destKey` already the destination of some OTHER Painting? */
+    function paintingDestTaken(destKey, exceptKingdom) {
+      return EXTRA_PAINTING_KINGDOMS.some(k => k !== exceptKingdom && APC.getPaintingDestination(fullState, k) === destKey);
+    }
+
+    // Hard guard at the data layer: whatever code path tries to mark a Painting (picker, sync,
+    // another panel), a self-pointing or already-used destination is refused outright.
+    if (!APC.__paintGuard) {
+      APC.__paintGuard = true;
+      const _origSetPaintDest = APC.setPaintingDestination;
+      APC.setPaintingDestination = function (st, kingdom, dest) {
+        if (dest) {
+          if (dest === kingdom) return;
+          const dd = (st && st.painting_destinations) || {};
+          for (const k of Object.keys(dd)) { if (k !== kingdom && dd[k] === dest) return; }
+        }
+        return _origSetPaintDest.apply(this, arguments);
+      };
+    }
+
+    // Runs while state is loading/merging - BEFORE anything is drawn - so the person never
+    // sees it happen: drops self-leading and duplicate destinations, and quietly restores a
+    // destination whose chip went missing but whose auto note line is still saved.
+    function sanitizePaintingState() {
+      try {
+        if (!fullState.painting_destinations) fullState.painting_destinations = {};
+        const used = new Set();
+        EXTRA_PAINTING_KINGDOMS.forEach(k => {
+          const d = APC.getPaintingDestination(fullState, k);
+          if (!d) return;
+          if (d === k || used.has(d)) APC.setPaintingDestination(fullState, k, null);
+          else used.add(d);
+        });
+        EXTRA_PAINTING_KINGDOMS.forEach(k => {
+          if (APC.getPaintingDestination(fullState, k)) return;
+          const lines = String((fullState.painting_notes || {})[k] || '').split(/\n+/).map(t => t.trim()).filter(Boolean);
+          for (const d of Object.keys(PAINTING_IRL_INFO)) {
+            if (d === k || used.has(d)) continue;
+            if (lines.includes(paintingIrlNoteText(d, PAINTING_IRL_INFO[d]))) {
+              APC.setPaintingDestination(fullState, k, d); used.add(d); break;
+            }
+          }
+        });
+      } catch (e) { console.warn('sanitizePaintingState:', e); }
+    }
+
     // Drops that text into `noteArea`, reusing the same input-event dispatch
     // appendRequirementText uses so the existing save/autosize listener on
     // the textarea does the rest. Appends on its own line rather than
@@ -3364,6 +3426,7 @@
         if (!(k in fullState.painting_notes)) fullState.painting_notes[k] = '';
       });
       if (!fullState.painting_destinations) fullState.painting_destinations = {};
+      sanitizePaintingState();
       if (!fullState.shop_sales) fullState.shop_sales = {};
 
       // "How do I reach <Kingdom>?" (Kingdom tab -> Reaching Kingdoms) is
@@ -3489,6 +3552,7 @@
 
       if (remote.painting_notes) Object.assign(fullState.painting_notes, remote.painting_notes);
       if (remote.painting_destinations) Object.assign(fullState.painting_destinations, remote.painting_destinations);
+      sanitizePaintingState();
       if (remote.shop_sales) Object.assign(fullState.shop_sales, remote.shop_sales);
 
       saveFullState();
@@ -4393,9 +4457,13 @@
           addBtn.textContent = '+';
           addBtn.addEventListener('click', (e) => {
             e.stopPropagation();
+            // Only one Painting can be being marked at a time.
+            if (document.querySelector('body > .req-picker-overlay--kingdom-only.active')) return;
             bounce(addBtn);
             const current = APC.getPaintingDestination(fullState, kingdom);
             openKingdomOnlyPicker(current, (kingdomKey) => {
+              // A Painting never leads to itself, and a destination can only be used once.
+              if (kingdomKey && (kingdomKey === kingdom || paintingDestTaken(kingdomKey, kingdom))) return;
               const prevKey = APC.getPaintingDestination(fullState, kingdom);
               if (irlInfo) {
                 // IRL Info on: the note gets the *picked destination's* own
@@ -4635,7 +4703,7 @@
           noteChips.innerHTML = '';
           const _dk = irlInfo ? APC.getPaintingDestination(fullState, kingdom) : null;
           const _auto = _dk && PAINTING_IRL_INFO[_dk] ? paintingIrlNoteText(_dk, PAINTING_IRL_INFO[_dk]) : null;
-          const lines = (noteArea.value || '').split(/\n+/).map(t => t.trim()).filter(Boolean).filter(l => l !== _auto);
+          const lines = (noteArea.value || '').split(/\n+/).map(t => t.trim()).filter(Boolean).filter(l => l !== _auto && !isPaintingAutoLine(l));
           if (!lines.length) {
             const n = document.createElement('span');
             n.className = 'paint-chip paint-chip--none';
@@ -5755,7 +5823,9 @@
       function render() {
         grid.innerHTML = '';
         const baseList = fullState.settings.extra_paintings ? PAINTING_DEST_KINGDOMS_EXTRA : PAINTING_DEST_KINGDOMS;
-        const list = excludeKey ? baseList.filter(k => k.key !== excludeKey) : baseList;
+        let list = excludeKey ? baseList.filter(k => k.key !== excludeKey) : baseList;
+        // Destinations already marked on another Painting disappear (this Painting's own pick stays so it can be un-picked).
+        if (excludeKey) list = list.filter(k => k.key === currentKey || !paintingDestTaken(k.key, excludeKey));
         fitPickerGrid(grid, list.length);
         if (!list.length) {
           const empty = document.createElement('div');
