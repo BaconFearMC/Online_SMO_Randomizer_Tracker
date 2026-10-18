@@ -628,6 +628,16 @@
        instead of squeezing cells down illegibly. */
     .req-picker-popup--scroll { overflow-y: auto !important; }
     .req-picker-popup--scroll .req-picker-grid { overflow: visible; max-height: none; }
+    /* Painting destination picker: tiles keep a sane card shape and are NEVER stretched to the full height */
+    .req-picker-overlay--kingdom-only .req-picker-grid {
+      height: auto !important; max-height: none !important; align-content: center; align-items: center;
+      grid-template-columns: repeat(var(--req-picker-cols, 6), minmax(0, 1fr)) !important;
+      grid-template-rows: none !important; grid-auto-rows: auto !important;
+    }
+    .req-picker-overlay--kingdom-only .req-picker-item--kingdom {
+      height: auto !important; min-height: 0 !important; width: 100%; max-width: 150px; justify-self: center;
+      aspect-ratio: 4 / 5; max-height: 190px;
+    }
 
     /* Paintings column's own Shop rows (Cap/Cascade/Wooded/Seaside) - just
        reuses the zone-row/zone-reqs language already used for loading
@@ -5826,7 +5836,12 @@
         let list = excludeKey ? baseList.filter(k => k.key !== excludeKey) : baseList;
         // Destinations already marked on another Painting disappear (this Painting's own pick stays so it can be un-picked).
         if (excludeKey) list = list.filter(k => k.key === currentKey || !paintingDestTaken(k.key, excludeKey));
-        fitPickerGrid(grid, list.length);
+        { // balanced rows (e.g. 13 -> 7 + 6); tiles keep their card shape instead of filling the height
+          const gw = grid.clientWidth || 900, mc = Math.max(1, Math.floor((gw + 8) / 86));
+          const rws = Math.max(1, Math.ceil(list.length / mc));
+          grid.style.setProperty('--req-picker-cols', Math.max(1, Math.ceil(list.length / rws)));
+          grid.style.setProperty('--req-picker-rows', rws);
+        }
         if (!list.length) {
           const empty = document.createElement('div');
           empty.className = 'req-picker-empty';
