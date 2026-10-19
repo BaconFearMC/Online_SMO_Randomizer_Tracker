@@ -17,7 +17,6 @@
   var ROOM = ds.room || store('tm_room') || 'tracker';
   var WS = ds.ws || store('tm_ws') || '';
   var live = store('tm_live') !== '0';
-  var chipOn = store('tm_pill') !== '0';
   var channel = new BroadcastChannel('tracker-mirror:' + ROOM);
 
   /* ---------- transport ---------- */
@@ -150,31 +149,16 @@
 
   setInterval(function () { send({ t: 'hb', vw: window.innerWidth, vh: window.innerHeight }); }, 2000);
 
-  /* ---------- tiny status chip (optional, hidden from viewers; toggle lives in Settings > Notes) ---------- */
-  var chip;
-  function paintChip() {
-    if (!chip) return;
-    chip.style.display = chipOn ? '' : 'none';
-    chip.className = live ? 'on' : '';
-    chip.lastChild.textContent = live ? 'Mirroring' : 'Mirror paused';
-  }
-  function buildChip() {
-    var css = document.createElement('style');
-    css.textContent = '#tm-chip{position:fixed;left:12px;bottom:12px;z-index:2147483647;display:flex;align-items:center;gap:7px;padding:6px 12px;' +
-      'border-radius:999px;background:rgba(16,16,22,.8);border:1px solid rgba(255,255,255,.14);color:#e9e9f2;font:700 11px/1 system-ui,sans-serif;opacity:.55;pointer-events:none}' +
-      '#tm-chip i{width:8px;height:8px;border-radius:50%;background:#666}#tm-chip.on i{background:#3ddc84;box-shadow:0 0 8px #3ddc84}';
-    chip = document.createElement('div');
-    chip.id = 'tm-chip'; chip.setAttribute('data-bc-ui', '');
-    chip.innerHTML = '<i></i><span></span>';
-    document.documentElement.appendChild(css); document.documentElement.appendChild(chip);
-    paintChip();
-  }
+  /* The old bottom-left "Mirroring" chip is gone - everything lives in Settings > Mirror now. */
   window.addEventListener('storage', function (e) {      // flipped from Settings in the main tracker
-    if (e.key === 'tm_pill') { chipOn = e.newValue !== '0'; paintChip(); }
-    if (e.key === 'tm_live') { live = e.newValue !== '0'; paintChip(); if (live) snap(true); }
+    if (e.key === 'tm_live') { live = e.newValue !== '0'; if (live) snap(true); }
   });
 
-  function start() { buildChip(); connectWS(); snap(true); }
+  function start() {
+    // belt and braces: remove any leftover chip from an older copy of this script
+    ['tm-chip', 'tm-pill', 'tm-header-toggle'].forEach(function (id) { var e = document.getElementById(id); if (e) e.remove(); });
+    connectWS(); snap(true);
+  }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
   window.addEventListener('load', function () { setTimeout(function () { snap(true); }, 400); });
 })();

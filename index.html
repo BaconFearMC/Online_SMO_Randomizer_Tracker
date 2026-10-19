@@ -41,6 +41,9 @@
     .font-comicsans .settings-body input[type="number"], .font-comicsans .settings-body select { max-width: 100%; min-width: 0; box-sizing: border-box; }
     .font-comicsans .hotkey-row { flex-wrap: wrap; }
   </style>
+  <style>/* Stream Mirror: the old bottom-left chip / injected tabs must never show */
+  #tm-chip,#tm-pill,#tm-header-toggle,#tm-tab,#tm-panel{display:none!important}
+  </style>
 </head>
 
 <body>
@@ -541,6 +544,44 @@
             </div>
           </div>
 
+        
+          <!-- Stream Mirror: its own collapsible menu. Logic lives in mirror-settings.js. The live
+               preview only loads while this menu is open, so it costs nothing when closed. -->
+          <details class="settings-subsection" id="subsection-stream-mirror">
+            <summary class="subsection-title" style="cursor:pointer">Stream Mirror</summary>
+            <p class="hotkeys-hint hotkeys-hint-dim">
+              Gives your viewers a simplified, cartoony live view of what you hover and click on the
+              Notes page. Your Notes page itself is never copied.
+            </p>
+            <div class="settings-row">
+              <span>Mirroring</span>
+              <label class="toggle-switch">
+                <input type="checkbox" id="toggle-stream-mirror" checked>
+                <span class="toggle-track"></span>
+              </label>
+            </div>
+            <div class="settings-row settings-subrow">
+              <span>Status</span>
+              <span id="mirror-status" style="opacity:.75">Notes page not open</span>
+            </div>
+            <div class="settings-row settings-subrow">
+              <span>Viewer Window</span>
+              <button class="rebind-btn" id="btn-mirror-popout">Pop Out</button>
+            </div>
+            <div class="settings-row settings-subrow">
+              <span>OBS Browser Source Link</span>
+              <button class="rebind-btn" id="btn-mirror-copy">Copy Link</button>
+            </div>
+            <div class="settings-row settings-subrow">
+              <span>Relay (optional)</span>
+              <input type="text" id="input-mirror-relay" placeholder="ws://localhost:8787" spellcheck="false" style="width:190px">
+            </div>
+            <div id="mirror-preview-wrap" style="margin:10px auto 2px;width:100%;max-width:300px">
+              <div id="mirror-preview" style="aspect-ratio:1/1;border-radius:12px;overflow:hidden;border:2px solid rgba(255,255,255,.15);background:#0f2250"></div>
+              <p class="hotkeys-hint hotkeys-hint-dim" style="text-align:center;margin-top:6px">Live preview of what your viewers see.</p>
+            </div>
+          </details>
+
         </div>
 
         <!-- ══ NOTES SYNC [BETA] TAB ═══════════════════════════════════
@@ -795,6 +836,7 @@
   <script src="apc-data.js?v=10"></script>
   <script src="app.js?v=3"></script>
   <script src="spoiler-log.js?v=1"></script>
+  <script src="mirror-settings.js"></script>
   <script>
     // Extra Paintings > "In-World Info" row: app.js doesn't know about this
     // setting, so it's wired up here instead, self-contained, reading and
