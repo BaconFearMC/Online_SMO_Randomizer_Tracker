@@ -1818,6 +1818,26 @@
       60%  { transform: scale(.5); opacity: .15; }
       100% { transform: scale(1); opacity: 1; }
     }
+    /* Paintings panel's own clear animation: a sweep down the column + each row clears
+       its source side (Cap icon + text) and its destination side (Wooded icon + text) together */
+    .kingdom-col.paintings-fixed.notes-clear-sweep { position: relative; }
+    .kingdom-col.paintings-fixed.notes-clear-sweep::after {
+      content: ""; position: absolute; left: 0; right: 0; top: 0; height: 30%; pointer-events: none; z-index: 6;
+      background: linear-gradient(180deg, transparent, rgba(255,215,0,.22), transparent);
+      animation: notes-clear-sweep 1.1s ease-in-out both; will-change: transform, opacity;
+    }
+    @keyframes notes-clear-sweep {
+      0%   { transform: translateY(0); opacity: 0; }
+      15%  { opacity: 1; }
+      85%  { opacity: 1; }
+      100% { transform: translateY(233%); opacity: 0; }
+    }
+    /* source identity (Cap) always exists, so it clears out and comes right back empty-handed */
+    .notes-clear-srcpop {
+      animation: notes-clear-pop .5s cubic-bezier(.3,.1,.3,1) both;
+      animation-delay: var(--ipd, 0ms);
+      will-change: transform, opacity;
+    }
     /* icons pop out the moment Clear is confirmed */
     .notes-clear-iconpop {
       animation: notes-clear-iconpop .38s cubic-bezier(.3,.1,.3,1) both;
@@ -1864,7 +1884,8 @@
     @media (prefers-reduced-motion: reduce) {
       .zone-note.notes-clear-pop { animation-duration: .01s; }
       .notes-clear-burst { display: none; }
-      .notes-clear-iconpop { animation-duration: .01s; }
+      .notes-clear-iconpop, .notes-clear-srcpop { animation-duration: .01s; }
+      .kingdom-col.paintings-fixed.notes-clear-sweep::after { animation: none; }
     }
     .notes-clear-fading {
       transition: opacity .25s ease;
@@ -3830,11 +3851,39 @@
       (function popIcons() {
         const SEL = '.zone-req-icon, .zone-req-pair, .zone-req-kingdom-wrap, .zone-darkerside-icon, .zone-sub-icon, .paint-chip, .paint-dest-clear, .pc-conn-icon';
         kingdoms.forEach((k, ki) => {
-          if (!k.col) return;
+          if (!k.col || k.col.classList.contains('paintings-fixed')) return; // Paintings has its own pass below
           k.col.querySelectorAll(SEL).forEach((ic) => {
             if (ic.parentElement && ic.parentElement.closest(SEL)) return; // outer icon only
             ic.style.setProperty('--ipd', Math.min(ki * 35, 500) + 'ms');
             ic.classList.add('notes-clear-iconpop');
+          });
+        });
+      })();
+
+      // ?? Paintings panel: its own clear animation ??
+      // Every row clears BOTH of its sides together (same delay): the source icon + name
+      // (e.g. Cap) and the destination icon + name (e.g. Wooded), plus the "Cap leads here"
+      // chips on the destination's own row. Also covers the side copy shown while a + menu is open.
+      (function clearPaintingsPanel() {
+        const cols = document.querySelectorAll('body > .kingdom-col.paintings-fixed');
+        cols.forEach((col) => {
+          col.classList.add('notes-clear-sweep');
+          setTimeout(() => col.classList.remove('notes-clear-sweep'), 1300);
+          const outerOnly = (nodes, sel) => nodes.filter(n => !(n.parentElement && n.parentElement.closest(sel)));
+          Array.from(col.querySelectorAll('.zone-row')).forEach((row, ri) => {
+            const d = Math.min(ri * 45, 900) + 'ms';
+            // source side
+            let src = Array.from(row.querySelectorAll('.paint-src:not(.paint-src--dest)'));
+            if (!src.length) {
+              src = Array.from(row.querySelectorAll('.zone-req-icon--kingdom:not(.paint-dest-clear)'));
+              row.querySelectorAll('.zone-name:not(.zone-dest-name)').forEach(n => { if (!n.closest('.paint-dest-block')) src.push(n); });
+            }
+            src.forEach((e) => { e.style.setProperty('--ipd', d); e.classList.add('notes-clear-srcpop'); });
+            // destination side (icon, text, arrow, connection icon/label) + incoming chips
+            const DEST = '.paint-dest-block, .zone-dest-arrow, .zone-dest-name, .paint-dest-clear, .zone-irl-connection-icon, .zone-irl-connection-label, .paint-chip-group, .paint-chip:not(.paint-chip--y)';
+            outerOnly(Array.from(row.querySelectorAll(DEST)), DEST).forEach((e) => {
+              e.style.setProperty('--ipd', d); e.classList.add('notes-clear-iconpop');
+            });
           });
         });
       })();
