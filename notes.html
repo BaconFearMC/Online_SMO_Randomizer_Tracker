@@ -47,7 +47,9 @@
     .paintings-fixed > .zones-container.paint-grid { flex: 1 0 auto; align-content: stretch; }
     .paintings-fixed .paint-grid .zone-row { display: flex; flex-direction: column; }
     /* The "from X / Reachable with Y" chips under each Painting are not shown. */
-    .paintings-fixed .paint-chip-row, .paintings-fixed .paint-incoming-row, .paintings-fixed .paint-note-chips { display: none !important; }
+    .paintings-fixed .paint-chip-row, .paintings-fixed .paint-incoming-row { display: none !important; }
+    /* Normal mode only: In World Info mode uses this box for its in-world text, so it must stay there. */
+    .paintings-fixed:not(.paint-irl) .paint-note-chips { display: none !important; }
     /* Paintings notes: read-only (filled only by the + button); show "Nothing yet..." while empty. */
     .paintings-fixed .paint-grid textarea.zone-note {
       flex: 0 0 auto; resize: none; cursor: default; overflow: hidden;
@@ -3702,6 +3704,22 @@
       updateNotesSyncUI();
     }
 
+    // Puts the Paintings panel (normal AND In World Info) back to its default look/state:
+    // drops every leftover Clear-animation class/inline style, and forgets the cross-panel
+    // registrations of the previous build so nothing stale carries into the next mode/build.
+    function resetPaintingsPanelState() {
+      try {
+        document.querySelectorAll('.notes-clear-iconpop, .notes-clear-srcpop, .notes-clear-pop, .notes-clear-sweep, .notes-clear-row').forEach((n) => {
+          n.classList.remove('notes-clear-iconpop', 'notes-clear-srcpop', 'notes-clear-pop', 'notes-clear-sweep', 'notes-clear-row');
+          n.style.removeProperty('--ipd');
+          if (n.style.display === 'inline-block') n.style.removeProperty('display');
+        });
+        document.querySelectorAll('.notes-clear-burst').forEach(n => n.remove());
+        if (typeof paintingRenderPeers === 'object' && paintingRenderPeers) Object.keys(paintingRenderPeers).forEach(k => delete paintingRenderPeers[k]);
+        if (typeof paintingClearHandlers === 'object' && paintingClearHandlers) Object.keys(paintingClearHandlers).forEach(k => delete paintingClearHandlers[k]);
+      } catch (e) { console.warn('resetPaintingsPanelState:', e); }
+    }
+
     // Paintings data that Clear must always wipe (destinations, notes, shop notes/sales).
     // Returns true if anything was still set. Also empties the separate Paintings backup so
     // loadFullState() can never "restore" cleared data.
@@ -3836,6 +3854,8 @@
         document.querySelectorAll('.notes-clear-iconpop, .notes-clear-srcpop, .notes-clear-pop, .notes-clear-sweep').forEach(n => n.classList.remove('notes-clear-iconpop', 'notes-clear-srcpop', 'notes-clear-pop', 'notes-clear-sweep'));
         resetNotesDataOnly();
         buildLoadingZonesContent();
+        applyNotesLayout();
+        requestAnimationFrame(() => { try { window.dispatchEvent(new Event('resize')); } catch (e) {} });
         // Ask the tracker window (app.js) to also reset the Tracker,
         // Connection Map, and Abilities & Captures data. skipConfirm=true
         // since this button already confirmed once above. Works whether
@@ -4250,6 +4270,7 @@
 
     // ── Build kingdom list ──────────────────────────────────────────
     function buildLoadingZonesContent() {
+      resetPaintingsPanelState();
       const container = document.getElementById('lz-content');
       container.innerHTML = '';
       document.querySelectorAll('body > .kingdom-col.paintings-fixed').forEach(n => n.remove());
