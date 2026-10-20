@@ -628,22 +628,24 @@
        instead of squeezing cells down illegibly. */
     .req-picker-popup--scroll { overflow-y: auto !important; }
     .req-picker-popup--scroll .req-picker-grid { overflow: visible; max-height: none; }
-    /* Painting destination picker: the grid fills the popup's free space and
-       JS (fitKingdomTiles) picks the cols/rows that make the tiles as big as
-       possible. Tiles ALWAYS keep a fixed 4:5 card shape - never stretched. */
+    /* Painting destination picker: the grid fills the popup's free space. JS (render in
+       openKingdomOnlyPicker) picks how many rows to use, splits the Kingdoms across them as
+       evenly as possible (rows may differ by one: e.g. 8 + 7, or 5 + 5 + 5, or 5 + 4 + 4),
+       and sizes every tile to fill the space. Tiles may get a little wider but are never
+       made taller than their natural card shape. */
     .req-picker-overlay--kingdom-only .req-picker-popup { display: flex !important; flex-direction: column; }
     .req-picker-overlay--kingdom-only .req-picker-popup > .req-picker-header { flex: 0 0 auto; }
     .req-picker-overlay--kingdom-only .req-picker-grid {
       flex: 1 1 0 !important; min-height: 0 !important; height: auto !important; max-height: none !important;
-      display: grid !important; gap: 8px !important;
-      grid-template-columns: repeat(var(--req-picker-cols, 6), var(--kt-w, 100px)) !important;
-      grid-template-rows: none !important; grid-auto-rows: var(--kt-h, 125px) !important;
-      justify-content: center; align-content: center; align-items: stretch; overflow: hidden;
+      display: flex !important; flex-direction: column; align-items: center; justify-content: center;
+      grid-template-columns: none !important; grid-template-rows: none !important;
+      gap: 8px !important; overflow: hidden; box-sizing: border-box;
     }
+    .req-picker-overlay--kingdom-only .req-picker-grid > .kt-row { display: flex; justify-content: center; gap: 8px; flex: 0 0 auto; }
     .req-picker-overlay--kingdom-only .req-picker-item--kingdom {
-      width: var(--kt-w, 100px) !important; height: var(--kt-h, 125px) !important;
-      min-height: 0 !important; max-width: none !important; max-height: none !important;
-      aspect-ratio: 4 / 5; justify-self: center; box-sizing: border-box;
+      width: var(--kt-w, 100px) !important; height: var(--kt-h, 125px) !important; flex: 0 0 auto;
+      min-width: 0 !important; min-height: 0 !important; max-width: none !important; max-height: none !important;
+      aspect-ratio: auto !important; box-sizing: border-box;
     }
 
     /* Paintings column's own Shop rows (Cap/Cascade/Wooded/Seaside) - just
@@ -3571,6 +3573,7 @@
     // fullState since it was already loaded from the same tracker_state.
     function applyRemoteNotesState(remote) {
       if (!remote || typeof remote !== 'object') return;
+      if (Date.now() < (window.__notesClearGuardUntil || 0)) return; // stale echo of pre-Clear data
       applyingRemoteNotesSync = true;
 
       if (remote.settings) {
@@ -3685,6 +3688,21 @@
       updateNotesSyncUI();
     }
 
+    // Paintings data that Clear must always wipe (destinations, notes, shop notes/sales).
+    // Returns true if anything was still set. Also empties the separate Paintings backup so
+    // loadFullState() can never "restore" cleared data.
+    function scrubPaintingData() {
+      let had = false;
+      const nz = (o) => o && Object.values(o).some(v => v && (typeof v !== 'object' || Object.keys(v).length));
+      if (nz(fullState.painting_destinations) || nz(fullState.painting_notes) || nz(fullState.painting_shop_notes) || nz(fullState.shop_sales)) had = true;
+      fullState.painting_destinations = {};
+      if (fullState.painting_notes) for (const k of Object.keys(fullState.painting_notes)) fullState.painting_notes[k] = '';
+      if (fullState.painting_shop_notes) for (const k of Object.keys(fullState.painting_shop_notes)) fullState.painting_shop_notes[k] = '';
+      fullState.shop_sales = {};
+      try { localStorage.setItem('tracker_painting_backup', JSON.stringify({ painting_destinations: {}, painting_notes: {} })); } catch (e) {}
+      return had;
+    }
+
     // Clears the note text and the selected Captures/Abilities requirements
     // in every zone, then resets every Kingdom back to its default collapsed
     // state: every section INSIDE a Kingdom is uncollapsed first, then the
@@ -3773,7 +3791,7 @@
 
       // Wipe the text right when the box is at its smallest.
       setTimeout(() => {
-        if ('value' in el) el.value = ''; else el.textContent = '';
+        if ('value' in el) { el.value = ''; try { el.dispatchEvent(new Event('input', { bubbles: false })); } catch (e) {} } else el.textContent = '';
         el.style.height = '';
       }, 230);
     }
@@ -3816,6 +3834,18 @@
             window.opener.clearAllFromNotesTab(true);
           }
         } catch (e) { console.warn('Could not reach tracker window to clear other tabs:', e); }
+
+        // The tracker window / sync room can still hold the OLD Paintings data and re-save or
+        // re-broadcast it a moment after Clear (that is what brought icons/text back). Ignore
+        // incoming sync for a few seconds, and re-wipe if anything old got written back.
+        window.__notesClearGuardUntil = Date.now() + 6000;
+        [150, 600, 1500, 3000].forEach((ms) => setTimeout(() => {
+          try {
+            let raw = null; try { raw = JSON.parse(localStorage.getItem(STATE_KEY) || 'null'); } catch (e) {}
+            const stale = raw && (Object.keys(raw.painting_destinations || {}).length || Object.values(raw.painting_notes || {}).some(Boolean));
+            if (scrubPaintingData() || stale) { saveFullState(); buildLoadingZonesContent(); applyNotesLayout(); }
+          } catch (e) {}
+        }, ms));
       }
 
       // Group every note element by the Kingdom column it lives in (this
@@ -3872,6 +3902,7 @@
             if (ic.parentElement && ic.parentElement.closest(SEL)) return; // outer icon only
             if (ic.matches(KEEP) || ic.closest(KEEP)) return;
             ic.style.setProperty('--ipd', Math.min(ki * 35, 500) + 'ms');
+            if (getComputedStyle(ic).display === 'inline') ic.style.display = 'inline-block';
             ic.classList.add('notes-clear-iconpop');
           });
         });
@@ -3895,11 +3926,11 @@
               src = Array.from(row.querySelectorAll('.zone-req-icon--kingdom:not(.paint-dest-clear)'));
               row.querySelectorAll('.zone-name:not(.zone-dest-name)').forEach(n => { if (!n.closest('.paint-dest-block')) src.push(n); });
             }
-            src.forEach((e) => { e.style.setProperty('--ipd', d); e.classList.add('notes-clear-srcpop'); });
+            src.forEach((e) => { e.style.setProperty('--ipd', d); if (getComputedStyle(e).display === 'inline') e.style.display = 'inline-block'; e.classList.add('notes-clear-srcpop'); });
             // destination side (icon, text, arrow, connection icon/label) + incoming chips
             const DEST = '.paint-dest-block, .zone-dest-arrow, .zone-dest-name, .paint-dest-clear, .zone-irl-connection-icon, .zone-irl-connection-label, .paint-chip-group, .paint-chip:not(.paint-chip--y):not(.paint-chip--none)';
             outerOnly(Array.from(row.querySelectorAll(DEST)), DEST).forEach((e) => {
-              e.style.setProperty('--ipd', d); e.classList.add('notes-clear-iconpop');
+              e.style.setProperty('--ipd', d); if (getComputedStyle(e).display === 'inline') e.style.display = 'inline-block'; e.classList.add('notes-clear-iconpop');
             });
           });
         });
@@ -5905,24 +5936,29 @@
         let list = excludeKey ? baseList.filter(k => k.key !== excludeKey) : baseList;
         // Destinations already marked on another Painting disappear (this Painting's own pick stays so it can be un-picked).
         if (excludeKey) list = list.filter(k => k.key === currentKey || !paintingDestTaken(k.key, excludeKey));
-        { // Pick cols x rows so the fixed-shape (4:5) tiles come out as large as possible in the free space
-          const gap = 8, asp = 4 / 5, n = Math.max(1, list.length);
-          const W = grid.clientWidth || 900, H = grid.clientHeight || 500;
+        let rowCounts = [list.length];
+        { // Choose the row count that makes the tiles biggest; split Kingdoms evenly across rows.
+          const gap = 8, n = Math.max(1, list.length);
+          const cs = getComputedStyle(grid);
+          const W = Math.max(50, grid.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0)) || 900;
+          const H = Math.max(50, grid.clientHeight - (parseFloat(cs.paddingTop) || 0) - (parseFloat(cs.paddingBottom) || 0)) || 500;
+          const MIN_A = 0.8, MAX_A = 1.4;            // tile width / height: never taller than a card, only mildly wider
           let best = null;
-          for (let c = 1; c <= n; c++) {
-            const r = Math.ceil(n / c);
-            const cw = (W - gap * (c - 1)) / c, ch = (H - gap * (r - 1)) / r;
-            const w = Math.min(cw, ch * asp);
-            if (w <= 0) continue;
-            const empty = r * c - n;
-            if (!best || w > best.w + 0.5 || (Math.abs(w - best.w) <= 0.5 && empty < best.empty)) best = { c, r, w, empty };
+          for (let r = 1; r <= n; r++) {
+            const c = Math.ceil(n / r);               // longest row
+            let w = (W - gap * (c - 1)) / c, h = (H - gap * (r - 1)) / r;
+            if (w <= 0 || h <= 0) continue;
+            if (w / h < MIN_A) h = w / MIN_A;         // would be too tall -> shorten it
+            if (w / h > MAX_A) w = h * MAX_A;         // would be too wide -> narrow it
+            const area = w * h;
+            if (!best || area > best.area + 1) best = { r, c, w, h, area };
           }
-          if (!best) best = { c: Math.min(n, 6), r: 1, w: 80 };
-          const tw = Math.max(40, Math.floor(best.w));
-          grid.style.setProperty('--req-picker-cols', best.c);
-          grid.style.setProperty('--req-picker-rows', best.r);
-          grid.style.setProperty('--kt-w', tw + 'px');
-          grid.style.setProperty('--kt-h', Math.floor(tw / asp) + 'px');
+          if (!best) best = { r: 1, c: n, w: 80, h: 100 };
+          const base = Math.floor(n / best.r), extra = n % best.r;
+          rowCounts = [];
+          for (let i = 0; i < best.r; i++) rowCounts.push(base + (i < extra ? 1 : 0));
+          grid.style.setProperty('--kt-w', Math.max(40, Math.floor(best.w)) + 'px');
+          grid.style.setProperty('--kt-h', Math.max(50, Math.floor(best.h)) + 'px');
         }
         if (!list.length) {
           const empty = document.createElement('div');
@@ -5931,7 +5967,11 @@
           grid.appendChild(empty);
           return;
         }
+        const rowEls = rowCounts.map(() => { const r = document.createElement('div'); r.className = 'kt-row'; grid.appendChild(r); return r; });
+        let _ri = 0, _left = rowCounts[0];
         list.forEach(item => {
+          while (_left === 0 && _ri < rowEls.length - 1) { _ri++; _left = rowCounts[_ri]; }
+          _left--;
           const cell = document.createElement('button');
           cell.type = 'button';
           cell.className = 'req-picker-item req-picker-item--kingdom';
@@ -5952,7 +5992,7 @@
             onPick(item.key === currentKey ? null : item.key);
             closePicker();
           });
-          grid.appendChild(cell);
+          rowEls[_ri].appendChild(cell);
         });
       }
 
