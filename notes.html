@@ -46,8 +46,8 @@
     .paintings-fixed > .kingdom-col-header, .paintings-fixed > .paint-find-wrap { flex: 0 0 auto; }
     .paintings-fixed > .zones-container.paint-grid { flex: 1 0 auto; align-content: stretch; }
     .paintings-fixed .paint-grid .zone-row { display: flex; flex-direction: column; }
-    /* The "from X / Reachable with Y" chips under each Painting are not shown. */
-    .paintings-fixed .paint-chip-row, .paintings-fixed .paint-incoming-row { display: none !important; }
+    /* Normal mode only: In World Info mode owns these rows ("from X" / "Reachable with Y"), so they are left at their defaults there. */
+    .paintings-fixed:not(.paint-irl) .paint-chip-row, .paintings-fixed:not(.paint-irl) .paint-incoming-row { display: none !important; }
     /* Normal mode only: In World Info mode uses this box for its in-world text, so it must stay there. */
     .paintings-fixed:not(.paint-irl) .paint-note-chips { display: none !important; }
     /* Paintings notes: read-only (filled only by the + button); show "Nothing yet..." while empty. */
