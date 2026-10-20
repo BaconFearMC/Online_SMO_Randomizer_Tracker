@@ -46,6 +46,8 @@
     .paintings-fixed > .kingdom-col-header, .paintings-fixed > .paint-find-wrap { flex: 0 0 auto; }
     .paintings-fixed > .zones-container.paint-grid { flex: 1 0 auto; align-content: stretch; }
     .paintings-fixed .paint-grid .zone-row { display: flex; flex-direction: column; }
+    /* The "from X / Reachable with Y" chips under each Painting are not shown. */
+    .paintings-fixed .paint-chip-row, .paintings-fixed .paint-incoming-row { display: none !important; }
     /* Paintings notes: read-only (filled only by the + button); show "Nothing yet..." while empty. */
     .paintings-fixed .paint-grid textarea.zone-note {
       flex: 0 0 auto; resize: none; cursor: default; overflow: hidden;
@@ -646,6 +648,18 @@
       width: var(--kt-w, 100px) !important; height: var(--kt-h, 125px) !important; flex: 0 0 auto;
       min-width: 0 !important; min-height: 0 !important; max-width: none !important; max-height: none !important;
       aspect-ratio: auto !important; box-sizing: border-box;
+      display: flex !important; flex-direction: column; align-items: center; justify-content: center;
+      gap: calc(var(--kt-h, 125px) * .04); padding: calc(var(--kt-h, 125px) * .05) !important; overflow: hidden;
+    }
+    /* icon fills the tile (scales with its height), name sits underneath and scales too */
+    .req-picker-overlay--kingdom-only .req-picker-item--kingdom img {
+      flex: 0 0 auto !important; width: auto !important; max-width: 92% !important;
+      height: calc(var(--kt-h, 125px) * .66) !important; max-height: none !important; min-height: 0 !important;
+      object-fit: contain !important; margin: 0 !important; padding: calc(var(--kt-h, 125px) * .04) !important; box-sizing: border-box;
+      aspect-ratio: 1 / 1;
+    }
+    .req-picker-overlay--kingdom-only .req-picker-item--kingdom span {
+      flex: 0 0 auto; font-size: clamp(11px, calc(var(--kt-h, 125px) * .1), 20px) !important; line-height: 1.1;
     }
 
     /* Paintings column's own Shop rows (Cap/Cascade/Wooded/Seaside) - just
@@ -5937,12 +5951,13 @@
         // Destinations already marked on another Painting disappear (this Painting's own pick stays so it can be un-picked).
         if (excludeKey) list = list.filter(k => k.key === currentKey || !paintingDestTaken(k.key, excludeKey));
         let rowCounts = [list.length];
+        let rowWidths = [];
         { // Choose the row count that makes the tiles biggest; split Kingdoms evenly across rows.
           const gap = 8, n = Math.max(1, list.length);
           const cs = getComputedStyle(grid);
           const W = Math.max(50, grid.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0)) || 900;
           const H = Math.max(50, grid.clientHeight - (parseFloat(cs.paddingTop) || 0) - (parseFloat(cs.paddingBottom) || 0)) || 500;
-          const MIN_A = 0.8, MAX_A = 1.4;            // tile width / height: never taller than a card, only mildly wider
+          const MIN_A = 0.8, MAX_A = 1.8;            // tile width / height: never taller than a card; wider is fine
           let best = null;
           for (let r = 1; r <= n; r++) {
             const c = Math.ceil(n / r);               // longest row
@@ -5957,8 +5972,11 @@
           const base = Math.floor(n / best.r), extra = n % best.r;
           rowCounts = [];
           for (let i = 0; i < best.r; i++) rowCounts.push(base + (i < extra ? 1 : 0));
+          const _th = Math.max(50, Math.floor(best.h));
           grid.style.setProperty('--kt-w', Math.max(40, Math.floor(best.w)) + 'px');
-          grid.style.setProperty('--kt-h', Math.max(50, Math.floor(best.h)) + 'px');
+          grid.style.setProperty('--kt-h', _th + 'px');
+          // every row stretches its tiles sideways to fill the full width (shorter rows get wider tiles)
+          rowWidths = rowCounts.map(cn => Math.max(40, Math.floor(Math.min((W - gap * (cn - 1)) / cn, _th * MAX_A))));
         }
         if (!list.length) {
           const empty = document.createElement('div');
@@ -5967,7 +5985,7 @@
           grid.appendChild(empty);
           return;
         }
-        const rowEls = rowCounts.map(() => { const r = document.createElement('div'); r.className = 'kt-row'; grid.appendChild(r); return r; });
+        const rowEls = rowCounts.map((_, i) => { const r = document.createElement('div'); r.className = 'kt-row'; if (rowWidths[i]) r.style.setProperty('--kt-w', rowWidths[i] + 'px'); grid.appendChild(r); return r; });
         let _ri = 0, _left = rowCounts[0];
         list.forEach(item => {
           while (_left === 0 && _ri < rowEls.length - 1) { _ri++; _left = rowCounts[_ri]; }
