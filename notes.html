@@ -628,15 +628,22 @@
        instead of squeezing cells down illegibly. */
     .req-picker-popup--scroll { overflow-y: auto !important; }
     .req-picker-popup--scroll .req-picker-grid { overflow: visible; max-height: none; }
-    /* Painting destination picker: tiles keep a sane card shape and are NEVER stretched to the full height */
+    /* Painting destination picker: the grid fills the popup's free space and
+       JS (fitKingdomTiles) picks the cols/rows that make the tiles as big as
+       possible. Tiles ALWAYS keep a fixed 4:5 card shape - never stretched. */
+    .req-picker-overlay--kingdom-only .req-picker-popup { display: flex !important; flex-direction: column; }
+    .req-picker-overlay--kingdom-only .req-picker-popup > .req-picker-header { flex: 0 0 auto; }
     .req-picker-overlay--kingdom-only .req-picker-grid {
-      height: auto !important; max-height: none !important; align-content: center; align-items: center;
-      grid-template-columns: repeat(var(--req-picker-cols, 6), minmax(0, 1fr)) !important;
-      grid-template-rows: none !important; grid-auto-rows: auto !important;
+      flex: 1 1 0 !important; min-height: 0 !important; height: auto !important; max-height: none !important;
+      display: grid !important; gap: 8px !important;
+      grid-template-columns: repeat(var(--req-picker-cols, 6), var(--kt-w, 100px)) !important;
+      grid-template-rows: none !important; grid-auto-rows: var(--kt-h, 125px) !important;
+      justify-content: center; align-content: center; align-items: stretch; overflow: hidden;
     }
     .req-picker-overlay--kingdom-only .req-picker-item--kingdom {
-      height: auto !important; min-height: 0 !important; width: 100%; max-width: 150px; justify-self: center;
-      aspect-ratio: 4 / 5; max-height: 190px;
+      width: var(--kt-w, 100px) !important; height: var(--kt-h, 125px) !important;
+      min-height: 0 !important; max-width: none !important; max-height: none !important;
+      aspect-ratio: 4 / 5; justify-self: center; box-sizing: border-box;
     }
 
     /* Paintings column's own Shop rows (Cap/Cascade/Wooded/Seaside) - just
@@ -1834,9 +1841,15 @@
     }
     /* source identity (Cap) always exists, so it clears out and comes right back empty-handed */
     .notes-clear-srcpop {
-      animation: notes-clear-pop .5s cubic-bezier(.3,.1,.3,1) both;
+      animation: notes-clear-keep .5s cubic-bezier(.3,.1,.3,1) both;
       animation-delay: var(--ipd, 0ms);
       will-change: transform, opacity;
+    }
+    /* permanent things (Painting's own icon + name) only pulse - they never shrink or fade */
+    @keyframes notes-clear-keep {
+      0%   { transform: scale(1); opacity: 1; }
+      40%  { transform: scale(1.12); opacity: 1; filter: brightness(1.35); }
+      100% { transform: scale(1); opacity: 1; filter: none; }
     }
     /* icons pop out the moment Clear is confirmed */
     .notes-clear-iconpop {
@@ -3788,6 +3801,7 @@
       if (!confirm('Clear everything - Notes, Tracker, Connection Map, and Abilities & Captures? This cannot be undone.')) return;
 
       function finishClear() {
+        document.querySelectorAll('.notes-clear-iconpop, .notes-clear-srcpop, .notes-clear-pop, .notes-clear-sweep').forEach(n => n.classList.remove('notes-clear-iconpop', 'notes-clear-srcpop', 'notes-clear-pop', 'notes-clear-sweep'));
         resetNotesDataOnly();
         buildLoadingZonesContent();
         // Ask the tracker window (app.js) to also reset the Tracker,
@@ -3828,7 +3842,8 @@
 
       const totalNotes = kingdoms.reduce((sum, k) => sum + k.notes.length, 0);
 
-      if (!totalNotes) { finishClear(); return; }
+      const hasPopIcons = !!document.querySelector('.paint-dest-clear, .paint-chip--dest, .paint-chip-group, .zone-req-icon, .zone-req-pair, .zone-req-kingdom-wrap');
+      if (!totalNotes && !hasPopIcons) { finishClear(); return; }
 
       const UNCOLLAPSE_STEP_MS = 90;
 
@@ -3849,11 +3864,13 @@
       // not after the countdown. One class per icon, staggered per Kingdom with a
       // CSS delay - no timers, so it stays cheap on slow machines.
       (function popIcons() {
-        const SEL = '.zone-req-icon, .zone-req-pair, .zone-req-kingdom-wrap, .zone-darkerside-icon, .zone-sub-icon, .paint-chip, .paint-dest-clear, .pc-conn-icon';
+        const SEL = '.zone-req-icon, .zone-req-pair, .zone-req-kingdom-wrap, .paint-chip, .paint-dest-clear, .pc-conn-icon';
+        const KEEP = '.paint-chip--none, .paint-chip--y, .zone-sub-icon, .zone-darkerside-icon, .zone-req-icon--shop'; // permanent: never animated away
         kingdoms.forEach((k, ki) => {
           if (!k.col || k.col.classList.contains('paintings-fixed')) return; // Paintings has its own pass below
           k.col.querySelectorAll(SEL).forEach((ic) => {
             if (ic.parentElement && ic.parentElement.closest(SEL)) return; // outer icon only
+            if (ic.matches(KEEP) || ic.closest(KEEP)) return;
             ic.style.setProperty('--ipd', Math.min(ki * 35, 500) + 'ms');
             ic.classList.add('notes-clear-iconpop');
           });
@@ -3880,7 +3897,7 @@
             }
             src.forEach((e) => { e.style.setProperty('--ipd', d); e.classList.add('notes-clear-srcpop'); });
             // destination side (icon, text, arrow, connection icon/label) + incoming chips
-            const DEST = '.paint-dest-block, .zone-dest-arrow, .zone-dest-name, .paint-dest-clear, .zone-irl-connection-icon, .zone-irl-connection-label, .paint-chip-group, .paint-chip:not(.paint-chip--y)';
+            const DEST = '.paint-dest-block, .zone-dest-arrow, .zone-dest-name, .paint-dest-clear, .zone-irl-connection-icon, .zone-irl-connection-label, .paint-chip-group, .paint-chip:not(.paint-chip--y):not(.paint-chip--none)';
             outerOnly(Array.from(row.querySelectorAll(DEST)), DEST).forEach((e) => {
               e.style.setProperty('--ipd', d); e.classList.add('notes-clear-iconpop');
             });
@@ -3955,7 +3972,7 @@
       // animation on that one note and bumps its Kingdom's ring.
       const queue = [];
       kState.forEach((ks) => ks.def.notes.forEach((el) => queue.push({ el, ks })));
-      const totalDurationMs = queue.length * NOTES_CLEAR_STEP_MS;
+      const totalDurationMs = Math.max(queue.length * NOTES_CLEAR_STEP_MS, 800); // icons-only clears still get a short run
 
       let totalCleared = 0;
       let nextIdx = 0;
@@ -4051,7 +4068,7 @@
       // Kick off Phase 1 now; Phase 2 (the tick loop) only starts once every
       // Kingdom has visibly uncollapsed.
       uncollapseKingdomsOneByOne(() => {
-        sublabel.textContent = totalNotes + ' note' + (totalNotes === 1 ? '' : 's') + ' × 0.2s = ' + (totalDurationMs / 1000).toFixed(1) + 's';
+        sublabel.textContent = totalNotes ? (totalNotes + ' note' + (totalNotes === 1 ? '' : 's') + ' × 0.2s = ' + (totalDurationMs / 1000).toFixed(1) + 's') : 'Clearing icons…';
         startTime = performance.now();
         rafId = requestAnimationFrame(tick);
       });
@@ -5888,11 +5905,24 @@
         let list = excludeKey ? baseList.filter(k => k.key !== excludeKey) : baseList;
         // Destinations already marked on another Painting disappear (this Painting's own pick stays so it can be un-picked).
         if (excludeKey) list = list.filter(k => k.key === currentKey || !paintingDestTaken(k.key, excludeKey));
-        { // balanced rows (e.g. 13 -> 7 + 6); tiles keep their card shape instead of filling the height
-          const gw = grid.clientWidth || 900, mc = Math.max(1, Math.floor((gw + 8) / 86));
-          const rws = Math.max(1, Math.ceil(list.length / mc));
-          grid.style.setProperty('--req-picker-cols', Math.max(1, Math.ceil(list.length / rws)));
-          grid.style.setProperty('--req-picker-rows', rws);
+        { // Pick cols x rows so the fixed-shape (4:5) tiles come out as large as possible in the free space
+          const gap = 8, asp = 4 / 5, n = Math.max(1, list.length);
+          const W = grid.clientWidth || 900, H = grid.clientHeight || 500;
+          let best = null;
+          for (let c = 1; c <= n; c++) {
+            const r = Math.ceil(n / c);
+            const cw = (W - gap * (c - 1)) / c, ch = (H - gap * (r - 1)) / r;
+            const w = Math.min(cw, ch * asp);
+            if (w <= 0) continue;
+            const empty = r * c - n;
+            if (!best || w > best.w + 0.5 || (Math.abs(w - best.w) <= 0.5 && empty < best.empty)) best = { c, r, w, empty };
+          }
+          if (!best) best = { c: Math.min(n, 6), r: 1, w: 80 };
+          const tw = Math.max(40, Math.floor(best.w));
+          grid.style.setProperty('--req-picker-cols', best.c);
+          grid.style.setProperty('--req-picker-rows', best.r);
+          grid.style.setProperty('--kt-w', tw + 'px');
+          grid.style.setProperty('--kt-h', Math.floor(tw / asp) + 'px');
         }
         if (!list.length) {
           const empty = document.createElement('div');
