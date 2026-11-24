@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Loading Zone Notes [v5]</title>
+  <title>Loading Zone Notes [v4]</title>
   <link rel="stylesheet" href="style.css">
   <link rel="icon" href="assets/SMO-ColoredGlobe.png">
   <style>
@@ -48,7 +48,21 @@
     .paintings-fixed .paint-grid .zone-row { display: flex; flex-direction: column; }
 
 
-    .req-picker-already-have-btn.req-picker-npc-side span { font-weight: 600; }
+    .req-picker-already-have-btn.req-picker-npc-side {
+      background: linear-gradient(160deg, #ffe27a 0%, #ffc400 45%, #d4960a 100%) !important;
+      border: 2px solid #fff1a8 !important;
+      color: #2a1c00 !important;
+      box-shadow: 0 0 14px rgba(255,196,0,.55), inset 0 1px 0 rgba(255,255,255,.55);
+    }
+    .req-picker-already-have-btn.req-picker-npc-side:hover { filter: brightness(1.08); }
+    .req-picker-already-have-btn.req-picker-npc-side img { filter: drop-shadow(0 1px 1px rgba(0,0,0,.35)); }
+    .req-picker-already-have-btn.req-picker-npc-side span {
+      font-size: 1.05rem !important; font-weight: 800; line-height: 1.2; letter-spacing: .2px;
+      color: #2a1c00 !important; text-shadow: 0 1px 0 rgba(255,255,255,.45);
+    }
+    .req-picker-already-have-btn.req-picker-npc-side.selected {
+      box-shadow: 0 0 0 3px #fff inset, 0 0 18px rgba(255,215,0,.8);
+    }
     .req-picker-sale-npc-btn {
       display: flex !important; flex-direction: row !important; align-items: center; justify-content: center;
       gap: 8px; width: auto !important; min-height: 0 !important; margin: 4px 16px 0; padding: 6px 12px !important;
