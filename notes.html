@@ -2434,6 +2434,7 @@
         </div>
       </div>
       <button class="ctrl-btn gear-btn" id="notes-page-settings">⚙</button>
+      <button class="ctrl-btn" id="notes-page-collective-shops" title="Collective Shops: show the Shops as one big All Shops button plus a small Metro Shop button">🛍</button>
     </div>
   </div>
   <div class="lz-scroll-wrap">
@@ -8917,6 +8918,22 @@
       saveFullState();
       buildLoadingZonesContent();
     });
+    (function wireCollectiveShopsBtn() {
+      const b = document.getElementById('notes-page-collective-shops');
+      if (!b) return;
+      const sync = () => {
+        const on = !!(fullState && fullState.settings && fullState.settings.collective_shops);
+        b.classList.toggle('active', on);
+        b.style.outline = on ? '2px solid #ffc400' : '';
+        b.title = 'Collective Shops: ' + (on ? 'ON' : 'OFF') + ' - one big All Shops button plus a small Metro Shop button';
+      };
+      sync();
+      b.addEventListener('click', () => {
+        fullState.settings.collective_shops = !fullState.settings.collective_shops;
+        saveFullState();
+        sync();
+      });
+    })();
     document.getElementById('notes-page-settings').addEventListener('click', () => {
       // Notes can be viewed two ways: embedded as an iframe side panel
       // (reach the tracker via window.parent) or popped out into its own
