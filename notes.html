@@ -46,6 +46,24 @@
     .paintings-fixed > .kingdom-col-header, .paintings-fixed > .paint-find-wrap { flex: 0 0 auto; }
     .paintings-fixed > .zones-container.paint-grid { flex: 1 0 auto; align-content: stretch; }
     .paintings-fixed .paint-grid .zone-row { display: flex; flex-direction: column; }
+
+
+    .req-picker-sale-npc-btn {
+      display: flex !important; flex-direction: row !important; align-items: center; justify-content: center;
+      gap: 8px; width: auto !important; min-height: 0 !important; margin: 4px 16px 0; padding: 6px 12px !important;
+      flex: 0 0 auto;
+    }
+    .req-picker-sale-npc-btn img { width: 26px !important; height: 26px !important; object-fit: contain; }
+    .req-picker-sale-npc-btn span { font-size: .8rem !important; font-weight: 600; }
+    /* Goofy note under a Painting's Kingdom ("Is this even randomized?!") */
+    .paint-goofy {
+      flex: 0 0 auto; font-size: 11px; line-height: 1.2; font-style: italic; font-weight: 600;
+      padding: 1px 6px 0; transform: rotate(-1.5deg); transform-origin: left center;
+      overflow: visible; white-space: normal;
+    }
+    .paint-goofy--gold   { color: #d4af37; text-shadow: 0 0 6px rgba(212,175,55,.45); }
+    .paint-goofy--yellow { color: #fff176; }
+    .paintings-fixed .paint-grid .zone-row { overflow: visible; }
     /* Normal mode only: In World Info mode owns these rows ("from X" / "Reachable with Y"), so they are left at their defaults there. */
     .paintings-fixed:not(.paint-irl) .paint-chip-row, .paintings-fixed:not(.paint-irl) .paint-incoming-row { display: none !important; }
     /* The note-text box under each Painting (e.g. "Wooded") is never shown, in any mode. The "from X" info rows are separate and stay. */
@@ -2574,6 +2592,23 @@
       } catch (e) { console.warn('[timer] could not patch APC.findItem', e); }
     })();
 
+    // P-Switches / Scarecrows / Notes are now ordinary standalone Extra
+    // Abilities (like Moon Gravity, Grab, Swim...) in place of the old
+    // Timer Challenges tile. Cappy Flowers stays out of the Extra grids (it
+    // was hidden by default) but still resolves through findItem above.
+    (function splitTimerExtras() {
+      try {
+        const arr = APC.SHOP_ABILITY_EXTRAS;
+        if (!Array.isArray(arr)) return;
+        const i = arr.findIndex(isTimerChallengeItem);
+        if (i < 0) return;
+        const standalone = TIMER_CHALLENGE_OPTIONS.filter(o => o.key !== 'AbilityCappyFlowers');
+        const next = arr.slice();
+        next.splice(i, 1, ...standalone);
+        APC.SHOP_ABILITY_EXTRAS = next;
+      } catch (e) { console.warn('[timer] could not split Timer Challenges', e); }
+    })();
+
     // selectedKeys: array of currently-picked timer keys (for highlighting).
     // onPick(opt) runs when one of the four is clicked.
     function openTimerChallengeSubmenu(anchorEl, selectedKeys, onPick, findInfo) {
@@ -2787,7 +2822,7 @@
       if (!cells.length) return;
       const n = cells.length;
       let rowsCount;
-      if (perRow === 3) rowsCount = n >= 5 ? 3 : (n >= 2 ? 2 : 1);
+      if (perRow === 3) rowsCount = n >= 10 ? Math.ceil(n / 3) : (n >= 5 ? 3 : (n >= 2 ? 2 : 1));
       else rowsCount = Math.ceil(n / perRow);
       const base = Math.floor(n / rowsCount), extra = n % rowsCount;
       const cols = perRow * 2;
@@ -3179,6 +3214,20 @@
 
     // ── Painting destination chips, shared by the Paintings column and the main Kingdom view ──
     var paintingRenderPeers = {};     // kingdom -> [{row, fn}] one per Paintings panel (main + side) so they stay in sync
+    // "Is this even randomized?!" - goofy note under a Painting's Kingdom when
+    // it leads somewhere suspiciously familiar. Gold = the 3 vanilla links.
+    var PAINTING_GOOFY_GOLD = ['Cascade>Bowser\'s', 'Sand>Metro', 'Luncheon>Mushroom'];
+    var PAINTING_GOOFY_YELLOW = [
+      'Snow>Cascade', 'Lake>Sand', 'Lake>Seaside', 'Metro>Wooded', 'Wooded>Luncheon',
+      'Mushroom>Snow', 'Seaside>Bowser\'s', 'Seaside>Cascade', 'Wooded>Sand', 'Lake>Luncheon',
+      'Wooded>Snow', 'Metro>Lake', 'Bowser\'s>Snow', 'Seaside>Mushroom', 'Snow>Lake', 'Wooded>Seaside',
+    ];
+    function paintingGoofyTier(from, to) {
+      const k = from + '>' + to;
+      if (PAINTING_GOOFY_GOLD.includes(k)) return 'gold';
+      if (PAINTING_GOOFY_YELLOW.includes(k)) return 'yellow';
+      return null;
+    }
     var paintingClearHandlers = {};   // kingdom -> fn that clears that Painting's destination (set by the Paintings column)
     var mainPaintChips = [];          // [{el, fn}] header chip holders on the main Kingdom view
 
@@ -4562,9 +4611,19 @@
           nameLabel.textContent = kingdom;
         }
 
+        const goofyNote = document.createElement('div');
+        goofyNote.className = 'paint-goofy';
+        function updateGoofyNote() {
+          const tier = paintingGoofyTier(kingdom, APC.getPaintingDestination(fullState, kingdom));
+          goofyNote.textContent = tier ? 'Is this even randomized?!' : '';
+          goofyNote.classList.remove('paint-goofy--gold', 'paint-goofy--yellow');
+          if (tier) goofyNote.classList.add('paint-goofy--' + tier);
+          goofyNote.style.display = tier ? '' : 'none';
+        }
         const _peerList = (paintingRenderPeers[kingdom] = (paintingRenderPeers[kingdom] || []).filter(p => p.row.isConnected));
         _peerList.push({ row, fn: () => renderDestChip(true) });
         function renderDestChip(fromPeer) {
+          updateGoofyNote();
           refreshPaintChips();
           refreshMainPaintChips();
           if (fromPeer !== true) {
@@ -4786,6 +4845,7 @@
         };
         top.appendChild(reqsWrap);
         row.appendChild(top);
+        row.appendChild(goofyNote);
 
         // Chip row (IRL Info only): "from Y" chip, "Reachable ..." chip, and
         // - for the 5 two-way Kingdoms - any Kingdoms marked to lead here,
@@ -5859,8 +5919,13 @@
       const idx = zs.requirements.findIndex(r => r.kind === kind && r.key === key);
       const text = overrideText !== undefined ? overrideText : requirementDisplayText(kind, key);
       if (idx >= 0) {
+        const _old = zs.requirements[idx];
         zs.requirements.splice(idx, 1);
         if (text) removeRequirementText(noteArea, text);
+        if (kind === 'shops' && _old && _old.needsNPC) {
+          const _si = APC.findItem('shops', key);
+          if (_si) removeRequirementText(noteArea, _si.name + ' needs Talk to NPCs');
+        }
         return false;
       }
       zs.requirements.push(Object.assign({ kind, key }, extraFields));
@@ -6512,6 +6577,55 @@
       searchWrap.appendChild(searchIcon);
       searchWrap.appendChild(search);
       popup.appendChild(searchWrap);
+
+      // "Needs Talk to NPCs": any real Kingdom-tab Shop (not the Painting-
+      // menu-only Cap/Cascade/Wooded/Seaside ones) can instead be marked as
+      // needing NPC talking, which writes "<Shop> needs Talk to NPCs" into
+      // the zone's note. Tracked on the zone's Shop requirement (needsNPC).
+      const npcEligible = !!(shopItem && zs && noteArea && !Object.values(PAINTING_SHOP_KEYS).includes(shopKey));
+      if (npcEligible) {
+        const npcText = shopItem.name + ' needs Talk to NPCs';
+        const npcBtn = document.createElement('button');
+        npcBtn.type = 'button';
+        npcBtn.className = 'req-picker-item req-picker-item--ability req-picker-sale-npc-btn';
+        const npcAbl = APC.findItem('abilities', 'AbilityNPCTalking');
+        if (npcAbl) {
+          const ni = document.createElement('img');
+          ni.src = npcAbl.src; ni.alt = '';
+          ni.onerror = () => { ni.style.display = 'none'; };
+          npcBtn.appendChild(ni);
+        }
+        const nl = document.createElement('span');
+        nl.textContent = 'Needs Talk to NPCs';
+        npcBtn.appendChild(nl);
+        const npcReq = () => zs.requirements.find(r => r.kind === 'shops' && r.key === shopKey);
+        const npcRefresh = () => { const r = npcReq(); npcBtn.classList.toggle('selected', !!(r && r.needsNPC)); };
+        npcRefresh();
+        npcBtn.addEventListener('click', () => {
+          bounce(npcBtn);
+          let r = npcReq();
+          if (!r) { r = { kind: 'shops', key: shopKey }; zs.requirements.push(r); }
+          if (r.needsNPC) {
+            r.needsNPC = false;
+            removeRequirementText(noteArea, npcText);
+            npcRefresh();
+            saveFullState();
+            if (onChange) onChange();
+            return;
+          }
+          r.needsNPC = true;
+          spawnSelectionFeedback(npcBtn, 'var(--ability-color)');
+          // The bare "<Shop>" name text (from first picking the Shop) is
+          // replaced by the full sentence, same as the "sells" sentence.
+          const bare = requirementDisplayText('shops', shopKey);
+          if (bare) removeRequirementText(noteArea, bare);
+          appendRequirementText(noteArea, npcText);
+          saveFullState();
+          if (onChange) onChange();
+          closePicker();
+        });
+        popup.insertBefore(npcBtn, searchWrap);
+      }
 
       // Ability tab only: wrapper holding the regular 21-ability grid on the
       // left and the 3 sale-only extras (Moon Gravity/Grab/Swim) in their
@@ -7362,7 +7476,7 @@
         });
         const hint = document.createElement('div');
         hint.className = 'req-picker-cog-hint';
-        hint.textContent = 'Unticked = hidden here and in Items For Sale. With one Timer Challenge left, it replaces the Timer Challenges tile.';
+        hint.textContent = 'Unticked = hidden here and in Items For Sale.';
         cogMenu.appendChild(hint);
         document.body.appendChild(cogMenu);
         const r = cogBtn.getBoundingClientRect();
