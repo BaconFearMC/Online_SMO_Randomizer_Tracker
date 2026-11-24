@@ -504,6 +504,14 @@
           </div>
 
           <div class="settings-row">
+            <span>Collective Shops</span>
+            <label class="toggle-switch">
+              <input type="checkbox" id="toggle-collective-shops">
+              <span class="toggle-track"></span>
+            </label>
+          </div>
+
+          <div class="settings-row">
             <span>Notes Scroll Speed (px)</span>
             <div class="input-save-pair">
               <input type="number" id="input-notes-scroll" placeholder="100" min="10" max="2000">
@@ -931,6 +939,54 @@
 
       irlToggle.addEventListener('change', () => {
         writePaintingIrlInfo(irlToggle.checked);
+      });
+    })();
+  </script>
+  <script>
+    // Notes > Kingdom tab > Shops: "Collective Shops" turns the Shop grid into
+    // one big All Shops button plus a small Metro Shop button (bottom-right).
+    // app.js doesn't know this setting, so it's wired up here the same way as
+    // In-World Info above: same 'tracker_state' key (under .settings), and a
+    // setItem guard so app.js re-saving settings can't drop or flip it.
+    (function () {
+      const STATE_KEY = 'tracker_state';
+      function readSettings() {
+        try {
+          const parsed = JSON.parse(localStorage.getItem(STATE_KEY) || '{}');
+          return (parsed && parsed.settings) || {};
+        } catch (e) { return {}; }
+      }
+      let desired = !!readSettings().collective_shops;
+      const prevSetItem = localStorage.setItem.bind(localStorage);
+      localStorage.setItem = function (key, value) {
+        if (key === STATE_KEY) {
+          try {
+            const parsed = JSON.parse(value);
+            if (!parsed.settings) parsed.settings = {};
+            parsed.settings.collective_shops = desired;
+            value = JSON.stringify(parsed);
+          } catch (e) { }
+        }
+        return prevSetItem(key, value);
+      };
+      const toggle = document.getElementById('toggle-collective-shops');
+      if (!toggle) return;
+      toggle.checked = desired;
+      window.addEventListener('storage', (e) => {
+        if (e.key === STATE_KEY) {
+          desired = !!readSettings().collective_shops;
+          toggle.checked = desired;
+        }
+      });
+      toggle.addEventListener('change', () => {
+        desired = toggle.checked;
+        try {
+          const raw = localStorage.getItem(STATE_KEY);
+          const parsed = raw ? JSON.parse(raw) : {};
+          if (!parsed.settings) parsed.settings = {};
+          parsed.settings.collective_shops = desired;
+          localStorage.setItem(STATE_KEY, JSON.stringify(parsed));
+        } catch (e) { }
       });
     })();
   </script>
