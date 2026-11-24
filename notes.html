@@ -55,8 +55,8 @@
       box-shadow: 0 0 14px rgba(255,196,0,.55), inset 0 1px 0 rgba(255,255,255,.55);
     }
     .req-picker-already-have-btn.req-picker-npc-side:hover { filter: brightness(1.08); }
-    .req-picker-already-have-btn.req-picker-npc-side { width: 160px; }
-    .req-picker-already-have-btn.req-picker-npc-side img { width: 140px !important; height: 140px !important; filter: drop-shadow(0 1px 1px rgba(0,0,0,.35)); }
+    .req-picker-already-have-btn.req-picker-npc-side { width: 180px; }
+    .req-picker-already-have-btn.req-picker-npc-side img { width: 110px !important; height: 110px !important; filter: drop-shadow(0 1px 1px rgba(0,0,0,.35)); }
     .req-picker-already-have-btn.req-picker-npc-side span {
       font-size: 1.05rem !important; font-weight: 800; line-height: 1.2; letter-spacing: .2px;
       color: #2a1c00 !important; text-shadow: 0 1px 0 rgba(255,255,255,.45);
@@ -594,6 +594,24 @@
       height: 100%;
     }
     .req-picker-item--shop-overview img { width: 42%; }
+    /* Setting "collective_shops": XXX / XXX / XXY - one big All Shops button
+       (X) with the Metro Shop (Y) small in the bottom-right cell. */
+    #shop-grid-force-3x3.req-picker-grid--collective {
+      grid-template-columns: repeat(3, 1fr) !important;
+      grid-template-rows: repeat(3, 1fr) !important;
+      grid-template-areas: "x x x" "x x x" "x x y";
+    }
+    #shop-grid-force-3x3.req-picker-grid--collective .req-picker-item--shop-overview {
+      grid-column: auto; grid-row: auto; grid-area: x; width: 100%; height: 100%;
+    }
+    #shop-grid-force-3x3.req-picker-grid--collective .req-picker-item--metro-small { grid-area: y; }
+    .req-picker-shop-collective-toggle {
+      position: absolute; top: 0; right: 0; z-index: 3; padding: 0 6px; height: 20px;
+      font-size: .7rem; line-height: 18px; cursor: pointer; border-radius: 6px;
+      background: rgba(255,255,255,.06); border: 1px solid var(--border, #444); color: inherit; opacity: .75;
+    }
+    .req-picker-shop-collective-toggle:hover { opacity: 1; }
+    .req-picker-shop-collective-toggle.on { background: rgba(255,196,0,.25); border-color: #ffc400; opacity: 1; }
 
     /* ── Shops (Kingdom tab, "Shops" column) ─────────────────────────
        Reuses the refight-style gradient ring via --refight-c1/--refight-c2
@@ -2973,6 +2991,7 @@
       painting_irl_info: false,    // Extra Paintings > IRL Info: swaps the 16 Extra Painting rows' Kingdom labels for their real in-game subarea, and picking a destination for one (the + button) inserts its real painting location + connection type into that row's note; only relevant while extra_paintings is also on; set from the Settings modal (index.html), not this page; default off
       painting_two_way_find: true, // Whether Cap/Lost/Cloud/Darkside/Moon's Paintings count as two-way tunnels for the Kingdom-tab "Find" reach search (see PAINTING_TWO_WAY_KINGDOMS); default on, set from the Settings modal (index.html), not this page
       show_kingdomsubicons: true,  // Small kingdom+subarea icon next to each zone's name; default on
+      collective_shops: false,     // Kingdom tab: the 8 non-Metro Shops become one big "All Shops" button + a small Metro Shop button (bottom-right)
       hide_useless_captures: true, // Hide the "Useless Captures for Sale" column in the Items For Sale picker; default on
       useless_capture_keys: null,  // null = use APC.USELESS_CAPTURE_DEFAULT_KEYS; else the user's saved list (Notes Settings > Edit List)
       hidden_timer_challenges: ['AbilityCappyFlowers'], // Timer Challenges switched off via the cog sub-bullets; Cappy Flowers hidden by default
@@ -7421,6 +7440,23 @@
       shopGrid.id = 'shop-grid-force-3x3';
       shopCol.appendChild(shopTitle);
       shopCol.appendChild(shopGrid);
+      // Setting: collapse the 8 non-Metro Shops into one big button.
+      shopCol.style.position = 'relative';
+      const collectiveToggle = document.createElement('button');
+      collectiveToggle.type = 'button';
+      collectiveToggle.className = 'req-picker-shop-collective-toggle';
+      collectiveToggle.textContent = 'Collective';
+      collectiveToggle.title = 'Setting: show the Shops as one big All Shops button plus a small Metro Shop button';
+      const syncCollectiveToggle = () => collectiveToggle.classList.toggle('on', !!fullState.settings.collective_shops);
+      syncCollectiveToggle();
+      collectiveToggle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        fullState.settings.collective_shops = !fullState.settings.collective_shops;
+        saveFullState();
+        syncCollectiveToggle();
+        renderKingdomSections();
+      });
+      shopCol.appendChild(collectiveToggle);
 
       const kingdomCol = document.createElement('div');
       kingdomCol.className = 'req-picker-kingdom-col';
@@ -8357,8 +8393,25 @@
         // the way Refights/Kingdoms do (see showFindResultsPopup), so it
         // repurposes this same single icon: clicking it while finding opens
         // showAllShopsPopup (every Shop + what it sells) instead.
+        const collectiveOn = !!fullState.settings.collective_shops && !shopOverviewActive && !findModeActive;
+        shopGrid.classList.toggle('req-picker-grid--collective', collectiveOn);
         if (shopOverviewActive || findModeActive) {
           shopGrid.appendChild(buildShopOverviewCell());
+        } else if (collectiveOn) {
+          // XXX / XXX / XXY: big All Shops button + small Metro Shop.
+          const metro = shops.find(i => i.kingdom === 'Metro');
+          const others = shops.filter(i => i.kingdom !== 'Metro');
+          if (!q || others.length) shopGrid.appendChild(buildShopOverviewCell());
+          if (metro) {
+            const mc = buildPickerCell(metro, 'shops', 'req-picker-item--shop req-picker-item--metro-small');
+            shopGrid.appendChild(mc);
+          }
+          if (!shopGrid.children.length) {
+            const empty = document.createElement('div');
+            empty.className = 'req-picker-empty';
+            empty.textContent = 'No matches';
+            shopGrid.appendChild(empty);
+          }
         } else if (!shops.length) {
           const empty = document.createElement('div');
           empty.className = 'req-picker-empty';
