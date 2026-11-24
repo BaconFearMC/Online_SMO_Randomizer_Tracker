@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Loading Zone Notes [v4]</title>
+  <title>Loading Zone Notes [v5]</title>
   <link rel="stylesheet" href="style.css">
   <link rel="icon" href="assets/SMO-ColoredGlobe.png">
   <style>
@@ -48,6 +48,7 @@
     .paintings-fixed .paint-grid .zone-row { display: flex; flex-direction: column; }
 
 
+    .req-picker-already-have-btn.req-picker-npc-side span { font-weight: 600; }
     .req-picker-sale-npc-btn {
       display: flex !important; flex-direction: row !important; align-items: center; justify-content: center;
       gap: 8px; width: auto !important; min-height: 0 !important; margin: 4px 16px 0; padding: 6px 12px !important;
@@ -6488,7 +6489,8 @@
     // time (see the 'shops' cell click handler in buildPickerCell), so
     // completing Metro's sale there lands the user right back on the
     // Kingdoms tab of that same popup instead of the bare zones view.
-    function openShopSalePicker(shopKey, onChange, noteArea, zs, reopenRequirementPicker) {
+    function openShopSalePicker(shopKey, onChange, noteArea, zs, reopenRequirementPicker, spOpts) {
+      spOpts = spOpts || {};
       // Only clear out any other already-open sale popup (e.g. re-triggered
       // before the previous one animated closed) - NOT every .req-picker-
       // overlay, since this is very often opened from on top of the Kingdom
@@ -6582,49 +6584,33 @@
       // menu-only Cap/Cascade/Wooded/Seaside ones) can instead be marked as
       // needing NPC talking, which writes "<Shop> needs Talk to NPCs" into
       // the zone's note. Tracked on the zone's Shop requirement (needsNPC).
-      const npcEligible = !!(shopItem && zs && noteArea && !Object.values(PAINTING_SHOP_KEYS).includes(shopKey));
-      if (npcEligible) {
-        const npcText = shopItem.name + ' needs Talk to NPCs';
-        const npcBtn = document.createElement('button');
-        npcBtn.type = 'button';
-        npcBtn.className = 'req-picker-item req-picker-item--ability req-picker-sale-npc-btn';
-        const npcAbl = APC.findItem('abilities', 'AbilityNPCTalking');
-        if (npcAbl) {
-          const ni = document.createElement('img');
-          ni.src = npcAbl.src; ni.alt = '';
-          ni.onerror = () => { ni.style.display = 'none'; };
-          npcBtn.appendChild(ni);
-        }
-        const nl = document.createElement('span');
-        nl.textContent = 'Needs Talk to NPCs';
-        npcBtn.appendChild(nl);
-        const npcReq = () => zs.requirements.find(r => r.kind === 'shops' && r.key === shopKey);
-        const npcRefresh = () => { const r = npcReq(); npcBtn.classList.toggle('selected', !!(r && r.needsNPC)); };
-        npcRefresh();
-        npcBtn.addEventListener('click', () => {
-          bounce(npcBtn);
-          let r = npcReq();
-          if (!r) { r = { kind: 'shops', key: shopKey }; zs.requirements.push(r); }
-          if (r.needsNPC) {
-            r.needsNPC = false;
-            removeRequirementText(noteArea, npcText);
-            npcRefresh();
-            saveFullState();
-            if (onChange) onChange();
-            return;
-          }
-          r.needsNPC = true;
-          spawnSelectionFeedback(npcBtn, 'var(--ability-color)');
-          // The bare "<Shop>" name text (from first picking the Shop) is
-          // replaced by the full sentence, same as the "sells" sentence.
-          const bare = requirementDisplayText('shops', shopKey);
-          if (bare) removeRequirementText(noteArea, bare);
-          appendRequirementText(noteArea, npcText);
+      const npcEligible = !!(shopItem && zs && noteArea && !spOpts.afterNPC && !Object.values(PAINTING_SHOP_KEYS).includes(shopKey));
+      const npcText = npcEligible ? shopItem.name + ' needs Talk to NPCs' : '';
+      let npcBtn = null; // becomes the right-hand side button (replaces "I already have") below
+      function npcClick() {
+        bounce(npcBtn);
+        let r = zs.requirements.find(q => q.kind === 'shops' && q.key === shopKey);
+        if (!r) { r = { kind: 'shops', key: shopKey }; zs.requirements.push(r); }
+        if (r.needsNPC) {
+          r.needsNPC = false;
+          removeRequirementText(noteArea, npcText);
+          const bare0 = requirementDisplayText('shops', shopKey);
+          if (bare0) appendRequirementText(noteArea, bare0);
+          npcBtn.classList.remove('selected');
           saveFullState();
           if (onChange) onChange();
-          closePicker();
-        });
-        popup.insertBefore(npcBtn, searchWrap);
+          return;
+        }
+        r.needsNPC = true;
+        spawnSelectionFeedback(npcBtn, 'var(--ability-color)');
+        // The bare "<Shop>" name text (from first picking the Shop) is
+        // replaced by the full sentence, same as the "sells" sentence.
+        const bare = requirementDisplayText('shops', shopKey);
+        if (bare) removeRequirementText(noteArea, bare);
+        appendRequirementText(noteArea, npcText);
+        saveFullState();
+        if (onChange) onChange();
+        closePicker();
       }
 
       // Ability tab only: wrapper holding the regular 21-ability grid on the
@@ -6659,6 +6645,26 @@
       }
       const alreadyHaveLeft = buildAlreadyHaveBtn('left');
       const alreadyHaveRight = buildAlreadyHaveBtn('right');
+      if (npcEligible) {
+        // Right-hand side: "Needs Talk to NPCs" takes the place of "I already have".
+        npcBtn = alreadyHaveRight;
+        npcBtn.innerHTML = '';
+        npcBtn.classList.add('req-picker-npc-side');
+        const npcAbl = APC.findItem('abilities', 'AbilityNPCTalking');
+        if (npcAbl) {
+          const ni = document.createElement('img');
+          ni.src = npcAbl.src; ni.alt = '';
+          ni.onerror = () => { ni.style.display = 'none'; };
+          npcBtn.appendChild(ni);
+        }
+        const nl = document.createElement('span');
+        nl.textContent = 'Needs Talk to NPCs';
+        npcBtn.appendChild(nl);
+        npcBtn.title = 'Needs Talk to NPCs';
+        npcBtn.setAttribute('aria-label', 'Needs Talk to NPCs');
+        const _r0 = zs.requirements.find(q => q.kind === 'shops' && q.key === shopKey);
+        npcBtn.classList.toggle('selected', !!(_r0 && _r0.needsNPC));
+      }
       // Appended to the overlay (not the popup, which clips its own
       // overflow) and after popup in the DOM so they paint on top of it.
       overlay.appendChild(alreadyHaveLeft);
@@ -6742,7 +6748,7 @@
         const sale = APC.getShopSale(fullState, shopKey);
         const owned = activeKind === 'captures' ? sale.ownedCapture : sale.ownedAbility;
         const label = TIPS.alreadyHave(halfLabelFor(activeKind));
-        [alreadyHaveLeft, alreadyHaveRight].forEach(btn => {
+        [alreadyHaveLeft, npcBtn ? null : alreadyHaveRight].filter(Boolean).forEach(btn => {
           btn.title = label; /* text from TIPS.alreadyHave */
           btn.setAttribute('aria-label', label);
           btn.classList.toggle('selected', !!owned);
@@ -7072,7 +7078,7 @@
         finishIfComplete();
       }
       alreadyHaveLeft.addEventListener('click', toggleAlreadyHave);
-      alreadyHaveRight.addEventListener('click', toggleAlreadyHave);
+      alreadyHaveRight.addEventListener('click', () => { if (npcBtn) npcClick(); else toggleAlreadyHave(); });
 
       function setTab(kind, animateIndicator) {
         activeKind = kind;
@@ -7147,6 +7153,28 @@
     // Dark Side map lightbox above) with a big, easy-to-click icon grid.
     function openRequirementPicker(event, zs, noteArea, onChange, originKingdom, originZone, opts) {
       opts = opts || {};
+      // A Shop in this zone was marked "Needs Talk to NPCs": clicking + again
+      // takes that back (removing the sentence), jumps straight to that
+      // Shop's Items For Sale menu, and the right-hand button there is "I
+      // already have" again.
+      if (!opts.findOnly && zs && noteArea && Array.isArray(zs.requirements)) {
+        const npcReq = zs.requirements.find(r => r.kind === 'shops' && r.needsNPC);
+        const npcShop = npcReq && APC.findItem('shops', npcReq.key);
+        if (npcReq && npcShop) {
+          npcReq.needsNPC = false;
+          removeRequirementText(noteArea, npcShop.name + ' needs Talk to NPCs');
+          const bareBack = requirementDisplayText('shops', npcReq.key);
+          if (bareBack) appendRequirementText(noteArea, bareBack);
+          saveFullState();
+          if (onChange) onChange();
+          document.querySelectorAll('.req-picker-overlay:not(.paint-find-area .req-picker-overlay)').forEach(p => p.remove());
+          const reopenNpc = npcShop.kingdom === 'Metro'
+            ? () => { openRequirementPicker(event, zs, noteArea, onChange, originKingdom, originZone); }
+            : undefined;
+          openShopSalePicker(npcReq.key, () => { if (onChange) onChange(); }, noteArea, zs, reopenNpc, { afterNPC: true });
+          return;
+        }
+      }
       // Find-only mode (used by the Find icon under the Paintings panel):
       // the very same picker, but it only ever looks things up, and it is
       // mounted inline in opts.host instead of as a full-screen overlay.
