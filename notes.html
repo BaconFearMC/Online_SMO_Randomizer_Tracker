@@ -7180,7 +7180,7 @@
       // takes that back (removing the sentence), jumps straight to that
       // Shop's Items For Sale menu, and the right-hand button there is "I
       // already have" again.
-      if (!opts.findOnly && zs && noteArea && Array.isArray(zs.requirements)) {
+      if (!opts.findOnly && !opts.skipNpcRedirect && zs && noteArea && Array.isArray(zs.requirements)) {
         const npcReq = zs.requirements.find(r => r.kind === 'shops' && r.needsNPC);
         const npcShop = npcReq && APC.findItem('shops', npcReq.key);
         if (npcReq && npcShop) {
@@ -7192,7 +7192,7 @@
           if (onChange) onChange();
           document.querySelectorAll('.req-picker-overlay:not(.paint-find-area .req-picker-overlay)').forEach(p => p.remove());
           const reopenNpc = npcShop.kingdom === 'Metro'
-            ? () => { openRequirementPicker(event, zs, noteArea, onChange, originKingdom, originZone); }
+            ? () => { openRequirementPicker(event, zs, noteArea, onChange, originKingdom, originZone, { skipNpcRedirect: true }); }
             : undefined;
           openShopSalePicker(npcReq.key, () => { if (onChange) onChange(); }, noteArea, zs, reopenNpc, { afterNPC: true });
           return;
@@ -8256,7 +8256,7 @@
             if (!sale.capture && !sale.ability && !sale.ownedCapture && !sale.ownedAbility) {
               const isMetroShop = item.kingdom === 'Metro';
               const reopen = isMetroShop
-                ? () => { openRequirementPicker(event, zs, noteArea, onChange, originKingdom, originZone); }
+                ? () => { openRequirementPicker(event, zs, noteArea, onChange, originKingdom, originZone, { skipNpcRedirect: true }); }
                 : undefined;
               openShopSalePicker(item.key, () => { refreshSaleTitle(); onChange(); }, noteArea, zs, reopen);
             }
