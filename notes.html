@@ -595,16 +595,22 @@
     }
     .req-picker-item--shop-overview img { width: 42%; }
     /* Setting "collective_shops": XXX / XXX / XXY - one big All Shops button
-       (X) with the Metro Shop (Y) small in the bottom-right cell. */
+       (X) with the Metro Shop (Y) in the bottom-right cell.
+       NOTE: that L-shape is not a rectangle, so it can NOT be written with
+       grid-template-areas (browsers discard the whole declaration, which is
+       what used to break the grid). Instead the big button spans the full
+       3x3, is clipped into the L, and Metro sits in cell (3,3) on top. */
     #shop-grid-force-3x3.req-picker-grid--collective {
       grid-template-columns: repeat(3, 1fr) !important;
       grid-template-rows: repeat(3, 1fr) !important;
-      grid-template-areas: "x x x" "x x x" "x x y";
     }
     #shop-grid-force-3x3.req-picker-grid--collective .req-picker-item--shop-overview {
-      grid-column: auto; grid-row: auto; grid-area: x; width: 100%; height: 100%;
+      grid-column: 1 / 4; grid-row: 1 / 4; width: 100%; height: 100%;
+      clip-path: polygon(0 0, 100% 0, 100% 66.667%, 66.667% 66.667%, 66.667% 100%, 0 100%);
     }
-    #shop-grid-force-3x3.req-picker-grid--collective .req-picker-item--metro-small { grid-area: y; }
+    #shop-grid-force-3x3.req-picker-grid--collective .req-picker-item--metro-small {
+      grid-column: 3; grid-row: 3; z-index: 2; width: 100%; height: 100%;
+    }
     /* ── Shops (Kingdom tab, "Shops" column) ─────────────────────────
        Reuses the refight-style gradient ring via --refight-c1/--refight-c2
        (set per-item in JS: [kingdom color, gold]) so a Shop reads as its
