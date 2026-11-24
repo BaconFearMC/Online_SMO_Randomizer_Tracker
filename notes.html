@@ -611,21 +611,6 @@
     #shop-grid-force-3x3.req-picker-grid--collective .req-picker-item--metro-small {
       grid-column: 3; grid-row: 3; z-index: 2; width: 100%; height: 100%;
     }
-    /* Collective Shops: the big button opens this small "Which Shop?" prompt,
-       then behaves exactly like clicking that Shop's own button. */
-    .req-picker-overlay--shoppick .req-picker-popup {
-      width: min(560px, 94vw) !important; max-width: 94vw !important;
-      height: auto !important; max-height: 92vh !important;
-    }
-    .req-picker-shoppick-grid {
-      display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 12px;
-    }
-    .req-picker-shoppick-grid .req-picker-item {
-      aspect-ratio: 1 / 1; min-width: 0; padding: 6px !important;
-      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
-    }
-    .req-picker-shoppick-grid .req-picker-item img:not(.req-picker-item-pair-icon) { width: 60%; height: auto; object-fit: contain; }
-    .req-picker-shoppick-grid .req-picker-item span { font-size: .72rem; text-align: center; line-height: 1.1; }
     /* ── Shops (Kingdom tab, "Shops" column) ─────────────────────────
        Reuses the refight-style gradient ring via --refight-c1/--refight-c2
        (set per-item in JS: [kingdom color, gold]) so a Shop reads as its
@@ -2637,6 +2622,54 @@
           return null;
         };
       } catch (e) { console.warn('[timer] could not patch APC.findItem', e); }
+    })();
+
+    // Collective Shops: a generic "This Shop" requirement that isn't tied to any
+    // kingdom. Every zone that uses one gets its own key ("ThisShop:<id>", kept
+    // on zs.thisShopKey) so what it sells is stored per zone, not shared.
+    // These keys aren't in APC.SHOPS, so APC's lookups are taught about them
+    // here (same approach as patchFindItemForTimer above); real shops are
+    // untouched and still go through APC's own code.
+    const THIS_SHOP_PREFIX = 'ThisShop:';
+    function isThisShopKey(key) { return typeof key === 'string' && key.indexOf(THIS_SHOP_PREFIX) === 0; }
+    (function patchThisShop() {
+      try {
+        const origFind = APC.findItem, origGet = APC.getShopSale, origSet = APC.setShopSale,
+              origOwned = APC.setShopOwned, origComplete = APC.isShopSaleComplete;
+        function slot(state, key) {
+          if (!state.shop_sales) state.shop_sales = {};
+          if (!state.shop_sales[key]) state.shop_sales[key] = { capture: null, ability: null, ownedCapture: false, ownedAbility: false };
+          return state.shop_sales[key];
+        }
+        APC.findItem = function (kind, key) {
+          if (kind === 'shops' && isThisShopKey(key)) {
+            return { key: key, name: 'This Shop', src: 'assets/shop.png', kingdom: 'This', colors: ['#ffd700', '#ffd700'], thisShop: true };
+          }
+          return origFind.call(APC, kind, key);
+        };
+        APC.getShopSale = function (state, key) {
+          if (!isThisShopKey(key)) return origGet.call(APC, state, key);
+          const r = slot(state, key);
+          return { capture: r.capture || null, ability: r.ability || null, ownedCapture: !!r.ownedCapture, ownedAbility: !!r.ownedAbility };
+        };
+        APC.setShopSale = function (state, key, kind, itemKey) {
+          if (!isThisShopKey(key)) return origSet.apply(APC, arguments);
+          const r = slot(state, key);
+          if (kind === 'captures') { r.capture = itemKey || null; if (itemKey) r.ownedCapture = false; }
+          else { r.ability = itemKey || null; if (itemKey) r.ownedAbility = false; }
+        };
+        if (origOwned) APC.setShopOwned = function (state, key, half, val) {
+          if (!isThisShopKey(key)) return origOwned.apply(APC, arguments);
+          const r = slot(state, key);
+          if (half === 'capture') { r.ownedCapture = !!val; if (val) r.capture = null; }
+          else { r.ownedAbility = !!val; if (val) r.ability = null; }
+        };
+        if (origComplete) APC.isShopSaleComplete = function (state, key) {
+          if (!isThisShopKey(key)) return origComplete.apply(APC, arguments);
+          const r = slot(state, key);
+          return !!((r.capture || r.ownedCapture) && (r.ability || r.ownedAbility));
+        };
+      } catch (e) { console.warn('[collective shops] could not patch APC', e); }
     })();
 
     // P-Switches / Scarecrows / Notes are now ordinary standalone Extra
@@ -7906,75 +7939,18 @@
         return cell;
       }
 
-      // Collective Shops setting: the big button is a real Shop requirement
-      // button, not the "what does every shop sell" overview. Clicking it asks
-      // which Shop this zone needs, then does exactly what that Shop's own
-      // button would (select it, prompt for what it sells, etc).
-      function buildCollectiveShopCell(shopItems) {
-        const cell = document.createElement('button');
-        cell.type = 'button';
-        cell.className = 'req-picker-item req-picker-item--shop req-picker-item--shop-overview';
-        const keys = shopItems.map(i => i.key);
-        cell.classList.toggle('selected', zs.requirements.some(r => r.kind === 'shops' && keys.includes(r.key)));
-        const img = document.createElement('img');
-        img.src = 'assets/shop.png';
-        img.alt = 'Shop';
-        const label = document.createElement('span');
-        label.textContent = 'Shop';
-        cell.appendChild(img);
-        cell.appendChild(label);
-        cell.title = 'This zone needs a Shop - pick which one';
-        cell.addEventListener('click', () => {
-          bounce(cell);
-          openCollectiveShopPrompt(shopItems);
-        });
+      // Collective Shops setting: the big button is a generic "This Shop"
+      // requirement for THIS zone - no kingdom picked. It goes through the
+      // normal Shop flow (buildPickerCell), so clicking it selects it and
+      // prompts for what it sells, giving the note "This Shop sells X & Y"
+      // instead of "<Kingdom> Shop sells X & Y". Each zone gets its own
+      // synthetic shop key (see patchThisShop), so sales never leak between
+      // zones. Metro keeps its own real button.
+      function buildCollectiveShopCell() {
+        if (!zs.thisShopKey) zs.thisShopKey = THIS_SHOP_PREFIX + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+        const item = APC.findItem('shops', zs.thisShopKey);
+        const cell = buildPickerCell(item, 'shops', 'req-picker-item--shop req-picker-item--shop-overview');
         return cell;
-      }
-
-      function openCollectiveShopPrompt(shopItems) {
-        document.querySelectorAll('.req-picker-overlay--shoppick').forEach(p => p.remove());
-        const overlay = document.createElement('div');
-        overlay.className = 'req-picker-overlay req-picker-overlay--shoppick';
-        const popup = document.createElement('div');
-        popup.className = 'req-picker-popup';
-        popup.addEventListener('click', (e) => e.stopPropagation());
-        overlay.appendChild(popup);
-
-        const header = document.createElement('div');
-        header.className = 'req-picker-header';
-        const title = document.createElement('div');
-        title.className = 'req-picker-title';
-        title.textContent = 'Which Shop does this zone need?';
-        const closeBtn = document.createElement('button');
-        closeBtn.type = 'button';
-        closeBtn.className = 'req-picker-close';
-        closeBtn.textContent = '✕';
-        closeBtn.title = TIPS.close;
-        header.appendChild(title);
-        header.appendChild(closeBtn);
-        popup.appendChild(header);
-
-        const grid = document.createElement('div');
-        grid.className = 'req-picker-shoppick-grid';
-        shopItems.forEach(item => grid.appendChild(buildPickerCell(item, 'shops', 'req-picker-item--shop')));
-        popup.appendChild(grid);
-
-        function onKey(e) { if (e.key === 'Escape') close(); }
-        function close() {
-          overlay.classList.remove('active');
-          document.removeEventListener('keydown', onKey);
-          setTimeout(() => overlay.remove(), 230);
-        }
-        // Picking a Shop runs that Shop button's normal handler first (it
-        // bubbles up to here afterwards), then this prompt goes away. The 🏷
-        // button stops propagation, so editing a sale leaves the prompt open.
-        grid.addEventListener('click', close);
-        closeBtn.addEventListener('click', close);
-        overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
-        document.addEventListener('keydown', onKey);
-        document.body.appendChild(overlay);
-        void overlay.offsetWidth;
-        requestAnimationFrame(() => overlay.classList.add('active'));
       }
 
       // Lists every Shop in the game - the 9 real Kingdom-tab shops (Sand,
@@ -8468,7 +8444,7 @@
           // XXX / XXX / XXY: big All Shops button + small Metro Shop.
           const metro = shops.find(i => i.kingdom === 'Metro');
           const others = shops.filter(i => i.kingdom !== 'Metro');
-          if (!q || others.length) shopGrid.appendChild(buildCollectiveShopCell(APC.SHOPS.filter(i => !i.paintingOnly && i.kingdom !== 'Metro')));
+          if (!q || others.length) shopGrid.appendChild(buildCollectiveShopCell());
           if (metro) {
             const mc = buildPickerCell(metro, 'shops', 'req-picker-item--shop req-picker-item--metro-small');
             shopGrid.appendChild(mc);
