@@ -476,6 +476,14 @@
           </div>
 
           <div class="settings-row settings-subrow">
+            <span>Collective Shops</span>
+            <label class="toggle-switch">
+              <input type="checkbox" id="toggle-collective-shops">
+              <span class="toggle-track"></span>
+            </label>
+          </div>
+
+          <div class="settings-row settings-subrow">
             <span>Two-Way Painting Find</span>
             <label class="toggle-switch">
               <input type="checkbox" id="toggle-painting-two-way-find">
@@ -501,14 +509,6 @@
           <div class="settings-row settings-subrow">
             <span>Useless Captures List</span>
             <button class="rebind-btn" id="btn-edit-useless-captures">Edit List</button>
-          </div>
-
-          <div class="settings-row">
-            <span>Collective Shops</span>
-            <label class="toggle-switch">
-              <input type="checkbox" id="toggle-collective-shops">
-              <span class="toggle-track"></span>
-            </label>
           </div>
 
           <div class="settings-row">
@@ -943,20 +943,21 @@
     })();
   </script>
   <script>
-    // Notes > Kingdom tab > Shops: "Collective Shops" turns the Shop grid into
-    // one big All Shops button plus a small Metro Shop button (bottom-right).
-    // app.js doesn't know this setting, so it's wired up here the same way as
-    // In-World Info above: same 'tracker_state' key (under .settings), and a
-    // setItem guard so app.js re-saving settings can't drop or flip it.
+    // Collective Shops: Kingdom-tab Shops become one big "All Shops" button
+    // plus a small Metro Shop button bottom-right. Same self-contained
+    // pattern as In-World Info above: only touches settings.collective_shops
+    // in 'tracker_state', and re-asserts it on every write so app.js saves
+    // can't drop it.
     (function () {
       const STATE_KEY = 'tracker_state';
-      function readSettings() {
-        try {
-          const parsed = JSON.parse(localStorage.getItem(STATE_KEY) || '{}');
-          return (parsed && parsed.settings) || {};
-        } catch (e) { return {}; }
+      const toggle = document.getElementById('toggle-collective-shops');
+      if (!toggle) return;
+      function read() {
+        try { return !!((JSON.parse(localStorage.getItem(STATE_KEY) || '{}').settings || {}).collective_shops); }
+        catch (e) { return false; }
       }
-      let desired = !!readSettings().collective_shops;
+      let desired = read();
+      toggle.checked = desired;
       const prevSetItem = localStorage.setItem.bind(localStorage);
       localStorage.setItem = function (key, value) {
         if (key === STATE_KEY) {
@@ -969,20 +970,13 @@
         }
         return prevSetItem(key, value);
       };
-      const toggle = document.getElementById('toggle-collective-shops');
-      if (!toggle) return;
-      toggle.checked = desired;
       window.addEventListener('storage', (e) => {
-        if (e.key === STATE_KEY) {
-          desired = !!readSettings().collective_shops;
-          toggle.checked = desired;
-        }
+        if (e.key === STATE_KEY) { desired = read(); toggle.checked = desired; }
       });
       toggle.addEventListener('change', () => {
         desired = toggle.checked;
         try {
-          const raw = localStorage.getItem(STATE_KEY);
-          const parsed = raw ? JSON.parse(raw) : {};
+          const parsed = JSON.parse(localStorage.getItem(STATE_KEY) || '{}');
           if (!parsed.settings) parsed.settings = {};
           parsed.settings.collective_shops = desired;
           localStorage.setItem(STATE_KEY, JSON.stringify(parsed));
