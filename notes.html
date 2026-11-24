@@ -6622,6 +6622,15 @@
         const bare = requirementDisplayText('shops', shopKey);
         if (bare) removeRequirementText(noteArea, bare);
         appendRequirementText(noteArea, npcText);
+        // Metro Shop: same as a finished sale - drop a "|" after the message
+        // and land back in the "Add a Requirement" (+) menu.
+        if (shopItem && shopItem.kingdom === 'Metro') {
+          insertNoteToken(noteArea, '|');
+          saveFullState();
+          closePicker();
+          if (reopenRequirementPicker) reopenRequirementPicker();
+          return;
+        }
         saveFullState();
         if (onChange) onChange();
         closePicker();
